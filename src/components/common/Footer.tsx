@@ -59,7 +59,7 @@ export default function Footer() {
             Connecting selective clients with Varanasi's most experienced, background-verified on-demand technicians and therapists. Guaranteed premium satisfaction.
           </p>
           <div className="flex items-center gap-2 text-[10px] text-success-lux font-semibold">
-            <ShieldCheck className="w-4 h-4" /> Fully Bonded & Insured up to $10,000
+            <ShieldCheck className="w-4 h-4" /> Fully Bonded & Insured up to ₹10,000
           </div>
         </div>
 

@@ -210,12 +210,12 @@ function HeaderContent() {
                 >
                   <div className="px-3 py-3 border-b border-slate-100 dark:border-slate-800">
                     <p className="text-xs font-bold text-foreground">{userName}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Alex Thorne • Elite Member</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Rohan Verma • Elite Member</p>
                     <div className="mt-2.5 flex items-center justify-between bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
                       <span className="text-[10px] flex items-center gap-1 text-slate-500 dark:text-slate-400">
                         <Wallet className="w-3 h-3 text-accent-lux" /> Wallet
                       </span>
-                      <span className="text-xs font-bold text-foreground">${walletBalance}</span>
+                      <span className="text-xs font-bold text-foreground">₹{walletBalance}</span>
                     </div>
                   </div>
                   <div className="p-1 space-y-0.5">

@@ -222,7 +222,7 @@ function SearchPageContent() {
               <div className="space-y-3">
                 <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
                   <span>Max Budget</span>
-                  <span className="text-foreground">${maxPrice}</span>
+                  <span className="text-foreground">₹{maxPrice}</span>
                 </div>
                 <input
                   type="range"
@@ -347,8 +347,8 @@ function SearchPageContent() {
 
                           <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-sm font-bold text-foreground">${service.price}</span>
-                              <span className="text-[10px] text-muted-lux line-through">${service.originalPrice}</span>
+                              <span className="text-sm font-bold text-foreground">₹{service.price}</span>
+                              <span className="text-[10px] text-muted-lux line-through">₹{service.originalPrice}</span>
                             </div>
                             <Link
                               href={`/services/${service.id}`}

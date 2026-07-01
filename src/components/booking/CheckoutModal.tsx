@@ -235,7 +235,7 @@ export default function CheckoutModal({
                       <p className="text-[10px] text-slate-400 mt-1 capitalize">{item.category} • {item.duration} mins</p>
                     </div>
                     <div className="flex items-center gap-4">
-                      <span className="text-sm font-bold text-foreground">${item.price * item.quantity}</span>
+                      <span className="text-sm font-bold text-foreground">₹{item.price * item.quantity}</span>
                       <button
                         onClick={() => removeFromCart(item.id)}
                         className="text-red-400 hover:text-red-500 cursor-pointer"
@@ -265,7 +265,7 @@ export default function CheckoutModal({
                   >
                     <span className="text-[11px] font-bold text-foreground">Bio-Disinfection</span>
                     <div className="flex justify-between items-end w-full">
-                      <span className="text-xs font-bold text-accent-lux">+$399</span>
+                      <span className="text-xs font-bold text-accent-lux">+₹399</span>
                       <Plus className="w-4 h-4 text-slate-400" />
                     </div>
                   </button>
@@ -283,7 +283,7 @@ export default function CheckoutModal({
                   >
                     <span className="text-[11px] font-bold text-foreground">90-Day Extension</span>
                     <div className="flex justify-between items-end w-full">
-                      <span className="text-xs font-bold text-accent-lux">+$199</span>
+                      <span className="text-xs font-bold text-accent-lux">+₹199</span>
                       <Plus className="w-4 h-4 text-slate-400" />
                     </div>
                   </button>
@@ -577,7 +577,7 @@ export default function CheckoutModal({
                 <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                   <p><strong>Scheduled Date:</strong> {selectedDate}</p>
                   <p><strong>Arrival Window:</strong> {selectedTimeSlot}</p>
-                  <p><strong>Total Authorized:</strong> ${total}</p>
+                  <p><strong>Total Authorized:</strong> ₹{total}</p>
                 </div>
               </div>
 
@@ -600,7 +600,7 @@ export default function CheckoutModal({
             {/* Price Overview */}
             <div className="flex flex-col">
               <span className="text-[9px] uppercase font-bold text-slate-400">Due Now</span>
-              <span className="text-base font-extrabold text-foreground">${total}</span>
+              <span className="text-base font-extrabold text-foreground">₹{total}</span>
             </div>
 
             <div className="flex gap-3">

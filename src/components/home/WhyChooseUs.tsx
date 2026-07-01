@@ -28,7 +28,7 @@ export default function WhyChooseUs() {
       title: "Ultimate Damage Cover Protection",
       desc: "Rest easy with our zero-liability service agreement. Every booking is covered under our premier ₹10,000 warranty protection policy.",
       icon: <HeartHandshake className="w-6 h-6 text-accent-lux" />,
-      badge: "$10k Coverage"
+      badge: "₹10k Coverage"
     },
     {
       title: "24/7 Dedicated Concierge Care",

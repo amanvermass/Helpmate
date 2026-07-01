@@ -500,7 +500,7 @@ export const services: Service[] = [
         "3-Layered bubble wrap cushioning",
         "Crated packing for television & glass items",
         "Dedicated container trucks with GPS tracking",
-        "Transit insurance covers up to $10,000"
+        "Transit insurance covers up to ₹10,000"
       ],
       inclusions: [
         "Packing of all household electronics & garments",
@@ -521,7 +521,7 @@ export const services: Service[] = [
 export const reviews: Review[] = [
   {
     id: "rev-1",
-    name: "Sophia Carter",
+    name: "Ananya Iyer",
     rating: 5,
     serviceName: "Classic Deep Home Cleaning",
     comment: "Absolutely outstanding. The team spent 4 hours scrubbing every single spot. The glass panels feel so premium, and the bathroom tiles look brand new. Worth every penny!",
@@ -531,7 +531,7 @@ export const reviews: Review[] = [
   },
   {
     id: "rev-2",
-    name: "Liam O'Connor",
+    name: "Vikram Malhotra",
     rating: 5,
     serviceName: "Foam & Power Jet AC Service",
     comment: "AC was blowing lukewarm air. After the Jet Spray cleaning, the room temperature went down to 18°C in minutes! Plus, the technician showed me the power reading difference. Outstanding service.",
@@ -540,10 +540,10 @@ export const reviews: Review[] = [
   },
   {
     id: "rev-3",
-    name: "Elena Rostova",
+    name: "Priya Sharma",
     rating: 5,
     serviceName: "Luxury Facial & Hair Spa Combo",
-    comment: "This was as premium as any high-end salon in Manhattan. The therapist brought a diffuse light, soothing nature sound system, and organic oils. I fell asleep during the face massage!",
+    comment: "This was as premium as any high-end salon in Bandra, Mumbai. The therapist brought a diffuse light, soothing nature sound system, and organic oils. I fell asleep during the face massage!",
     avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80",
     image: "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=300&h=200&q=80",
     date: "3 days ago"
@@ -553,7 +553,7 @@ export const reviews: Review[] = [
 export const professionals: Professional[] = [
   {
     id: "prof-1",
-    name: "Marcus Aurelius",
+    name: "Arjun Mehta",
     specialty: "Luxury Cleaning Expert",
     experience: "7+ Years",
     rating: 4.95,
@@ -564,7 +564,7 @@ export const professionals: Professional[] = [
   },
   {
     id: "prof-2",
-    name: "Nadia Petrov",
+    name: "Neha Patil",
     specialty: "Master Therapist & Aesthetician",
     experience: "5 Years",
     rating: 4.98,
@@ -575,7 +575,7 @@ export const professionals: Professional[] = [
   },
   {
     id: "prof-3",
-    name: "Julian Vance",
+    name: "Rahul Ranade",
     specialty: "HVAC & Electrical Automation Engineer",
     experience: "6 Years",
     rating: 4.88,

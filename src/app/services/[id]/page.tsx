@@ -9,8 +9,7 @@ import {
   Check,
   X as CloseIcon,
   ChevronRight,
-  ArrowLeft,
-  DollarSign
+  ArrowLeft
 } from "lucide-react";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
@@ -189,8 +188,8 @@ export default function ServiceDetailPage({ params }: PageProps) {
                 <div>
                   <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Luxury Deal</span>
                   <div className="flex items-baseline gap-2 mt-1">
-                    <span className="text-2xl font-black text-foreground">${service.price}</span>
-                    <span className="text-sm text-slate-400 line-through">${service.originalPrice}</span>
+                    <span className="text-2xl font-black text-foreground">₹{service.price}</span>
+                    <span className="text-sm text-slate-400 line-through">₹{service.originalPrice}</span>
                     <span className="text-xs font-bold text-success-lux ml-1">{service.discountText}</span>
                   </div>
                 </div>

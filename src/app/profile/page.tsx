@@ -184,10 +184,10 @@ function ProfilePageContent() {
                   <div className="glass-panel p-6 border border-slate-200/10 flex flex-col justify-between">
                     <div>
                       <span className="text-[9px] uppercase font-bold text-muted-lux tracking-wider">Wallet Balance</span>
-                      <h4 className="text-2xl font-black text-foreground mt-2">${walletBalance}</h4>
+                      <h4 className="text-2xl font-black text-foreground mt-2">₹{walletBalance}</h4>
                     </div>
                     <span className="text-[10px] text-accent-lux font-bold mt-4 flex items-center gap-1">
-                      Refer friend, earn $250 <ChevronRight className="w-3 h-3" />
+                      Refer friend, earn ₹250 <ChevronRight className="w-3 h-3" />
                     </span>
                   </div>
 
@@ -327,7 +327,7 @@ function ProfilePageContent() {
                           </div>
 
                           <div className="flex items-center gap-3">
-                            <span className="text-xs sm:text-sm font-extrabold text-foreground">${b.finalAmount}</span>
+                            <span className="text-xs sm:text-sm font-extrabold text-foreground">₹{b.finalAmount}</span>
                           </div>
                         </div>
 
@@ -505,7 +505,7 @@ function ProfilePageContent() {
                 <div className="glass-panel p-8 bg-gradient-to-tr from-primary-lux to-slate-900 text-white rounded-[24px] overflow-hidden relative shadow-xl">
                   <div className="absolute top-0 right-0 w-44 h-44 bg-accent-lux/10 rounded-full blur-3xl" />
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">HelpMate Luxury Purse</span>
-                  <h4 className="text-3xl font-black tracking-tight mt-2">${walletBalance}</h4>
+                  <h4 className="text-3xl font-black tracking-tight mt-2">₹{walletBalance}</h4>
                   <p className="text-xs text-slate-400 mt-2">Authorised for automatic payments & inspection overrides.</p>
                 </div>
 
@@ -521,12 +521,12 @@ function ProfilePageContent() {
                     <input
                       type="text"
                       readOnly
-                      value="https://helpmate.lux/refer/alex50"
+                      value="https://helpmate.lux/refer/rohan50"
                       className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-4 py-2.5 rounded-xl text-xs text-slate-500 focus:outline-none"
                     />
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText("https://helpmate.lux/refer/alex50");
+                        navigator.clipboard.writeText("https://helpmate.lux/refer/rohan50");
                         addNotification("Referral Link Copied", "Share it with friends to earn credits.", "info");
                       }}
                       className="px-5 py-2.5 rounded-xl bg-accent-lux hover:bg-accent-lux/95 text-xs font-bold text-white cursor-pointer"

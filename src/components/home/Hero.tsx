@@ -163,7 +163,7 @@ export default function Hero() {
                           <p className="text-[10px] text-slate-400 capitalize">{item.category} • {item.duration} mins</p>
                         </div>
                       </div>
-                      <span className="text-xs font-bold text-accent-lux">${item.price}</span>
+                      <span className="text-xs font-bold text-accent-lux">₹{item.price}</span>
                     </button>
                   ))}
                 </div>

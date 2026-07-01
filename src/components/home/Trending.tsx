@@ -109,8 +109,8 @@ export default function Trending() {
                   <div className="flex flex-col">
                     <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Luxury Deal</span>
                     <div className="flex items-baseline gap-1.5">
-                      <span className="text-lg font-bold text-foreground">${service.price}</span>
-                      <span className="text-xs text-slate-400 line-through">${service.originalPrice}</span>
+                      <span className="text-lg font-bold text-foreground">₹{service.price}</span>
+                      <span className="text-xs text-slate-400 line-through">₹{service.originalPrice}</span>
                     </div>
                   </div>
 

@@ -117,8 +117,8 @@ export const useStore = create<AppState>()(
 
       // Profile State
       isLoggedIn: true, // Defaulting logged in for easier experience
-      userPhone: "+1 (555) 019-2834",
-      userName: "Alex Thorne",
+      userPhone: "+91 98765 01928",
+      userName: "Rohan Verma",
       walletBalance: 1250,
       loyaltyPoints: 340,
       addresses: [
@@ -206,9 +206,9 @@ export const useStore = create<AppState>()(
         const finalAmount = Math.max(0, subtotal - discount);
 
         const professionals = [
-          { name: "Marcus Aurelius", rating: 4.9, completedJobs: 1240, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80", phone: "+1 (555) 234-8974", eta: "15 mins" },
-          { name: "Julian Vance", rating: 4.85, completedJobs: 980, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80", phone: "+1 (555) 432-1198", eta: "25 mins" },
-          { name: "Nadia Petrov", rating: 4.95, completedJobs: 1530, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80", phone: "+1 (555) 908-1123", eta: "8 mins" }
+          { name: "Arjun Mehta", rating: 4.9, completedJobs: 1240, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80", phone: "+91 98765 43210", eta: "15 mins" },
+          { name: "Rahul Ranade", rating: 4.85, completedJobs: 980, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80", phone: "+91 91234 56789", eta: "25 mins" },
+          { name: "Neha Patil", rating: 4.95, completedJobs: 1530, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80", phone: "+91 95432 10987", eta: "8 mins" }
         ];
         const chosenProf = professionals[Math.floor(Math.random() * professionals.length)];
 
