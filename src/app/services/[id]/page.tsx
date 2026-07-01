@@ -79,7 +79,7 @@ export default function ServiceDetailPage({ params }: PageProps) {
                   className="w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                <span className="absolute bottom-6 left-6 bg-black/65 backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-[0.15em] px-4 py-2.5 border border-white/10 shadow-lg select-none">
+                <span className="absolute bottom-6 left-6 bg-black/65 backdrop-blur-md text-white text-[10px] uppercase font-bold tracking-widest px-4 py-2 border border-white/10 shadow-lg select-none">
                   Premium Vetted Service
                 </span>
               </div>

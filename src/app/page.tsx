@@ -52,7 +52,7 @@ export default function Home() {
             <div className="absolute bottom-0 left-0 w-80 h-80 bg-secondary-lux/10 rounded-full blur-[100px] pointer-events-none" />
 
             <div className="lg:col-span-7 space-y-6 z-10">
-              <span className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-accent-lux/85 dark:text-slate-400 mb-4 block">
+              <span className="text-[10px] uppercase font-bold text-accent-lux/85 dark:text-slate-400 tracking-widest mb-4 block">
                 HelpMate Mobile App
               </span>
               <h2 className="text-3xl sm:text-5xl font-bold tracking-tight leading-tight">

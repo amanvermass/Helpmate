@@ -48,7 +48,7 @@ export default function BeforeAfter() {
             className="absolute inset-0 w-full h-full object-cover max-w-none select-none"
             style={{ width: "768px", height: "450px" }} // Matches parent sizes
           />
-          <span className="absolute bottom-4 right-4 bg-accent-lux backdrop-blur-md text-white text-[10px] font-extrabold uppercase tracking-[0.12em] px-3.5 py-2.5 rounded-sm border border-white/20 whitespace-nowrap shadow-md select-none">
+          <span className="absolute bottom-4 right-4 bg-accent-lux backdrop-blur-md text-white text-[10px] uppercase font-bold tracking-widest px-3.5 py-2 rounded-sm border border-white/20 whitespace-nowrap shadow-md select-none">
             After HelpMate
           </span>
         </div>

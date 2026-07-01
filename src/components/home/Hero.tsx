@@ -82,7 +82,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-accent-lux dark:text-accent-lux/90 mb-5"
+          className="text-[10px] uppercase font-bold text-accent-lux tracking-widest mb-5"
         >
           The Gold Standard of Home Services
         </motion.p>
