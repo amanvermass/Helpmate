@@ -13,28 +13,28 @@ interface TimelineItem {
 export default function WhyChooseUs() {
   const steps: TimelineItem[] = [
     {
-      title: "100% Certified Professionals",
-      desc: "All technicians pass strict 3-tier background verification, skill assessment trials, and behavioral training before joining our luxury circle.",
+      title: "Varanasi's First ₹1,000 Late Refund",
+      desc: "We value your time. If our specialist is more than 10 minutes late, receive a ₹1,000 cash discount or refund on your service invoice instantly.",
+      icon: <Clock className="w-6 h-6 text-accent-lux" />,
+      badge: "On-Time Vow"
+    },
+    {
+      title: "Strict 3-Tier Background Checks",
+      desc: "Every Pro undergoes rigorous verification: Aadhaar matching, local police database check, and address verification. Only the top 5% of applicants are hired.",
       icon: <ShieldCheck className="w-6 h-6 text-accent-lux" />,
-      badge: "Vetted & Safe"
+      badge: "3-Tier Vetting"
     },
     {
-      title: "Completely Transparent Flat-Rates",
-      desc: "Zero hidden charges or diagnostic surprises. Receive fully transparent material estimates in-app for your digital approval before work begins.",
+      title: "Completely Contract-Free Booking",
+      desc: "No long-term contracts or hidden sign-up fees. Schedule hourly chores or deep cleans as needed, or modify your subscription in 1 tap.",
       icon: <CreditCard className="w-6 h-6 text-accent-lux" />,
-      badge: "No Surprises"
+      badge: "No Lock-ins"
     },
     {
-      title: "Ultimate Damage Cover Protection",
+      title: "Zero-Liability Damage Protection",
       desc: "Rest easy with our zero-liability service agreement. Every booking is covered under our premier ₹10,000 warranty protection policy.",
       icon: <HeartHandshake className="w-6 h-6 text-accent-lux" />,
-      badge: "₹10k Coverage"
-    },
-    {
-      title: "24/7 Dedicated Concierge Care",
-      desc: "Need rescheduling or have post-service queries? Our support line connects you instantly to dedicated managers for smooth resolutions.",
-      icon: <Clock className="w-6 h-6 text-accent-lux" />,
-      badge: "Instant Support"
+      badge: "₹10k Protection"
     }
   ];
 

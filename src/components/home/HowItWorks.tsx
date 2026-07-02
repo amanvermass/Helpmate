@@ -14,26 +14,26 @@ export default function HowItWorks() {
   const steps: Step[] = [
     {
       step: "01",
-      title: "Choose Service",
-      desc: "Select a luxury package or customize hours using our smart filter recommendations.",
+      title: "Build Checklist",
+      desc: "Select a premium package or checklist your daily chores in our interactive pricing calculator.",
       icon: <MousePointerClick className="w-6 h-6 text-accent-lux" />
     },
     {
       step: "02",
-      title: "Secure a Slot",
-      desc: "Pick your preferred date and exact hourly window. Instantly view nearby provider capacity.",
+      title: "Pick Your Slot",
+      desc: "Choose a date and arrival window. Our automated system matches your task to nearby pros instantly.",
       icon: <CalendarDays className="w-6 h-6 text-accent-lux" />
     },
     {
       step: "03",
-      title: "Expert Arrives",
-      desc: "Our verified partner arrives on-time with premium solvents and specialized machinery.",
+      title: "Pro Arrives On-Time",
+      desc: "Our background-verified, uniformed partner arrives with specialized gear and non-toxic sanitizers.",
       icon: <UserCheck className="w-6 h-6 text-accent-lux" />
     },
     {
       step: "04",
-      title: "Pay Securely",
-      desc: "Approve repairs in-app, verify service completion, and pay securely via card, UPI, or COD.",
+      title: "Confirm & Pay",
+      desc: "Verify service completion in the app and pay via UPI, Card, or Cash. On-time refund applies automatically.",
       icon: <CreditCard className="w-6 h-6 text-accent-lux" />
     }
   ];

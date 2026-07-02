@@ -84,7 +84,7 @@ export default function Hero() {
           transition={{ duration: 0.6 }}
           className="text-[10px] uppercase font-bold text-accent-lux tracking-widest mb-5"
         >
-          The Gold Standard of Home Services
+          Varanasi's Trusted Home Care Circle
         </motion.p>
 
         {/* Headline */}
@@ -94,9 +94,9 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 0.1 }}
           className="text-4xl sm:text-6xl font-bold tracking-tight text-primary-lux dark:text-white leading-tight"
         >
-          What service do you <br className="hidden sm:inline" />
+          The End of <br className="hidden sm:inline" />
           <span className="bg-gradient-to-r from-accent-lux via-secondary-lux to-accent-lux bg-clip-text text-transparent">
-            need today?
+            No-Show Domestic Help.
           </span>
         </motion.h1>
 
@@ -107,7 +107,7 @@ export default function Hero() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="text-slate-500 dark:text-slate-400 mt-6 text-sm sm:text-base max-w-xl mx-auto leading-relaxed"
         >
-          Book 5-star certified cleaners, technicians, and therapists. Premium equipment, transparent hourly billing, and post-service warranty.
+          Book background-verified, uniformed pros in Varanasi in 60 seconds. Flat-rate pricing, 100% on-time guarantee, and zero contracts.
         </motion.p>
 
         {/* Large Search Box */}
@@ -125,7 +125,7 @@ export default function Hero() {
               <Search className="w-5 h-5 text-slate-400 mr-3 shrink-0" />
               <input
                 type="text"
-                placeholder="Search home salon, deep cleaning, smart automation..."
+                placeholder="Search deep cleaning, mopping, laundry folding, AC service..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-transparent text-sm text-foreground focus:outline-none placeholder-slate-400 py-3"
@@ -192,6 +192,13 @@ export default function Hero() {
               {tag}
             </button>
           ))}
+          <span className="text-slate-300 dark:text-slate-700 mx-1">|</span>
+          <a
+            href="#pricing-calculator"
+            className="text-accent-lux hover:text-accent-lux/80 font-bold transition-colors"
+          >
+            Pricing Calculator ✨
+          </a>
         </motion.div>
 
         {/* Live Statistics Cards */}

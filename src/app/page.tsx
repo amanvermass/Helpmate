@@ -2,6 +2,8 @@
 
 import Header from "@/components/common/Header";
 import Hero from "@/components/home/Hero";
+import PricingCalculator from "@/components/home/PricingCalculator";
+import CheckoutModal from "@/components/booking/CheckoutModal";
 import Categories from "@/components/home/Categories";
 import Trending from "@/components/home/Trending";
 import WhyChooseUs from "@/components/home/WhyChooseUs";
@@ -13,8 +15,29 @@ import FaqSection from "@/components/home/FaqSection";
 import Footer from "@/components/common/Footer";
 import { Download, QrCode, Phone } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
 
 export default function Home() {
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState({
+    id: "",
+    name: "",
+    price: 0,
+    category: "",
+    duration: 0
+  });
+
+  const handleBookFromCalculator = (data: {
+    id: string;
+    name: string;
+    price: number;
+    category: string;
+    duration: number;
+  }) => {
+    setSelectedService(data);
+    setCheckoutOpen(true);
+  };
+
   return (
     <>
       <Header />
@@ -22,6 +45,9 @@ export default function Home() {
       <main className="flex-1 pt-20">
         {/* Hero Section */}
         <Hero />
+
+        {/* Dynamic Pricing Calculator Widget */}
+        <PricingCalculator onBook={handleBookFromCalculator} />
 
         {/* Categories Grid */}
         <Categories />
@@ -121,6 +147,16 @@ export default function Home() {
         {/* FAQs Section */}
         <FaqSection />
       </main>
+
+      <CheckoutModal
+        isOpen={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        serviceId={selectedService.id}
+        serviceName={selectedService.name}
+        servicePrice={selectedService.price}
+        serviceCategory={selectedService.category}
+        serviceDuration={selectedService.duration}
+      />
 
       <Footer />
     </>
