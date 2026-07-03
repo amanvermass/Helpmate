@@ -41,12 +41,14 @@ export default function HowItWorks() {
   return (
     <section className="py-20 px-6 max-w-7xl mx-auto font-sans relative">
       <div className="text-center mb-16">
-        <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest">Seamless Flow</span>
+        <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-3">
+          Step 5: Booking Process
+        </span>
         <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white mt-1">
-          How It Works
+          How to Book in 30 Seconds
         </h2>
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-xs sm:text-sm">
-          Book in under 30 seconds with our fully automated booking sequence.
+          Experience our frictionless scheduling process from start to finish.
         </p>
       </div>
 

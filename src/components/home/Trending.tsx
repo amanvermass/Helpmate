@@ -24,12 +24,14 @@ export default function Trending() {
     <section className="py-20 px-6 max-w-7xl mx-auto font-sans relative">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-4">
         <div>
-          <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest">Selected For You</span>
+          <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-3">
+            Step 3: Best Sellers
+          </span>
           <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white mt-1">
-            Trending Luxury Services
+            Trending Services This Week
           </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-xs sm:text-sm">
-            Top-booked packages this week. Verified experts, all supplies included.
+            Our most popular deep cleaning and home repair bundles booked by Varanasi residents this week.
           </p>
         </div>
         <Link

@@ -45,13 +45,13 @@ export default function WhyChooseUs() {
         {/* Left text column */}
         <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left">
           <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest mb-4 block">
-            Guarantee of Trust
+            Step 4: Safety & Quality
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary-lux dark:text-white leading-tight">
-            Why Selected Clients <br className="hidden lg:inline" /> Choose HelpMate
+            Our 4 Reliability <br className="hidden lg:inline" /> Service Guarantees
           </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-6 text-sm leading-relaxed max-w-md">
-            We are committed to delivering the ultimate home service standards. From background checks to post-service cleaning, every detail is refined for comfort.
+            Varanasi's first service built entirely on trust and punctuality. If we fail our vows, you are compensated automatically.
           </p>
           <div className="mt-8 hidden lg:block">
             <div className="w-24 h-1 rounded-full bg-gradient-to-r from-accent-lux to-secondary-lux" />

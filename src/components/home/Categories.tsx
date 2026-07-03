@@ -36,11 +36,14 @@ export default function Categories() {
     <section className="py-20 px-6 max-w-7xl mx-auto font-sans relative">
       <div className="text-center md:text-left md:flex justify-between items-end mb-12">
         <div>
+          <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-3">
+            Step 2: Or Browse by Service
+          </span>
           <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white">
-            Popular Categories
+            Explore Service Categories
           </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-xs sm:text-sm">
-            Select a specialized category to find the right luxury professional.
+            Browse through our verified service verticals to find exactly what you need in Varanasi.
           </p>
         </div>
       </div>

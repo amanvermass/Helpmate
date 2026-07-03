@@ -14,12 +14,14 @@ export default function BeforeAfter() {
   return (
     <section className="py-20 px-6 max-w-7xl mx-auto font-sans relative">
       <div className="text-center mb-12">
-        <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest">Aesthetic Proof</span>
+        <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-3">
+          Quality Proof
+        </span>
         <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white mt-1">
-          Our Transformation Standards
+          Before & After Cleaning Results
         </h2>
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-xs sm:text-sm">
-          Drag the center handle to see real deep cleaning and restoration results.
+          Drag the slider handle to inspect our actual deep cleaning standards.
         </p>
       </div>
 

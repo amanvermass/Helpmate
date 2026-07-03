@@ -68,23 +68,17 @@ function HeaderContent() {
 
   return (
     <header
-      className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 font-sans ${
-        scrolled
+      className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 font-sans ${scrolled
           ? "bg-background/80 dark:bg-background/80 backdrop-blur-xl border-b border-border-lux py-3 shadow-sm"
           : "bg-transparent py-5"
-      }`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6">
-        
+
         {/* LOGO */}
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 group">
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-accent-lux to-secondary-lux flex items-center justify-center text-white font-bold tracking-wider shadow-md shadow-accent-lux/20">
-              H
-            </span>
-            <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-primary-lux via-primary-lux to-accent-lux bg-clip-text text-transparent dark:from-white dark:to-slate-300">
-              HelpMate
-            </span>
+          <Link href="/" className="flex items-center gap-2 group bg-white dark:bg-white px-3 py-1.5 rounded-xl shadow-sm border border-slate-200/50">
+            <img src="/logo.png" alt="HelpMate Logo" className="h-7 w-auto object-contain" />
           </Link>
 
           {/* Location Picker */}

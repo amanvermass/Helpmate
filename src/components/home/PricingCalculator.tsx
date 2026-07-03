@@ -102,10 +102,9 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
       const selectedAddonLabels = deepCleanAddons
         .filter((a) => deepAddons.includes(a.id))
         .map((a) => a.label);
-      
-      const customServiceName = `${baseSelection.name} ${
-        selectedAddonLabels.length > 0 ? `(+ ${selectedAddonLabels.join(", ")})` : ""
-      }`;
+
+      const customServiceName = `${baseSelection.name} ${selectedAddonLabels.length > 0 ? `(+ ${selectedAddonLabels.join(", ")})` : ""
+        }`;
 
       clearCart();
       addToCart({
@@ -158,13 +157,13 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
     <section className="py-20 px-6 max-w-5xl mx-auto font-sans relative" id="pricing-calculator">
       <div className="text-center mb-12">
         <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-3">
-          Instant Calculator
+          Step 1: Estimate Price
         </span>
         <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white mt-1">
-          Calculate Your Exact Pricing
+          Interactive Pricing Calculator
         </h2>
         <p className="text-slate-500 dark:text-slate-400 mt-2 text-xs sm:text-sm max-w-md mx-auto">
-          No vague estimates, no contract lock-ins, and no endless bargaining. Select your checklist and book instantly.
+          Choose a service model below, select your layout or checklist, and get an instant, transparent price before booking.
         </p>
       </div>
 
@@ -176,21 +175,19 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
             <div className="flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl border border-slate-200/10 mb-8">
               <button
                 onClick={() => setActiveTab("deep")}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === "deep"
+                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === "deep"
                     ? "bg-white dark:bg-slate-800 text-accent-lux shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
-                }`}
+                  }`}
               >
                 Premium Deep Cleaning
               </button>
               <button
                 onClick={() => setActiveTab("chores")}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${
-                  activeTab === "chores"
+                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === "chores"
                     ? "bg-white dark:bg-slate-800 text-accent-lux shadow-sm"
                     : "text-slate-500 hover:text-slate-700"
-                }`}
+                  }`}
               >
                 Daily Hourly Chores
               </button>
@@ -207,6 +204,16 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
                   transition={{ duration: 0.2 }}
                   className="space-y-6"
                 >
+                  {/* Tab Explainer Text */}
+                  <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/80 text-left mb-6">
+                    <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-accent-lux" /> What is Premium Deep Cleaning?
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                      A comprehensive, 3+ hour intense scrub-down of your home by verified experts. Includes specialized machines, bathroom descaling, deep kitchen degreasing, and eco-sanitization. Ideal for monthly refreshers or moving in.
+                    </p>
+                  </div>
+
                   {/* Home BHK size grid */}
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block mb-3">
@@ -219,11 +226,10 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
                           <button
                             key={size}
                             onClick={() => setHomeSize(size)}
-                            className={`py-3.5 px-3 rounded-xl border text-center font-bold text-xs capitalize transition-all cursor-pointer ${
-                              isSelected
+                            className={`py-3.5 px-3 rounded-xl border text-center font-bold text-xs capitalize transition-all cursor-pointer ${isSelected
                                 ? "bg-accent-lux border-accent-lux text-white shadow-lg shadow-accent-lux/10"
                                 : "bg-slate-50 dark:bg-slate-900 border-slate-200/10 text-slate-700 dark:text-slate-300 hover:border-slate-350"
-                            }`}
+                              }`}
                           >
                             {size}
                             <span className="block text-[9px] font-normal opacity-80 mt-1">
@@ -247,11 +253,10 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
                           <div
                             key={addon.id}
                             onClick={() => toggleDeepAddon(addon.id)}
-                            className={`p-3.5 rounded-xl border cursor-pointer select-none flex items-center justify-between transition-all duration-300 ${
-                              isChecked
+                            className={`p-3.5 rounded-xl border cursor-pointer select-none flex items-center justify-between transition-all duration-300 ${isChecked
                                 ? "border-accent-lux/60 bg-accent-lux/[0.03]"
                                 : "border-slate-200/10 bg-slate-50/40 dark:bg-slate-950/20 hover:border-slate-300"
-                            }`}
+                              }`}
                           >
                             <div>
                               <span className="text-xs font-bold text-foreground block">
@@ -263,9 +268,8 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
                             </div>
                             <div className="flex items-center gap-3">
                               <span className="text-xs font-extrabold text-accent-lux">+₹{addon.price}</span>
-                              <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
-                                isChecked ? "bg-accent-lux border-accent-lux text-white" : "border-slate-300 dark:border-slate-700"
-                              }`}>
+                              <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${isChecked ? "bg-accent-lux border-accent-lux text-white" : "border-slate-300 dark:border-slate-700"
+                                }`}>
                                 {isChecked && <Check className="w-3.5 h-3.5" />}
                               </div>
                             </div>
@@ -285,6 +289,16 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
                   transition={{ duration: 0.2 }}
                   className="space-y-6"
                 >
+                  {/* Tab Explainer Text */}
+                  <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-100 dark:border-slate-800/80 text-left mb-6">
+                    <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-accent-lux" /> What are Daily Hourly Chores?
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                      Quick, flexible support for regular daily chores (dishwashing, sweeping & mopping, clothes ironing, veggie chopping). Book a custom checklist as needed without any monthly commitments or long-term contracts.
+                    </p>
+                  </div>
+
                   <div>
                     <div className="flex justify-between items-baseline mb-3">
                       <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
@@ -302,11 +316,10 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
                           <div
                             key={chore.id}
                             onClick={() => toggleChore(chore.id)}
-                            className={`p-3.5 rounded-xl border cursor-pointer select-none flex items-center justify-between transition-all duration-300 ${
-                              isChecked
+                            className={`p-3.5 rounded-xl border cursor-pointer select-none flex items-center justify-between transition-all duration-300 ${isChecked
                                 ? "border-accent-lux/60 bg-accent-lux/[0.03]"
                                 : "border-slate-200/10 bg-slate-50/40 dark:bg-slate-950/20 hover:border-slate-300"
-                            }`}
+                              }`}
                           >
                             <div>
                               <span className="text-xs font-bold text-foreground block">
@@ -318,9 +331,8 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
                             </div>
                             <div className="flex items-center gap-3">
                               <span className="text-xs font-extrabold text-accent-lux">₹{chore.price}</span>
-                              <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${
-                                isChecked ? "bg-accent-lux border-accent-lux text-white" : "border-slate-300 dark:border-slate-700"
-                              }`}>
+                              <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-colors ${isChecked ? "bg-accent-lux border-accent-lux text-white" : "border-slate-300 dark:border-slate-700"
+                                }`}>
                                 {isChecked && <Check className="w-3.5 h-3.5" />}
                               </div>
                             </div>
@@ -338,7 +350,7 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
         {/* Right Summary & Checkout Box */}
         <div className="lg:col-span-5 bg-primary-lux dark:bg-slate-900 text-white rounded-[24px] p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-2xl border border-white/5">
           <div className="absolute top-0 right-0 w-44 h-44 bg-accent-lux/10 rounded-full blur-3xl" />
-          
+
           <div className="space-y-6 z-10">
             <div className="flex justify-between items-center pb-4 border-b border-white/10">
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pricing Summary</span>
