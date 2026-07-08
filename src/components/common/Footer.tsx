@@ -48,7 +48,7 @@ export default function Footer() {
         {/* Brand Column */}
         <div className="flex flex-col gap-5">
           <Link href="/" className="flex items-center gap-2 self-start">
-            <img src="/logo.png" alt="HelpMate Logo" className="h-6 w-auto object-contain" />
+            <img src="/logo.png" alt="HelpMate Logo" className="h-10 w-auto object-contain" />
           </Link>
           <p className="text-[12px] text-slate-400 leading-relaxed max-w-xs">
             Connecting selective clients with Varanasi's most experienced, background-verified on-demand technicians and therapists. Guaranteed premium satisfaction.

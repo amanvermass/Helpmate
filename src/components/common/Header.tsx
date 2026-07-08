@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
   MapPin,
   Search,
@@ -21,11 +21,14 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/store/useStore";
-import { citiesServed } from "@/utils/mockData";
+import { citiesServed, services } from "@/utils/mockData";
 
 function HeaderContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
+
   const {
     theme,
     toggleTheme,
@@ -35,7 +38,8 @@ function HeaderContent() {
     logout,
     notifications,
     clearNotifications,
-    setChatOpen
+    setChatOpen,
+    setGuestMode
   } = useStore();
 
   const [scrolled, setScrolled] = useState(false);
@@ -44,6 +48,19 @@ function HeaderContent() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
+  const [suggestions, setSuggestions] = useState<typeof services>([]);
+
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    const filtered = services.filter((s) =>
+      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.category.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    setSuggestions(filtered.slice(0, 4));
+  }, [searchQuery]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -78,7 +95,7 @@ function HeaderContent() {
         {/* LOGO */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 group">
-            <img src="/logo.png" alt="HelpMate Logo" className="h-7 w-auto object-contain" />
+            <img src="/logo.png" alt="HelpMate Logo" className="h-11 w-auto object-contain" />
           </Link>
 
           {/* Location Picker */}
@@ -105,6 +122,43 @@ function HeaderContent() {
             className="w-full bg-slate-100 dark:bg-slate-800/60 border border-slate-200/10 focus:border-accent-lux/30 focus:bg-white dark:focus:bg-slate-900 rounded-full py-2.5 pl-10 pr-4 text-xs focus:outline-none transition-all duration-300 text-foreground"
           />
           <Search className="absolute left-3.5 top-3 w-4 h-4 text-slate-400" />
+
+          {/* Auto Suggestions Dropdown */}
+          <AnimatePresence>
+            {suggestions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 15 }}
+                className="absolute left-0 right-0 mt-2 p-2.5 glass-panel z-50 shadow-2xl text-left border border-slate-200/20"
+              >
+                <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider px-2.5 mb-1.5">Suggestions</p>
+                <div className="space-y-0.5">
+                  {suggestions.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setSuggestions([]);
+                        setSearchQuery("");
+                        router.push(`/services/${item.id}`);
+                      }}
+                      className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left transition-colors cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <img src={item.image} alt={item.name} className="w-8 h-8 rounded-lg object-cover" />
+                        <div>
+                          <p className="text-[11px] font-bold text-foreground line-clamp-1">{item.name}</p>
+                          <p className="text-[9px] text-slate-400 capitalize">{item.category} • {item.duration} mins</p>
+                        </div>
+                      </div>
+                      <span className="text-[11px] font-bold text-accent-lux shrink-0">₹{item.price}</span>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </form>
 
         {/* Right Nav Options */}
@@ -119,137 +173,151 @@ function HeaderContent() {
           </button>
 
           {/* Notifications */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowNotifications(!showNotifications);
-                setShowProfileMenu(false);
-              }}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 transition-colors text-slate-600 dark:text-slate-300 relative cursor-pointer"
-            >
-              <Bell className="w-4 h-4" />
-              {notifications.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent-lux rounded-full animate-pulse" />
-              )}
-            </button>
+          {!isHomePage && isLoggedIn && (
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  setShowProfileMenu(false);
+                }}
+                className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 transition-colors text-slate-600 dark:text-slate-300 relative cursor-pointer"
+              >
+                <Bell className="w-4 h-4" />
+                {notifications.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent-lux rounded-full animate-pulse" />
+                )}
+              </button>
 
-            {/* Notifications Menu */}
-            <AnimatePresence>
-              {showNotifications && (
-                <motion.div
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                  className="absolute right-0 mt-3 w-80 glass-panel overflow-hidden shadow-2xl z-50 p-2"
-                >
-                  <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-800">
-                    <span className="font-semibold text-xs text-foreground">Notifications</span>
-                    {notifications.length > 0 && (
-                      <button
-                        onClick={clearNotifications}
-                        className="text-[10px] text-accent-lux hover:underline"
-                      >
-                        Clear all
-                      </button>
-                    )}
-                  </div>
-                  <div className="max-h-72 overflow-y-auto p-1 mt-1 space-y-1 no-scrollbar">
-                    {notifications.length === 0 ? (
-                      <div className="py-6 text-center text-[11px] text-slate-400">
-                        No new updates
-                      </div>
-                    ) : (
-                      notifications.map((notif) => (
-                        <div
-                          key={notif.id}
-                          className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex gap-2.5 items-start"
+              {/* Notifications Menu */}
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-80 glass-panel overflow-hidden shadow-2xl z-50 p-2"
+                  >
+                    <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-800">
+                      <span className="font-semibold text-xs text-foreground">Notifications</span>
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={clearNotifications}
+                          className="text-[10px] text-accent-lux hover:underline"
                         >
-                          <CheckCircle2 className="w-4 h-4 text-success-lux mt-0.5 shrink-0" />
-                          <div>
-                            <p className="text-xs font-semibold text-foreground">{notif.title}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{notif.message}</p>
-                          </div>
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-72 overflow-y-auto p-1 mt-1 space-y-1 no-scrollbar">
+                      {notifications.length === 0 ? (
+                        <div className="py-6 text-center text-[11px] text-slate-400">
+                          No new updates
                         </div>
-                      ))
-                    )}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                      ) : (
+                        notifications.map((notif) => (
+                          <div
+                            key={notif.id}
+                            className="p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex gap-2.5 items-start"
+                          >
+                            <CheckCircle2 className="w-4 h-4 text-success-lux mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-foreground">{notif.title}</p>
+                              <p className="text-[10px] text-slate-500 mt-0.5 leading-relaxed">{notif.message}</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
-          {/* User Profile */}
-          <div className="relative">
+          {/* User Profile or Sign In / Signup Button */}
+          {isLoggedIn ? (
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowProfileMenu(!showProfileMenu);
+                  setShowNotifications(false);
+                }}
+                className="flex items-center gap-1.5 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-full bg-accent-lux/10 border border-accent-lux/20 text-accent-lux flex items-center justify-center font-bold text-xs">
+                  {userName ? userName.slice(0, 2).toUpperCase() : "AT"}
+                </div>
+                <ChevronDown className="w-3 h-3 opacity-60 text-foreground" />
+              </button>
+
+              {/* Profile Dropdown */}
+              <AnimatePresence>
+                {showProfileMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-64 glass-panel overflow-hidden shadow-2xl z-50 p-2"
+                  >
+                    <div className="px-3 py-3 border-b border-slate-100 dark:border-slate-800">
+                      <p className="text-xs font-bold text-foreground">{userName}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">Elite Member</p>
+                      <div className="mt-2.5 flex items-center justify-between bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                        <span className="text-[10px] flex items-center gap-1 text-slate-500 dark:text-slate-400">
+                          <Wallet className="w-3 h-3 text-accent-lux" /> Wallet
+                        </span>
+                        <span className="text-xs font-bold text-foreground">₹{walletBalance}</span>
+                      </div>
+                    </div>
+                    <div className="p-1 space-y-0.5">
+                      <Link
+                        href="/profile"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <User className="w-3.5 h-3.5" /> Dashboard & Address
+                      </Link>
+                      <Link
+                        href="/profile?tab=bookings"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <Calendar className="w-3.5 h-3.5" /> My Bookings
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          setChatOpen(true);
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer text-left"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" /> Live Support Chat
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          logout();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
+                      >
+                        <LogOut className="w-3.5 h-3.5" /> Log Out
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
             <button
               onClick={() => {
-                setShowProfileMenu(!showProfileMenu);
-                setShowNotifications(false);
+                setGuestMode(false);
+                router.push("/");
               }}
-              className="flex items-center gap-1.5 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs shadow-md shadow-accent-lux/25 transition-all cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-full bg-accent-lux/10 border border-accent-lux/20 text-accent-lux flex items-center justify-center font-bold text-xs">
-                AT
-              </div>
-              <ChevronDown className="w-3 h-3 opacity-60 text-foreground" />
+              Sign Up / Login
             </button>
-
-            {/* Profile Dropdown */}
-            <AnimatePresence>
-              {showProfileMenu && (
-                <motion.div
-                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                  className="absolute right-0 mt-3 w-64 glass-panel overflow-hidden shadow-2xl z-50 p-2"
-                >
-                  <div className="px-3 py-3 border-b border-slate-100 dark:border-slate-800">
-                    <p className="text-xs font-bold text-foreground">{userName}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Rohan Verma • Elite Member</p>
-                    <div className="mt-2.5 flex items-center justify-between bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                      <span className="text-[10px] flex items-center gap-1 text-slate-500 dark:text-slate-400">
-                        <Wallet className="w-3 h-3 text-accent-lux" /> Wallet
-                      </span>
-                      <span className="text-xs font-bold text-foreground">₹{walletBalance}</span>
-                    </div>
-                  </div>
-                  <div className="p-1 space-y-0.5">
-                    <Link
-                      href="/profile"
-                      onClick={() => setShowProfileMenu(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                    >
-                      <User className="w-3.5 h-3.5" /> Dashboard & Address
-                    </Link>
-                    <Link
-                      href="/profile?tab=bookings"
-                      onClick={() => setShowProfileMenu(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                    >
-                      <Calendar className="w-3.5 h-3.5" /> My Bookings
-                    </Link>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        setChatOpen(true);
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer text-left"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" /> Live Support Chat
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowProfileMenu(false);
-                        logout();
-                      }}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer text-left"
-                    >
-                      <LogOut className="w-3.5 h-3.5" /> Log Out
-                    </button>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          )}
         </div>
       </div>
 

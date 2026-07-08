@@ -33,6 +33,19 @@ function SearchPageContent() {
   const [minRating, setMinRating] = useState<number | null>(null);
   const [maxPrice, setMaxPrice] = useState<number>(3000);
   const [availability, setAvailability] = useState<string>("");
+  const [searchSuggestions, setSearchSuggestions] = useState<typeof services>([]);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setSearchSuggestions([]);
+      return;
+    }
+    const filtered = services.filter((s) =>
+      s.name.toLowerCase().includes(query.toLowerCase()) ||
+      s.category.toLowerCase().includes(query.toLowerCase())
+    );
+    setSearchSuggestions(filtered.slice(0, 4));
+  }, [query]);
 
   // UI state
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
@@ -119,7 +132,7 @@ function SearchPageContent() {
           {/* Top Search Banner */}
           <div className="py-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
             <div className="flex-1 relative">
-              <form onSubmit={(e) => { e.preventDefault(); router.push(`/search?q=${encodeURIComponent(query)}`); }}>
+              <form onSubmit={(e) => { e.preventDefault(); router.push(`/search?q=${encodeURIComponent(query)}`); setSearchSuggestions([]); }}>
                 <input
                   type="text"
                   placeholder="What service can we clean, fix, or style today?"
@@ -138,6 +151,42 @@ function SearchPageContent() {
               >
                 <Mic className="w-4 h-4" />
               </button>
+
+              {/* Auto Suggestions Dropdown */}
+              <AnimatePresence>
+                {searchSuggestions.length > 0 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 15 }}
+                    className="absolute left-0 right-0 mt-2 p-2.5 glass-panel z-50 shadow-2xl text-left border border-slate-200/20"
+                  >
+                    <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider px-2.5 mb-1.5">Suggestions</p>
+                    <div className="space-y-0.5">
+                      {searchSuggestions.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            setSearchSuggestions([]);
+                            router.push(`/services/${item.id}`);
+                          }}
+                          className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <img src={item.image} alt={item.name} className="w-8 h-8 rounded-lg object-cover" />
+                            <div>
+                              <p className="text-[11px] font-bold text-foreground line-clamp-1">{item.name}</p>
+                              <p className="text-[9px] text-slate-400 capitalize">{item.category} • {item.duration} mins</p>
+                            </div>
+                          </div>
+                          <span className="text-[11px] font-bold text-accent-lux shrink-0">₹{item.price}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* Mobile Filters Trigger */}

@@ -55,6 +55,8 @@ interface AppState {
 
   // Auth & Profile
   isLoggedIn: boolean;
+  guestMode: boolean;
+  setGuestMode: (val: boolean) => void;
   userPhone: string;
   userName: string;
   walletBalance: number;
@@ -116,7 +118,9 @@ export const useStore = create<AppState>()(
       toggleTheme: () => set((state) => ({ theme: state.theme === "light" ? "dark" : "light" })),
 
       // Profile State
-      isLoggedIn: true, // Defaulting logged in for easier experience
+      isLoggedIn: false, // Defaulting logged out to prompt login/signup first
+      guestMode: false,
+      setGuestMode: (val) => set({ guestMode: val }),
       userPhone: "+91 98765 01928",
       userName: "Rohan Verma",
       walletBalance: 1250,
@@ -133,8 +137,8 @@ export const useStore = create<AppState>()(
         set((state) => ({
           addresses: state.addresses.filter((addr) => addr.id !== id),
         })),
-      login: (phone) => set({ isLoggedIn: true, userPhone: phone, userName: "User " + phone.slice(-4) }),
-      logout: () => set({ isLoggedIn: false, userPhone: "", userName: "", bookings: [], cart: [] }),
+      login: (phone) => set({ isLoggedIn: true, guestMode: false, userPhone: phone, userName: "User " + phone.slice(-4) }),
+      logout: () => set({ isLoggedIn: false, guestMode: true, userPhone: "", userName: "", bookings: [], cart: [] }),
 
       // Cart
       cart: [],
@@ -385,6 +389,7 @@ export const useStore = create<AppState>()(
       partialize: (state) => ({
         theme: state.theme,
         isLoggedIn: state.isLoggedIn,
+        guestMode: state.guestMode,
         userPhone: state.userPhone,
         userName: state.userName,
         walletBalance: state.walletBalance,
