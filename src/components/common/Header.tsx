@@ -130,7 +130,7 @@ function HeaderContent() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 15 }}
-                className="absolute left-0 right-0 mt-2 p-2.5 glass-panel z-50 shadow-2xl text-left border border-slate-200/20"
+                className="absolute left-0 right-0 mt-2 p-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl z-50 shadow-2xl text-left"
               >
                 <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider px-2.5 mb-1.5">Suggestions</p>
                 <div className="space-y-0.5">
@@ -195,7 +195,7 @@ function HeaderContent() {
                     initial={{ opacity: 0, y: 15, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                    className="absolute right-0 mt-3 w-80 glass-panel overflow-hidden shadow-2xl z-50 p-2"
+                    className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl z-50 p-2"
                   >
                     <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 dark:border-slate-800">
                       <span className="font-semibold text-xs text-foreground">Notifications</span>
@@ -257,7 +257,7 @@ function HeaderContent() {
                     initial={{ opacity: 0, y: 15, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                    className="absolute right-0 mt-3 w-64 glass-panel overflow-hidden shadow-2xl z-50 p-2"
+                    className="absolute right-0 mt-3 w-64 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl z-50 p-2"
                   >
                     <div className="px-3 py-3 border-b border-slate-100 dark:border-slate-800">
                       <p className="text-xs font-bold text-foreground">{userName}</p>
