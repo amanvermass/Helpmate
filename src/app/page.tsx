@@ -46,14 +46,14 @@ export default function Home() {
         {/* Hero Section */}
         <Hero />
 
-        {/* Dynamic Pricing Calculator Widget */}
-        <PricingCalculator onBook={handleBookFromCalculator} />
-
         {/* Categories Grid */}
         <Categories />
 
         {/* Trending Packages */}
         <Trending />
+
+        {/* Dynamic Pricing Calculator Widget */}
+        <PricingCalculator onBook={handleBookFromCalculator} />
 
         {/* Vetting Vow (Why Choose Us) */}
         <WhyChooseUs />

@@ -77,7 +77,7 @@ function HeaderContent() {
 
         {/* LOGO */}
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2 group bg-white dark:bg-white px-3 py-1.5 rounded-xl shadow-sm border border-slate-200/50">
+          <Link href="/" className="flex items-center gap-2 group">
             <img src="/logo.png" alt="HelpMate Logo" className="h-7 w-auto object-contain" />
           </Link>
 
