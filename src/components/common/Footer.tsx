@@ -72,12 +72,22 @@ export default function Footer() {
 
         {/* Legal & Contacts */}
         <div>
-          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-5">Concierge Support</h4>
-          <ul className="space-y-3 text-[12px] text-slate-400">
-            <li><Link href="/profile" className="hover:text-white transition-colors">Client Profile & Wallet</Link></li>
-            <li><span className="hover:text-white transition-colors cursor-pointer">Warranty Claims</span></li>
-            <li><span className="hover:text-white transition-colors cursor-pointer">Elite AMC Subscriptions</span></li>
-            <li><span className="hover:text-white transition-colors cursor-pointer">Help Center / FAQs</span></li>
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-5">Contact HelpMate</h4>
+          <ul className="space-y-3.5 text-[11px] text-slate-400">
+            <li className="font-semibold text-white text-[12px] leading-tight">Helpmate Home Care Services Pvt. Ltd.</li>
+            <li>
+              <span className="block text-[9px] uppercase font-black text-slate-500 tracking-wider mb-0.5">Corporate Office</span>
+              D-58/16C Shashtri Nagar Colony, Sigra, Varanasi, UP
+            </li>
+            <li>
+              <span className="block text-[9px] uppercase font-black text-slate-500 tracking-wider mb-0.5">Phone Support</span>
+              <a href="tel:+917705004040" className="hover:text-white transition-colors block font-bold text-white">+91 7705 004 040</a>
+              <a href="tel:+9105422974740" className="hover:text-white transition-colors block text-[10px] mt-0.5">+91 0542 297 4740</a>
+            </li>
+            <li>
+              <span className="block text-[9px] uppercase font-black text-slate-500 tracking-wider mb-0.5">Email Support</span>
+              <a href="mailto:info@helpmate.net.in" className="hover:text-white transition-colors block font-bold text-white">info@helpmate.net.in</a>
+            </li>
             <li className="pt-2 flex gap-4 text-slate-400">
               <a href="#" aria-label="Instagram" className="hover:text-white transition-all hover:scale-115"><Instagram className="w-4 h-4" /></a>
               <a href="#" aria-label="Twitter" className="hover:text-white transition-all hover:scale-115"><Twitter className="w-4 h-4" /></a>
@@ -99,14 +109,14 @@ export default function Footer() {
             <form onSubmit={handleSubmit(onSubmit)} className="relative flex">
               <input
                 type="email"
-                placeholder="luxury@lifestyle.com"
+                placeholder="Enter your email address"
                 {...register("email")}
-                className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-4 pr-10 text-[11px] focus:outline-none focus:border-accent-lux text-white"
+                className="w-full bg-white/5 border border-white/10 rounded-full py-2.5 pl-4 pr-12 text-[11px] placeholder:text-slate-500 focus:outline-none focus:border-accent-lux text-white"
               />
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="absolute right-1 top-1 w-8 h-8 rounded-full bg-accent-lux flex items-center justify-center hover:bg-accent-lux/95 transition-all text-white disabled:opacity-50 cursor-pointer"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-accent-lux flex items-center justify-center hover:bg-accent-lux/90 transition-all text-white disabled:opacity-50 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
               </button>

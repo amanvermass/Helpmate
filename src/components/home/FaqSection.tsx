@@ -26,24 +26,24 @@ export default function FaqSection() {
         </p>
       </div>
 
-      <div className="space-y-4">
+      <div className="divide-y divide-slate-200/60 dark:divide-slate-800 border-t border-b border-slate-200/60 dark:border-slate-800">
         {faqs.map((faq, idx) => {
           const isOpen = openIdx === idx;
 
           return (
             <div
               key={idx}
-              className="glass-panel overflow-hidden border border-slate-200/10 transition-colors"
+              className="transition-colors"
             >
               <button
                 onClick={() => toggleAccordion(idx)}
-                className="w-full flex items-center justify-between p-6 text-left focus:outline-none cursor-pointer group"
+                className="w-full flex items-center justify-between py-5 text-left focus:outline-none cursor-pointer group"
               >
-                <span className="text-xs sm:text-sm font-bold text-foreground group-hover:text-accent-lux transition-colors">
+                <span className="text-[13px] sm:text-sm font-bold text-foreground group-hover:text-accent-lux transition-colors">
                   {faq.question}
                 </span>
                 <ChevronDown
-                  className={`w-4 h-4 text-slate-400 group-hover:text-accent-lux transition-transform duration-300 ${
+                  className={`w-4 h-4 text-accent-lux transition-transform duration-300 ${
                     isOpen ? "rotate-180" : ""
                   }`}
                 />
@@ -55,9 +55,9 @@ export default function FaqSection() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
                   >
-                    <div className="px-6 pb-6 pt-1 text-slate-500 dark:text-slate-400 text-[12px] leading-relaxed border-t border-slate-100 dark:border-slate-800/40">
+                    <div className="pb-5 pt-1 text-slate-500 dark:text-slate-450 text-[12px] sm:text-xs leading-relaxed">
                       {faq.answer}
                     </div>
                   </motion.div>
@@ -66,6 +66,16 @@ export default function FaqSection() {
             </div>
           );
         })}
+      </div>
+
+      {/* View All FAQs Link */}
+      <div className="mt-8 text-center">
+        <button
+          onClick={() => {}}
+          className="inline-flex items-center gap-1 text-[11px] font-black text-accent-lux hover:underline cursor-pointer"
+        >
+          View all FAQs →
+        </button>
       </div>
     </section>
   );

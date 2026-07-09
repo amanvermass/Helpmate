@@ -587,12 +587,12 @@ export const professionals: Professional[] = [
 ];
 
 export const citiesServed = [
-  { name: "Lanka & Assi Ghat", country: "Varanasi", activePros: 120, image: "https://images.unsplash.com/photo-1561361513-2d000a50f0db?auto=format&fit=crop&w=300&h=200&q=80" },
-  { name: "Godowlia & Dashashwamedh", country: "Varanasi", activePros: 90, image: "https://images.unsplash.com/photo-1590050752117-238cb0fb12b1?auto=format&fit=crop&w=300&h=200&q=80" },
-  { name: "Cantonment & Nadesar", country: "Varanasi", activePros: 150, image: "https://images.unsplash.com/photo-1605649487212-47bdab064df7?auto=format&fit=crop&w=300&h=200&q=80" },
-  { name: "Sigra & Mahmoorganj", country: "Varanasi", activePros: 110, image: "https://images.unsplash.com/photo-1598977123418-45f04b086e44?auto=format&fit=crop&w=300&h=200&q=80" },
-  { name: "Sarnath & Ashapur", country: "Varanasi", activePros: 80, image: "https://images.unsplash.com/photo-1599661046289-e31897858741?auto=format&fit=crop&w=300&h=200&q=80" },
-  { name: "Pandeypur & Shivpur", country: "Varanasi", activePros: 70, image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=300&h=200&q=80" }
+  { name: "Lanka & Assi Ghat", country: "Varanasi", activePros: 120, image: "/bhu-gate.png" },
+  { name: "Godowlia & Dashashwamedh", country: "Varanasi", activePros: 90, image: "/godowlia-crossing.png" },
+  { name: "Cantonment & Nadesar", country: "Varanasi", activePros: 150, image: "/cantt-station.png" },
+  { name: "Sigra & Mahmoorganj", country: "Varanasi", activePros: 110, image: "/sigra-crossing.png" },
+  { name: "Sarnath & Ashapur", country: "Varanasi", activePros: 80, image: "/sarnath-temple.jpg" },
+  { name: "Pandeypur & Shivpur", country: "Varanasi", activePros: 70, image: "/pandeypur-flyover.png" }
 ];
 
 export const faqs = [

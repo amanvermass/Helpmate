@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Star,
   Clock,
@@ -13,7 +14,6 @@ import {
 } from "lucide-react";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
-import CheckoutModal from "@/components/booking/CheckoutModal";
 import { services, reviews as mockReviews } from "@/utils/mockData";
 import { useStore } from "@/store/useStore";
 
@@ -22,14 +22,20 @@ interface PageProps {
 }
 
 export default function ServiceDetailPage({ params }: PageProps) {
+  const router = useRouter();
   const resolvedParams = React.use(params);
   const serviceId = resolvedParams.id;
-
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
-  const { addToRecentlyViewed, addToCart, clearCart } = useStore();
+  const { addToRecentlyViewed, addToCart, clearCart, addNotification } = useStore();
 
   const service = services.find((s) => s.id === serviceId);
+
+  const relatedServices = service
+    ? services
+        .filter((s) => s.id !== service.id && s.category === service.category)
+        .concat(services.filter((s) => s.id !== service.id && s.category !== service.category))
+        .slice(0, 3)
+    : [];
 
   useEffect(() => {
     if (service) {
@@ -89,7 +95,22 @@ export default function ServiceDetailPage({ params }: PageProps) {
       category: service.category,
       duration: finalDuration
     });
-    setCheckoutOpen(true);
+    router.push("/booking");
+  };
+
+  const handleAddToCart = () => {
+    addToCart({
+      id: service.id,
+      name: finalName,
+      price: finalPrice,
+      category: service.category,
+      duration: finalDuration
+    });
+    addNotification(
+      "Added to Cart",
+      `${service.name} has been added to your selection.`,
+      "success"
+    );
   };
 
   // Matched Specialist Logic (BookMyBai / Pronto Verification Feature)
@@ -126,10 +147,13 @@ export default function ServiceDetailPage({ params }: PageProps) {
     <>
       <Header />
 
-      <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background">
+      <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background relative overflow-hidden">
+        {/* Background glows */}
+        <div className="absolute top-24 left-1/4 -translate-x-1/2 w-96 h-96 bg-accent-lux/5 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-48 right-1/4 translate-x-1/2 w-96 h-96 bg-accent-lux/[0.03] rounded-full blur-[140px] pointer-events-none" />
         
         {/* Banner Section */}
-        <section className="max-w-7xl mx-auto px-6 py-6">
+        <section className="max-w-7xl mx-auto px-6 py-6 relative z-10">
           <Link href="/" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-accent-lux transition-colors mb-6">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to explore services
           </Link>
@@ -180,7 +204,7 @@ export default function ServiceDetailPage({ params }: PageProps) {
               </div>
 
               {/* Matched Specialist Preview Card */}
-              <div className="glass-panel p-5 border border-slate-200/10 flex flex-col sm:flex-row gap-5 items-center justify-between text-left">
+              <div className="bg-gradient-to-br from-slate-900/5 via-[#8D397E]/5 to-transparent dark:from-slate-900/60 dark:via-[#8D397E]/10 dark:to-slate-950/40 p-6 rounded-[28px] border border-accent-lux/15 flex flex-col sm:flex-row gap-5 items-center justify-between text-left shadow-sm">
                 <div className="flex items-center gap-4 text-left w-full">
                   <img src={matchedPro.avatar} alt={matchedPro.name} className="w-14 h-14 rounded-full object-cover border-2 border-accent-lux shrink-0" />
                   <div>
@@ -209,26 +233,30 @@ export default function ServiceDetailPage({ params }: PageProps) {
               </div>
 
               {/* Inclusions / Exclusions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-white dark:bg-slate-900/60 p-6 rounded-[24px] border border-slate-150/40 dark:border-slate-800">
-                {/* Inclusions */}
-                <div>
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400 mb-4">Included in Package</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Inclusions Card */}
+                <div className="bg-emerald-500/[0.02] dark:bg-emerald-500/[0.04] border border-emerald-500/10 rounded-[28px] p-6 shadow-sm">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-450 mb-4 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Included in Package
+                  </h4>
                   <ul className="space-y-3">
                     {service.inclusions.map((item, idx) => (
-                      <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-600 dark:text-slate-300">
-                        <Check className="w-4 h-4 text-success-lux mt-0.5 shrink-0" />
+                      <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-650 dark:text-slate-300">
+                        <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
                         <span>{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
-                {/* Exclusions */}
-                <div>
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-400 mb-4">Excluded from Package</h4>
+                {/* Exclusions Card */}
+                <div className="bg-red-500/[0.02] dark:bg-red-500/[0.04] border border-red-500/10 rounded-[28px] p-6 shadow-sm">
+                  <h4 className="font-extrabold text-xs uppercase tracking-wider text-red-650 dark:text-red-400 mb-4 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Excluded from Package
+                  </h4>
                   <ul className="space-y-3">
                     {service.exclusions.map((item, idx) => (
-                      <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-600 dark:text-slate-300">
+                      <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-650 dark:text-slate-300">
                         <CloseIcon className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
                         <span>{item}</span>
                       </li>
@@ -238,14 +266,49 @@ export default function ServiceDetailPage({ params }: PageProps) {
               </div>
 
               {/* FAQs */}
-              <div className="space-y-4">
-                <h3 className="font-bold text-base text-foreground">Frequently Asked Questions</h3>
-                <div className="space-y-3">
+              <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                <h3 className="font-extrabold text-base text-foreground tracking-tight">Frequently Asked Questions</h3>
+                <div className="divide-y divide-slate-200/60 dark:divide-slate-800 border-t border-b border-slate-200/60 dark:border-slate-800">
                   {service.faqs.map((faq, idx) => (
-                    <div key={idx} className="glass-panel p-5 border border-slate-200/10">
+                    <div key={idx} className="py-4">
                       <h4 className="font-bold text-xs sm:text-sm text-foreground">{faq.question}</h4>
-                      <p className="text-[11px] text-slate-400 mt-2 leading-relaxed">{faq.answer}</p>
+                      <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-450 mt-1.5 leading-relaxed">{faq.answer}</p>
                     </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Related Services / Pairs */}
+              <div className="space-y-5 pt-8 border-t border-slate-100 dark:border-slate-800/80">
+                <div>
+                  <h3 className="font-extrabold text-base text-foreground tracking-tight">Frequently Booked Together</h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Varanasi residents often pair this package with these verified services.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                  {relatedServices.map((rel) => (
+                    <Link
+                      key={rel.id}
+                      href={`/services/${rel.id}`}
+                      className="glass-panel overflow-hidden group flex flex-col justify-between border border-slate-200/10 hover:shadow-lg transition-all duration-300 cursor-pointer p-4 h-full text-left"
+                    >
+                      <div className="space-y-2.5">
+                        <div className="h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                          <img src={rel.image} alt={rel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        </div>
+                        <div>
+                          <span className="text-[8px] uppercase font-black text-accent-lux tracking-wider capitalize">{rel.category}</span>
+                          <h4 className="font-bold text-xs text-foreground group-hover:text-accent-lux transition-colors truncate mt-0.5">{rel.name}</h4>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 dark:border-slate-800/60 text-[10px] font-bold text-slate-500">
+                        <span className="text-xs font-black text-foreground">₹{rel.price}</span>
+                        <span className="flex items-center gap-0.5 text-amber-500">
+                          ★ {rel.rating}
+                        </span>
+                      </div>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -331,7 +394,7 @@ export default function ServiceDetailPage({ params }: PageProps) {
                   })}
                 </div>
 
-                <div className="space-y-3 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-4">
+                 <div className="space-y-3 text-[11px] text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-4">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-success-lux" /> Vetted 5-Star Specialist
                   </div>
@@ -343,28 +406,35 @@ export default function ServiceDetailPage({ params }: PageProps) {
                   </div>
                 </div>
 
-                <button
-                  onClick={handleBook}
-                  className="w-full bg-primary-lux hover:bg-slate-800 dark:bg-accent-lux dark:hover:bg-accent-lux/95 text-white font-bold text-xs py-4 rounded-full shadow-lg flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                >
-                  Book Service Slot <ChevronRight className="w-4 h-4" />
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    onClick={handleAddToCart}
+                    className="flex-1 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 font-bold text-xs py-3.5 rounded-full flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-sm"
+                  >
+                    Add to Cart
+                  </button>
+                  <button
+                    onClick={handleBook}
+                    className="flex-1 bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs py-3.5 rounded-full shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                  >
+                    Book Now <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Varanasi Premium Guarantee Banner */}
+              <div className="glass-panel p-5 border border-slate-205/60 dark:border-slate-800/80 bg-gradient-to-br from-[#8D397E]/[0.02] to-transparent rounded-[24px] space-y-3 text-left">
+                <span className="text-[9px] uppercase font-bold text-accent-lux tracking-wider block">HelpMate Service Promise</span>
+                <h4 className="text-xs font-bold text-foreground">Verified Luxury Quality</h4>
+                <p className="text-[10px] text-slate-400 dark:text-slate-450 leading-relaxed">
+                  Every professional undergoes background screening, police verification, and Aadhaar checks. Varanasi's elite households trust HelpMate.
+                </p>
               </div>
             </div>
 
           </div>
         </section>
       </main>
-
-      <CheckoutModal
-        isOpen={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-        serviceId={service.id}
-        serviceName={finalName}
-        servicePrice={finalPrice}
-        serviceCategory={service.category}
-        serviceDuration={finalDuration}
-      />
 
       <Footer />
     </>

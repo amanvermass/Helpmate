@@ -17,7 +17,8 @@ import {
   MessageSquare,
   ShieldCheck,
   CheckCircle2,
-  X
+  X,
+  ShoppingCart
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/store/useStore";
@@ -39,7 +40,9 @@ function HeaderContent() {
     notifications,
     clearNotifications,
     setChatOpen,
-    setGuestMode
+    setGuestMode,
+    cart,
+    removeFromCart
   } = useStore();
 
   const [scrolled, setScrolled] = useState(false);
@@ -47,6 +50,7 @@ function HeaderContent() {
   const [selectedCity, setSelectedCity] = useState("Varanasi");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showCartDropdown, setShowCartDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [suggestions, setSuggestions] = useState<typeof services>([]);
 
@@ -171,6 +175,97 @@ function HeaderContent() {
           >
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
+
+          {/* Shopping Cart Indicator */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowCartDropdown(!showCartDropdown);
+                setShowNotifications(false);
+                setShowProfileMenu(false);
+              }}
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 transition-colors text-slate-600 dark:text-slate-300 relative cursor-pointer"
+              aria-label="Shopping Cart"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              {cart.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent-lux text-white text-[9px] font-black rounded-full flex items-center justify-center border border-white dark:border-slate-900 shadow-md">
+                  {cart.length}
+                </span>
+              )}
+            </button>
+
+            {/* Cart Dropdown Menu */}
+            <AnimatePresence>
+              {showCartDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 15, scale: 0.95 }}
+                  className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl z-50 p-3 text-left"
+                >
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2">
+                    <span className="font-bold text-xs text-foreground">Selected Services</span>
+                    {cart.length > 0 && (
+                      <span className="text-[10px] text-slate-400 font-bold">{cart.length} items</span>
+                    )}
+                  </div>
+
+                  <div className="max-h-64 overflow-y-auto space-y-2 mt-2 no-scrollbar">
+                    {cart.length === 0 ? (
+                      <div className="py-8 text-center flex flex-col items-center justify-center text-slate-400 space-y-2">
+                        <ShoppingCart className="w-8 h-8 text-slate-300 dark:text-slate-700" />
+                        <span className="text-[10px] uppercase font-bold tracking-wider">Your cart is empty</span>
+                      </div>
+                    ) : (
+                      cart.map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+                        >
+                          <div className="flex-1 min-w-0 pr-3">
+                            <h4 className="text-[11px] font-bold text-foreground truncate leading-tight">{item.name}</h4>
+                            <p className="text-[9px] text-slate-400 mt-1 capitalize">{item.category} • {item.duration} mins</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-accent-lux">₹{item.price}</span>
+                            <button
+                              onClick={() => removeFromCart(item.id)}
+                              className="text-slate-400 hover:text-red-500 cursor-pointer p-0.5"
+                              title="Remove item"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {cart.length > 0 && (
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-3 mt-3 space-y-3">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-500">Total Price</span>
+                        <span className="font-black text-foreground">
+                          ₹{cart.reduce((sum, item) => sum + item.price, 0)}
+                        </span>
+                      </div>
+                      
+                      <button
+                        onClick={() => {
+                          setShowCartDropdown(false);
+                          router.push("/booking");
+                        }}
+                        className="w-full bg-accent-lux hover:bg-accent-lux/90 text-white font-bold text-[11px] py-2.5 rounded-full shadow-md text-center block cursor-pointer transition-colors"
+                      >
+                        Proceed to Booking Slot
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Notifications */}
           {!isHomePage && isLoggedIn && (

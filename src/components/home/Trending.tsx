@@ -36,7 +36,7 @@ export default function Trending() {
         </div>
         <Link
           href="/search"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-lux hover:underline"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-lux hover:underline cursor-pointer"
         >
           View all trending packages <ArrowRight className="w-4 h-4" />
         </Link>

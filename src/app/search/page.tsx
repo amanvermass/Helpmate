@@ -92,6 +92,7 @@ function SearchPageContent() {
 
   const handleWishlistToggle = (e: React.MouseEvent, id: string, name: string) => {
     e.preventDefault();
+    e.stopPropagation();
     toggleWishlist(id);
     const isSaved = wishlist.includes(id);
     addNotification(
@@ -192,7 +193,7 @@ function SearchPageContent() {
             {/* Mobile Filters Trigger */}
             <button
               onClick={() => setShowFiltersMobile(true)}
-              className="md:hidden flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 text-xs font-bold text-slate-700 dark:text-slate-200"
+              className="md:hidden flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
             >
               <SlidersHorizontal className="w-4 h-4 text-accent-lux" /> Filters
             </button>
@@ -231,7 +232,7 @@ function SearchPageContent() {
                     setMinRating(null);
                     setMaxPrice(3000);
                   }}
-                  className="text-[10px] text-accent-lux hover:underline"
+                  className="text-[10px] text-accent-lux hover:underline cursor-pointer"
                 >
                   Clear all
                 </button>
@@ -243,7 +244,7 @@ function SearchPageContent() {
                 <div className="space-y-1">
                   <button
                     onClick={() => setSelectedCat("")}
-                    className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all ${
+                    className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer ${
                       selectedCat === ""
                         ? "bg-accent-lux/10 text-accent-lux"
                         : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -255,7 +256,7 @@ function SearchPageContent() {
                     <button
                       key={cat.id}
                       onClick={() => setSelectedCat(cat.id)}
-                      className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all capitalize ${
+                      className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all capitalize cursor-pointer ${
                         selectedCat === cat.id
                           ? "bg-accent-lux/10 text-accent-lux"
                           : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -348,7 +349,8 @@ function SearchPageContent() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.4, delay: idx * 0.05 }}
-                        className="glass-panel overflow-hidden group flex flex-col h-full border border-slate-200/10 hover:shadow-xl duration-300"
+                        onClick={() => router.push(`/services/${service.id}`)}
+                        className="glass-panel overflow-hidden group flex flex-col h-full border border-slate-200/10 hover:shadow-xl duration-300 cursor-pointer"
                       >
                         {/* Image Frame */}
                         <div className="relative h-44 overflow-hidden shrink-0">
@@ -399,12 +401,11 @@ function SearchPageContent() {
                               <span className="text-sm font-bold text-foreground">₹{service.price}</span>
                               <span className="text-[10px] text-muted-lux line-through">₹{service.originalPrice}</span>
                             </div>
-                            <Link
-                              href={`/services/${service.id}`}
-                              className="text-[10px] font-bold text-accent-lux flex items-center gap-0.5 hover:underline"
+                            <span
+                              className="text-[10px] font-bold text-accent-lux flex items-center gap-0.5 hover:underline cursor-pointer"
                             >
                               Explore <ArrowRight className="w-3 h-3" />
-                            </Link>
+                            </span>
                           </div>
                         </div>
                       </motion.div>
