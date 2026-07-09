@@ -59,9 +59,9 @@ export default function WhyChooseUs() {
         </div>
 
         {/* Right timeline column */}
-        <div className="lg:col-span-7 space-y-8 relative pl-4 sm:pl-8">
-          {/* Vertical indicator line */}
-          <div className="absolute left-4 sm:left-8 top-4 bottom-4 w-0.5 bg-slate-200 dark:bg-slate-800" />
+        <div className="lg:col-span-7 space-y-8 relative">
+          {/* Vertical indicator line (single continuous line starting exactly at the first dot center) */}
+          <div className="absolute left-[20px] sm:left-[32px] top-[96px] sm:top-[76px] bottom-[76px] sm:bottom-[56px] w-0.5 bg-slate-200 dark:bg-slate-800" />
 
           {steps.map((step, idx) => (
             <motion.div
@@ -70,10 +70,10 @@ export default function WhyChooseUs() {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: idx * 0.1 }}
-              className="relative pl-8 sm:pl-12 group"
+              className="relative pl-10 sm:pl-16 group"
             >
-              {/* Timeline circle */}
-              <div className="absolute left-[-6px] sm:left-[10px] top-1.5 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border-2 border-accent-lux flex items-center justify-center group-hover:bg-accent-lux transition-colors duration-300 shadow-sm z-10">
+              {/* Timeline circle aligned in center of line and card */}
+              <div className="absolute left-[8px] sm:left-[20px] top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white dark:bg-slate-900 border-2 border-accent-lux flex items-center justify-center group-hover:bg-accent-lux transition-colors duration-300 shadow-sm z-10">
                 <div className="w-2 h-2 rounded-full bg-accent-lux group-hover:bg-white transition-colors" />
               </div>
 

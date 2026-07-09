@@ -1,4 +1,5 @@
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import ServiceIllustration from "./ServiceIllustrations";
@@ -74,7 +75,7 @@ export default function Categories() {
 
   return (
     <section className="py-20 px-6 max-w-7xl mx-auto font-sans relative">
-      <div className="text-left mb-12">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-4">
         <div>
           <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-3">
             Step 2: Or Browse by Service
@@ -86,6 +87,12 @@ export default function Categories() {
             Browse through our verified service verticals to find exactly what you need in Varanasi.
           </p>
         </div>
+        <Link
+          href="/search"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-lux hover:underline shrink-0"
+        >
+          View all services <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
 
       <motion.div
@@ -129,16 +136,6 @@ export default function Categories() {
           ))}
         </AnimatePresence>
       </motion.div>
-
-      {/* View All Services Button */}
-      <div className="mt-12 flex justify-center">
-        <button
-          onClick={() => router.push("/search")}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-accent-lux dark:hover:border-accent-lux/60 transition-all cursor-pointer shadow-sm"
-        >
-          View All Services <ArrowRight className="w-4 h-4 text-accent-lux" />
-        </button>
-      </div>
     </section>
   );
 }
