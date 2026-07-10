@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
@@ -35,6 +35,9 @@ function SearchPageContent() {
   const [availability, setAvailability] = useState<string>("");
   const [searchSuggestions, setSearchSuggestions] = useState<typeof services>([]);
 
+  // Ref for outside click detection
+  const searchWrapperRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!query.trim()) {
       setSearchSuggestions([]);
@@ -46,6 +49,16 @@ function SearchPageContent() {
     );
     setSearchSuggestions(filtered.slice(0, 4));
   }, [query]);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (searchWrapperRef.current && !searchWrapperRef.current.contains(e.target as Node)) {
+        setSearchSuggestions([]);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   // UI state
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
@@ -132,7 +145,7 @@ function SearchPageContent() {
           
           {/* Top Search Banner */}
           <div className="py-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-            <div className="flex-1 relative">
+            <div ref={searchWrapperRef} className="flex-1 relative">
               <form onSubmit={(e) => { e.preventDefault(); router.push(`/search?q=${encodeURIComponent(query)}`); setSearchSuggestions([]); }}>
                 <input
                   type="text"

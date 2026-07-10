@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import {
@@ -54,6 +54,10 @@ function HeaderContent() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
   const [suggestions, setSuggestions] = useState<typeof services>([]);
 
+  // Refs for outside click tracking
+  const searchRef = useRef<HTMLFormElement>(null);
+  const cartRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     if (!searchQuery.trim()) {
       setSuggestions([]);
@@ -72,6 +76,19 @@ function HeaderContent() {
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSuggestions([]);
+      }
+      if (cartRef.current && !cartRef.current.contains(e.target as Node)) {
+        setShowCartDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -115,6 +132,7 @@ function HeaderContent() {
 
         {/* Search Bar */}
         <form
+          ref={searchRef}
           onSubmit={handleSearchSubmit}
           className="flex-1 max-w-md hidden sm:block relative"
         >
@@ -177,7 +195,7 @@ function HeaderContent() {
           </button>
 
           {/* Shopping Cart Indicator */}
-          <div className="relative">
+          <div ref={cartRef} className="relative">
             <button
               onClick={() => {
                 setShowCartDropdown(!showCartDropdown);

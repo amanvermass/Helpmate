@@ -8,19 +8,14 @@ export default function PromoModal() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Only show once per session so it is user-friendly, but displays immediately on first visit
-    const hasSeen = sessionStorage.getItem("hasSeenVaranasiPromo");
-    if (!hasSeen) {
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 1200); // Small natural delay after load
-      return () => clearTimeout(timer);
-    }
+    const timer = setTimeout(() => {
+      setIsOpen(true);
+    }, 1200); // Small natural delay after load
+    return () => clearTimeout(timer);
   }, []);
 
   const handleClose = () => {
     setIsOpen(false);
-    sessionStorage.setItem("hasSeenVaranasiPromo", "true");
   };
 
   const featuredAcServices = [
@@ -83,9 +78,11 @@ export default function PromoModal() {
               </div>
 
               {/* Company Logo overlay at bottom */}
-              <div className="absolute bottom-4 left-6 text-left">
-                <img src="/logo.png" alt="HelpMate Logo" className="h-10 w-auto object-contain brightness-0 invert" />
-                <p className="text-[10px] text-slate-300 font-semibold tracking-wider mt-1.5 italic">Helpmate for your home care</p>
+              <div className="absolute bottom-4 left-6 text-left flex flex-col gap-1.5">
+                <div className="bg-white px-3 py-1.5 rounded-xl shadow-sm w-fit flex items-center justify-center">
+                  <img src="/logo.png" alt="HelpMate Logo" className="h-7 w-auto object-contain" />
+                </div>
+                <p className="text-[10px] text-slate-300 font-semibold tracking-wider italic">Helpmate for your home care</p>
               </div>
             </div>
 
