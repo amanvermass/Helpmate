@@ -4,10 +4,14 @@ import { useState, useEffect } from "react";
 import { X, Phone, Mail, Globe, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+let hasSeenPromoGlobal = false;
+
 export default function PromoModal() {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    if (hasSeenPromoGlobal) return;
+
     const timer = setTimeout(() => {
       setIsOpen(true);
     }, 1200); // Small natural delay after load
@@ -16,6 +20,7 @@ export default function PromoModal() {
 
   const handleClose = () => {
     setIsOpen(false);
+    hasSeenPromoGlobal = true;
   };
 
   const featuredAcServices = [
@@ -69,7 +74,7 @@ export default function PromoModal() {
                 className="w-full h-full object-cover select-none pointer-events-none"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
-              
+
               {/* Floating Free 45 Days Warranty Stamp */}
               <div className="absolute top-4 left-4 bg-red-650 text-white p-3 rounded-full shadow-lg border-2 border-dashed border-white/60 animate-pulse text-center select-none w-20 h-20 flex flex-col items-center justify-center rotate-[-12deg]">
                 <span className="text-[6px] font-black uppercase tracking-widest leading-none">FREE</span>
@@ -88,7 +93,7 @@ export default function PromoModal() {
 
             {/* Right Column: Advertisement Flyers Fields */}
             <div className="flex-1 p-6 sm:p-8 flex flex-col justify-between text-left space-y-6">
-              
+
               {/* Header: Slogan & Play store link */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 gap-4">
                 <div>
@@ -99,7 +104,7 @@ export default function PromoModal() {
                   </div>
                 </div>
 
-                <a 
+                <a
                   href="#"
                   onClick={(e) => e.preventDefault()}
                   className="inline-flex items-center gap-1.5 bg-slate-950 text-white hover:bg-black px-3.5 py-1.5 rounded-lg text-[9px] font-bold transition-transform hover:scale-105 active:scale-95 shadow-md w-fit cursor-pointer"
@@ -128,7 +133,7 @@ export default function PromoModal() {
                 <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1">
                   <Sparkles className="w-3 h-3 text-accent-lux" /> Featured AC Services
                 </span>
-                
+
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2">
                   {featuredAcServices.map((srv, idx) => (
                     <div key={idx} className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-slate-300 font-semibold">

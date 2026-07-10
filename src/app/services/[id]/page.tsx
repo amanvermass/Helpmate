@@ -145,6 +145,46 @@ export default function ServiceDetailPage({ params }: PageProps) {
 
   return (
     <>
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes shimmer-sweep {
+          0% { transform: translateX(-150%) skewX(-25deg); }
+          100% { transform: translateX(150%) skewX(-25deg); }
+        }
+        .shimmer-button-glow {
+          position: absolute;
+          top: 0;
+          height: 100%;
+          width: 200%;
+          background: linear-gradient(
+            to right,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.25) 30%,
+            rgba(255, 255, 255, 0.4) 50%,
+            rgba(255, 255, 255, 0.25) 70%,
+            rgba(255, 255, 255, 0) 100%
+          );
+          animation: shimmer-sweep 2.2s infinite linear;
+        }
+
+        @keyframes arrow-slide-full {
+          0% { transform: translate3d(-100%, -50%, 0); opacity: 0; }
+          10% { opacity: 0.35; }
+          50% { opacity: 0.65; }
+          90% { opacity: 0.35; }
+          100% { transform: translate3d(240%, -50%, 0); opacity: 0; }
+        }
+        .arrows-bg-track {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          pointer-events: none;
+          z-index: 5;
+          animation: arrow-slide-full 2.2s infinite linear;
+        }
+      `}} />
       <Header />
 
       <main className="flex-1 pt-24 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative">
@@ -445,9 +485,17 @@ export default function ServiceDetailPage({ params }: PageProps) {
                   </button>
                   <button
                     onClick={handleBook}
-                    className="flex-1 bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs py-3.5 rounded-full shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                    className="flex-1 bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs py-3.5 rounded-full shadow-md flex items-center justify-center cursor-pointer transition-colors relative overflow-hidden"
                   >
-                    Book Now <ChevronRight className="w-3.5 h-3.5" />
+                    <div className="arrows-bg-track opacity-25 dark:opacity-20">
+                      <ChevronRight className="w-3.5 h-3.5 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+                      <ChevronRight className="w-3.5 h-3.5 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+                      <ChevronRight className="w-3.5 h-3.5 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+                    </div>
+                    <div className="shimmer-button-glow pointer-events-none" />
+                    <span className="relative z-10 flex items-center justify-center gap-1.5">
+                      Book Now <ChevronRight className="w-3.5 h-3.5" />
+                    </span>
                   </button>
                 </div>
               </div>
@@ -485,9 +533,17 @@ export default function ServiceDetailPage({ params }: PageProps) {
           </button>
           <button
             onClick={handleBook}
-            className="bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs py-2.5 px-5 rounded-full shadow-md flex items-center justify-center gap-1 cursor-pointer transition-colors"
+            className="bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs py-2.5 px-5 rounded-full shadow-md flex items-center justify-center gap-1 cursor-pointer transition-colors relative overflow-hidden"
           >
-            Book Now <ChevronRight className="w-3.5 h-3.5" />
+            <div className="arrows-bg-track opacity-25 dark:opacity-20">
+              <ChevronRight className="w-3.5 h-3.5 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+              <ChevronRight className="w-3.5 h-3.5 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+              <ChevronRight className="w-3.5 h-3.5 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+            </div>
+            <div className="shimmer-button-glow pointer-events-none" />
+            <span className="relative z-10 flex items-center justify-center gap-1.5">
+              Book Now <ChevronRight className="w-3.5 h-3.5" />
+            </span>
           </button>
         </div>
       </div>
