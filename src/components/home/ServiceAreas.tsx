@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, ArrowRight } from "lucide-react";
 import { citiesServed } from "@/utils/mockData";
+import Link from "next/link";
 
 const zoneAreas: Record<string, string[]> = {
   "Lanka & Assi Ghat": [
@@ -121,14 +122,18 @@ export default function ServiceAreas() {
           </div>
 
           <div className="flex flex-wrap gap-2.5">
-            {zoneAreas[activeZone]?.map((area) => (
-              <span
-                key={area}
-                className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/80 px-4 py-2 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-350 shadow-sm hover:border-accent-lux/30 transition-all select-none cursor-pointer hover:text-accent-lux dark:hover:text-accent-lux"
-              >
-                {area}
-              </span>
-            ))}
+            {zoneAreas[activeZone]?.map((area) => {
+              const slug = area.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+              return (
+                <Link
+                  key={area}
+                  href={`/places/${slug}`}
+                  className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/80 px-4 py-2 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-350 shadow-sm hover:border-accent-lux/30 transition-all hover:text-accent-lux dark:hover:text-accent-lux cursor-pointer block"
+                >
+                  {area}
+                </Link>
+              );
+            })}
           </div>
         </motion.div>
       </AnimatePresence>
