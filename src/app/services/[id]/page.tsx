@@ -34,7 +34,7 @@ export default function ServiceDetailPage({ params }: PageProps) {
     ? services
         .filter((s) => s.id !== service.id && s.category === service.category)
         .concat(services.filter((s) => s.id !== service.id && s.category !== service.category))
-        .slice(0, 3)
+        .slice(0, 8)
     : [];
 
   useEffect(() => {
@@ -147,7 +147,7 @@ export default function ServiceDetailPage({ params }: PageProps) {
     <>
       <Header />
 
-      <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background relative overflow-hidden">
+      <main className="flex-1 pt-24 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative">
         {/* Background glows */}
         <div className="absolute top-24 left-1/4 -translate-x-1/2 w-96 h-96 bg-accent-lux/5 rounded-full blur-[140px] pointer-events-none" />
         <div className="absolute bottom-48 right-1/4 translate-x-1/2 w-96 h-96 bg-accent-lux/[0.03] rounded-full blur-[140px] pointer-events-none" />
@@ -279,18 +279,48 @@ export default function ServiceDetailPage({ params }: PageProps) {
               </div>
 
               {/* Related Services / Pairs */}
-              <div className="space-y-5 pt-8 border-t border-slate-100 dark:border-slate-800/80">
-                <div>
-                  <h3 className="font-extrabold text-base text-foreground tracking-tight">Frequently Booked Together</h3>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Varanasi residents often pair this package with these verified services.</p>
+              <div className="space-y-5 pt-8 border-t border-slate-100 dark:border-slate-800/80 relative">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-extrabold text-base text-foreground tracking-tight">Frequently Booked Together</h3>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Varanasi residents often pair this package with these verified services.</p>
+                  </div>
+                  
+                  {/* Scroll Buttons */}
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => {
+                        const container = document.getElementById("suggestion-scroll-track");
+                        if (container) container.scrollBy({ left: -260, behavior: "smooth" });
+                      }}
+                      className="w-8 h-8 rounded-full border border-slate-200/60 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-accent-lux transition-colors cursor-pointer text-xs font-black"
+                      aria-label="Scroll left"
+                    >
+                      ←
+                    </button>
+                    <button
+                      onClick={() => {
+                        const container = document.getElementById("suggestion-scroll-track");
+                        if (container) container.scrollBy({ left: 260, behavior: "smooth" });
+                      }}
+                      className="w-8 h-8 rounded-full border border-slate-200/60 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-accent-lux transition-colors cursor-pointer text-xs font-black"
+                      aria-label="Scroll right"
+                    >
+                      →
+                    </button>
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div
+                  id="suggestion-scroll-track"
+                  className="flex gap-5 overflow-x-auto no-scrollbar scroll-smooth pb-2 snap-x snap-mandatory"
+                  style={{ scrollbarWidth: "none" }}
+                >
                   {relatedServices.map((rel) => (
                     <Link
                       key={rel.id}
                       href={`/services/${rel.id}`}
-                      className="glass-panel overflow-hidden group flex flex-col justify-between border border-slate-200/10 hover:shadow-lg transition-all duration-300 cursor-pointer p-4 h-full text-left"
+                      className="glass-panel overflow-hidden group flex flex-col justify-between border border-slate-200/10 hover:shadow-lg transition-all duration-300 cursor-pointer p-4 h-full text-left w-[240px] sm:w-[260px] shrink-0 snap-start"
                     >
                       <div className="space-y-2.5">
                         <div className="h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
@@ -318,7 +348,7 @@ export default function ServiceDetailPage({ params }: PageProps) {
                 <h3 className="font-bold text-base text-foreground">Recent Reviews</h3>
                 <div className="space-y-4">
                   {mockReviews.map((rev) => (
-                    <div key={rev.id} className="bg-white dark:bg-slate-900/40 border border-slate-150/40 dark:border-slate-800 p-6 rounded-[24px] space-y-3">
+                    <div key={rev.id} className="bg-white dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-800/60 p-6 rounded-[24px] space-y-3 shadow-sm hover:border-accent-lux/30 transition-colors">
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
                           <img src={rev.avatar} alt={rev.name} className="w-10 h-10 rounded-full object-cover" />
@@ -355,8 +385,8 @@ export default function ServiceDetailPage({ params }: PageProps) {
                 </div>
 
                 {/* Add-ons Checklist */}
-                <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider block">
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-3.5 space-y-1.5">
+                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider block mb-1">
                     Custom Add-on Options
                   </span>
                   {addons.map((addon) => {
@@ -369,7 +399,7 @@ export default function ServiceDetailPage({ params }: PageProps) {
                             prev.includes(addon.id) ? prev.filter((a) => a !== addon.id) : [...prev, addon.id]
                           )
                         }
-                        className={`flex items-center justify-between p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
+                        className={`flex items-center justify-between py-1.5 px-3 rounded-lg border cursor-pointer select-none transition-all ${
                           isChecked
                             ? "border-accent-lux/40 bg-accent-lux/[0.02]"
                             : "border-slate-200/10 hover:border-slate-350"
@@ -435,6 +465,32 @@ export default function ServiceDetailPage({ params }: PageProps) {
           </div>
         </section>
       </main>
+
+      {/* Sticky Bottom Actions Bar (for mobile/tablet screens where right column is at the bottom) */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200/40 dark:border-slate-800/60 py-3 px-6 flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.06)] lg:hidden">
+        <div className="flex flex-col text-left">
+          <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Total Price</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-base font-black text-foreground">₹{finalPrice}</span>
+            <span className="text-[9px] text-slate-400 line-through">₹{service.originalPrice}</span>
+          </div>
+        </div>
+        
+        <div className="flex gap-2.5">
+          <button
+            onClick={handleAddToCart}
+            className="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 font-bold text-xs py-2.5 px-4 rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-sm"
+          >
+            Add to Cart
+          </button>
+          <button
+            onClick={handleBook}
+            className="bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs py-2.5 px-5 rounded-full shadow-md flex items-center justify-center gap-1 cursor-pointer transition-colors"
+          >
+            Book Now <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
 
       <Footer />
     </>

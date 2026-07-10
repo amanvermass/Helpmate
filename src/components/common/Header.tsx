@@ -423,8 +423,7 @@ function HeaderContent() {
           ) : (
             <button
               onClick={() => {
-                setGuestMode(false);
-                router.push("/");
+                router.push("/login");
               }}
               className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs shadow-md shadow-accent-lux/25 transition-all cursor-pointer"
             >

@@ -172,22 +172,24 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
         <div className="lg:col-span-7 glass-panel p-6 sm:p-8 flex flex-col justify-between border border-slate-200/10">
           <div>
             {/* Tabs Selector */}
-            <div className="flex bg-slate-100 dark:bg-slate-900/60 p-1.5 rounded-xl border border-slate-200/10 mb-8">
+            <div className="flex flex-col sm:flex-row gap-3 mb-8 w-full sm:w-fit">
               <button
                 onClick={() => setActiveTab("deep")}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === "deep"
-                    ? "bg-white dark:bg-slate-800 text-accent-lux shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                  }`}
+                className={`py-3 px-6 text-xs font-bold rounded-full transition-all cursor-pointer ${
+                  activeTab === "deep"
+                    ? "bg-accent-lux text-white shadow-md hover:bg-accent-lux/95"
+                    : "bg-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border border-slate-200 dark:border-slate-800"
+                }`}
               >
                 Premium Deep Cleaning
               </button>
               <button
                 onClick={() => setActiveTab("chores")}
-                className={`flex-1 py-3 text-xs font-bold rounded-lg transition-all ${activeTab === "chores"
-                    ? "bg-white dark:bg-slate-800 text-accent-lux shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
-                  }`}
+                className={`py-3 px-6 text-xs font-bold rounded-full transition-all cursor-pointer ${
+                  activeTab === "chores"
+                    ? "bg-accent-lux text-white shadow-md hover:bg-accent-lux/95"
+                    : "bg-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border border-slate-200 dark:border-slate-800"
+                }`}
               >
                 Daily Hourly Chores
               </button>

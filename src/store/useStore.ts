@@ -119,7 +119,7 @@ export const useStore = create<AppState>()(
 
       // Profile State
       isLoggedIn: false, // Defaulting logged out to prompt login/signup first
-      guestMode: false,
+      guestMode: true,
       setGuestMode: (val) => set({ guestMode: val }),
       userPhone: "+91 98765 01928",
       userName: "Rohan Verma",

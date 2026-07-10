@@ -139,22 +139,6 @@ export default function PromoModal() {
                 </div>
               </div>
 
-              {/* Address details & Head office details */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-[20px] border border-slate-100 dark:border-slate-850 space-y-2 text-[10px]">
-                <div className="flex items-start gap-2 text-slate-650 dark:text-slate-350">
-                  <MapPin className="w-3.5 h-3.5 text-accent-lux shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="text-foreground font-extrabold">HELPMATE HOME CARE SERVICES Pvt. Ltd.</strong>
-                    <p className="mt-0.5">D-58/16C Shashtri Nagar Colony, Sigra, Varanasi</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-2 border-t border-slate-200/40 dark:border-slate-800/60 text-slate-400 font-medium">
-                  <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> info@helpmate.net.in</span>
-                  <span className="flex items-center gap-1"><Globe className="w-3 h-3" /> www.helpmate.net.in</span>
-                </div>
-              </div>
-
             </div>
           </motion.div>
         </div>
