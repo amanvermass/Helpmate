@@ -12,7 +12,10 @@ import {
   ChevronRight,
   ArrowLeft,
   Trash2,
-  ShoppingBag
+  ShoppingBag,
+  Search,
+  Bookmark,
+  Users
 } from "lucide-react";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
@@ -321,6 +324,9 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   const [selectedSub, setSelectedSub] = useState<string | null>(subParam);
   const [selectedAct, setSelectedAct] = useState<string | null>(actParam);
+  const [savedPackages, setSavedPackages] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
 
   // Sync state values with query parameters on load
   useEffect(() => {
@@ -1029,11 +1035,44 @@ function ServiceDetailPageContent({ params }: PageProps) {
                     {/* Step 3: Available Services & Rates (Dynamic Service items list at bottom) */}
                     {selectedSub && selectedAct && (
                       <div className="space-y-4 border-t border-slate-100 dark:border-slate-850 pt-5 animate-fadeIn">
-                        <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
-                          Available Service Packages
-                        </span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
+                            Available Service Packages
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <div className="relative">
+                              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                              <input
+                                type="text"
+                                placeholder="Search..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-8 pr-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-300 w-28 sm:w-36 focus:outline-none focus:ring-1 focus:ring-accent-lux/30 transition-all placeholder:text-slate-400"
+                              />
+                            </div>
+                            <button 
+                              onClick={() => setShowSavedOnly(!showSavedOnly)}
+                              className={`flex items-center gap-1.5 p-1.5 px-2.5 rounded-full transition-colors ${
+                                showSavedOnly 
+                                  ? "bg-accent-lux text-white" 
+                                  : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
+                              }`}
+                            >
+                              <Bookmark className={`w-3.5 h-3.5 ${showSavedOnly ? "fill-white" : ""}`} />
+                              <span className="text-[10px] font-bold uppercase tracking-wider">
+                                Saved {savedPackages.length > 0 && `(${savedPackages.length})`}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
                         <div className="space-y-3">
-                          {currentAct?.items.map((item) => {
+                          {currentAct?.items
+                            .filter((item) => {
+                              const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                              const matchesSaved = showSavedOnly ? savedPackages.includes(item.id) : true;
+                              return matchesSearch && matchesSaved;
+                            })
+                            .map((item) => {
                             const itemDetails = getItemDetails(item.id, item.name, service?.image || "");
                             const isAdded = cart.some((c) => c.id === `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`);
                             return (
@@ -1045,8 +1084,25 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                 className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl flex gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-md group text-left shadow-sm relative overflow-hidden"
                               >
                                 {/* Left Side: Only Image (Larger and rounded) */}
-                                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative">
+                                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative group/image">
                                   <img src={itemDetails.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSavedPackages(prev => 
+                                        prev.includes(item.id) 
+                                          ? prev.filter(id => id !== item.id)
+                                          : [...prev, item.id]
+                                      );
+                                    }}
+                                    className={`absolute top-2 right-2 p-1.5 backdrop-blur-md cursor-pointer rounded-full transition-colors shadow-sm z-10 ${
+                                      savedPackages.includes(item.id)
+                                        ? "bg-accent-lux/10 text-accent-lux dark:bg-accent-lux/20"
+                                        : "bg-white/90 dark:bg-slate-900/90 text-slate-500 hover:text-accent-lux hover:bg-white dark:hover:bg-slate-800"
+                                    }`}
+                                  >
+                                    <Bookmark className={`w-3.5 h-3.5 ${savedPackages.includes(item.id) ? "fill-accent-lux" : ""}`} />
+                                  </button>
                                 </div>
 
                                 {/* Right Side: Title, Details, Price, and Actions */}
@@ -1060,7 +1116,22 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                         ₹{item.price}
                                       </span>
                                     </div>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed mt-1 line-clamp-2">
+                                    {/* Experts Available UI Overlay Inspired */}
+                                    <div className="flex items-center gap-2 mt-1 mb-1">
+                                      <div className="flex -space-x-1.5">
+                                        {[1, 2, 3, 4].map((i) => (
+                                          <div key={i} className="w-4 h-4 rounded-full border-[1.5px] border-white dark:border-slate-900 bg-slate-200 dark:bg-slate-700 overflow-hidden relative z-10 hover:z-20 transition-all hover:scale-110">
+                                             <img src={`https://i.pravatar.cc/100?img=${(i * 3 + item.name.length) % 70}`} alt="Expert" className="w-full h-full object-cover" />
+                                          </div>
+                                        ))}
+                                      </div>
+                                      <div className="flex items-center gap-0.5">
+                                        <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
+                                        <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">from 15+ experts</span>
+                                      </div>
+                                    </div>
+                                    
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5 line-clamp-2">
                                       {itemDetails.description}
                                     </p>
                                     
