@@ -9,27 +9,33 @@ import Link from "next/link";
 const zoneAreas: Record<string, string[]> = {
   "Lanka & Assi Ghat": [
     "Assi Ghat", "Lanka", "Durgakund", "Ravindrapuri", "BHU Campus", 
-    "Saket Nagar", "Samne Ghat", "Nagwa", "Jawahar Nagar", "Tulsipur"
+    "Saket Nagar", "Samne Ghat", "Nagwa", "Jawahar Nagar", "Tulsipur",
+    "Naria", "Sunderpur", "Karundi", "Chitaipur", "Newada"
   ],
   "Godowlia & Dashashwamedh": [
     "Godowlia", "Dashashwamedh Ghat", "Chowk", "Bansphatak", "Luxa", 
-    "Sonarpura", "Madanpura", "Bangali Tola"
+    "Sonarpura", "Madanpura", "Bangali Tola", "Gyanvapi", "Lahurabir", 
+    "Dalimss Area", "Raja Darwaza", "Misra Pokhra"
   ],
   "Cantonment & Nadesar": [
     "Cantonment", "Nadesar", "Mint House", "Jaiswal Colony", 
-    "Orderly Bazar", "Tagore Town", "Varanasi Junction Area"
+    "Orderly Bazar", "Tagore Town", "Varanasi Junction Area",
+    "Andhrapul", "Chaukaghat", "Teliyabagh", "Khajuri", "Hukulganj Colony"
   ],
   "Sigra & Mahmoorganj": [
     "Sigra", "Mahmoorganj", "Vidyapeeth Road", "Shastri Nagar", 
-    "Sidhgiribagh", "Rath Yatra", "Kamachha", "Gandhi Nagar"
+    "Sidhgiribagh", "Rath Yatra", "Kamachha", "Gandhi Nagar",
+    "Nirala Nagar", "Kakarmatta", "Sanjay Nagar", "Bari Gaibi", "Lallapura"
   ],
   "Sarnath & Ashapur": [
     "Sarnath", "Ashapur", "Mavaiya", "Hiramanpur", 
-    "Panchkroshi Road", "Sarnath Archeological Site"
+    "Panchkroshi Road", "Sarnath Archeological Site",
+    "Paharia Crossing", "Hasanpur", "Aktha", "Baraipur", "Sartika Town"
   ],
   "Pandeypur & Shivpur": [
     "Pandeypur", "Shivpur", "Gilat Bazar", "Hukulganj", 
-    "Paharia", "Premchand Nagar"
+    "Paharia", "Premchand Nagar", "Tarna", "Harahua", 
+    "Babatpur Link", "Pisanhariya", "Kalyanpur"
   ]
 };
 

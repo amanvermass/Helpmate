@@ -107,7 +107,7 @@ function HeaderContent() {
   return (
     <header
       className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 font-sans ${scrolled
-          ? "bg-background/80 dark:bg-background/80 backdrop-blur-xl border-b border-border-lux py-3 shadow-sm"
+          ? "bg-background/80 dark:bg-background/80 backdrop-blur-xl py-3 shadow-sm"
           : "bg-transparent py-5"
         }`}
     >
@@ -116,7 +116,7 @@ function HeaderContent() {
         {/* LOGO */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 group">
-            <img src="/logo.png" alt="HelpMate Logo" className="h-11 w-auto object-contain" />
+            <img src="/logo.png" alt="HelpMate Logo" className="h-13 sm:h-14 w-auto object-contain" />
           </Link>
 
           {/* Location Picker */}

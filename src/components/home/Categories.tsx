@@ -69,25 +69,26 @@ const serviceIdMapping: Record<string, string> = {
   sink: "plumbing-smart-inspection",
   balcony: "deep-cleaning-lux",
   fan: "smart-home-automation",
-  cabinet: "modular-carpentry-fix",
+  cabinet: "modular-carpentry-fix"
 };
 
 export default function Categories() {
   const router = useRouter();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const containerVariants: Variants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.03,
-      },
-    },
+        staggerChildren: 0.03
+      }
+    }
   };
 
   const itemVariants: Variants = {
     hidden: { opacity: 0, y: 15 },
-    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
   };
 
   const handleCategoryClick = (id: string) => {
@@ -98,6 +99,8 @@ export default function Categories() {
       router.push("/search");
     }
   };
+
+  const visibleCategories = isExpanded ? allCategories : allCategories.slice(0, 9);
 
   return (
     <section className="py-20 px-6 max-w-7xl mx-auto font-sans relative">
@@ -129,7 +132,7 @@ export default function Categories() {
         className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6"
       >
         <AnimatePresence mode="popLayout">
-          {allCategories.map((cat) => (
+          {visibleCategories.map((cat) => (
             <motion.div
               key={cat.id}
               variants={itemVariants}
@@ -162,6 +165,24 @@ export default function Categories() {
           ))}
         </AnimatePresence>
       </motion.div>
+
+      {/* View More / View Less Toggle Button */}
+      <div className="flex justify-center mt-10">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="px-6 py-2.5 rounded-full border border-slate-200 dark:border-slate-800 text-[11px] sm:text-xs font-black tracking-wide text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all shadow-sm flex items-center gap-1.5 cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+        >
+          {isExpanded ? (
+            <>
+              Show Less <ChevronUp className="w-3.5 h-3.5 text-accent-lux" />
+            </>
+          ) : (
+            <>
+              More Options / Show All Chores <ChevronDown className="w-3.5 h-3.5 text-accent-lux" />
+            </>
+          )}
+        </button>
+      </div>
 
     </section>
   );

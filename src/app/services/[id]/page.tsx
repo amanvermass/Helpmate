@@ -385,6 +385,82 @@ function ServiceDetailPageContent({ params }: PageProps) {
     ? getItemDetails(selectedItem.id, selectedItem.name, service.image)
     : { description: service.description, image: service.image };
 
+  const renderBreadcrumbs = (isDetailsView: boolean) => {
+    return (
+      <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-slate-500 mb-6 font-sans select-none tracking-wide">
+        <Link href="/" className="hover:text-accent-lux transition-colors font-semibold flex items-center gap-1">
+          Home
+        </Link>
+        <span className="text-slate-400">/</span>
+        
+        {isDetailsView || selectedSub ? (
+          <Link 
+            href={`/services/${service?.category}`}
+            onClick={() => {
+              setSelectedSub(null);
+              setSelectedAct(null);
+            }}
+            className="hover:text-accent-lux transition-colors font-semibold"
+          >
+            {getCategoryDisplayName(service?.category || "")}
+          </Link>
+        ) : (
+          <span className="text-accent-lux font-extrabold">
+            {getCategoryDisplayName(service?.category || "")}
+          </span>
+        )}
+
+        {selectedSub && (
+          <>
+            <span className="text-slate-400">/</span>
+            {isDetailsView || selectedAct ? (
+              <Link 
+                href={`/services/${service?.category}?sub=${selectedSub}`}
+                onClick={() => {
+                  setSelectedAct(null);
+                }}
+                className="hover:text-accent-lux transition-colors font-semibold"
+              >
+                {currentSub?.name}
+              </Link>
+            ) : (
+              <span className="text-accent-lux font-extrabold">
+                {currentSub?.name}
+              </span>
+            )}
+          </>
+        )}
+
+        {selectedSub && selectedAct && (
+          <>
+            <span className="text-slate-400">/</span>
+            {isDetailsView ? (
+              <Link 
+                href={`/services/${service?.category}?sub=${selectedSub}&act=${selectedAct}`}
+                className="hover:text-accent-lux transition-colors font-semibold"
+              >
+                {currentAct?.name}
+              </Link>
+            ) : (
+              <span className="text-accent-lux font-extrabold">
+                {currentAct?.name}
+              </span>
+            )}
+          </>
+        )}
+
+        {isDetailsView && selectedItem && (
+          <>
+            <span className="text-slate-400">/</span>
+            <span className="text-accent-lux font-extrabold truncate max-w-[150px] sm:max-w-[250px]">
+              {selectedItem.name}
+            </span>
+          </>
+        )}
+      </div>
+    );
+  };
+
   const handleAddToCart = () => {
     const uniqueId = selectedItem 
       ? `${service.id}-${selectedSub}-${selectedAct}-${selectedItem.id}`
@@ -542,9 +618,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
           {/* Banner Section */}
           <section className="max-w-7xl mx-auto px-6 py-6 relative z-10">
-            <Link href={`/services/${service.category}?sub=${selectedSub}&act=${selectedAct}`} className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-accent-lux transition-colors mb-6 font-sans">
-              <ArrowLeft className="w-3.5 h-3.5" /> Back to category options
-            </Link>
+            {renderBreadcrumbs(true)}
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
@@ -845,6 +919,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
           {/* Banner Section */}
           <section className="max-w-7xl mx-auto px-6 py-6 relative z-10">
+            {renderBreadcrumbs(false)}
 
             {/* Service Category Page Heading */}
             <div className="mb-8 text-left">
@@ -911,10 +986,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                 setSelectedSub(sub.id);
                                 setSelectedAct(null);
                               }}
-                              className={`py-3 px-4 rounded-xl border text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${
+                              className={`py-3 px-4 rounded-xl text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${
                                 isActive
-                                  ? "bg-[#48073d] text-white border-[#48073d] dark:bg-accent-lux dark:border-accent-lux shadow-md shadow-accent-lux/10"
-                                  : "bg-slate-50 dark:bg-slate-950/40 border-slate-205 dark:border-slate-850 text-slate-655 dark:text-slate-355 hover:border-slate-300"
+                                  ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/10"
+                                  : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md"
                               }`}
                             >
                               {sub.name}
@@ -937,10 +1012,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
                               <button
                                 key={act.id}
                                 onClick={() => setSelectedAct(act.id)}
-                                className={`py-3.5 px-2 rounded-xl border text-[11px] sm:text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${
+                                className={`py-3.5 px-2 rounded-xl text-[11px] sm:text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${
                                   isActive
-                                    ? "bg-[#48073d] text-white border-[#48073d] dark:bg-accent-lux dark:border-accent-lux shadow-md shadow-accent-lux/10"
-                                    : "bg-slate-50 dark:bg-slate-950/40 border-slate-205 dark:border-slate-850 text-slate-655 dark:text-slate-355 hover:border-slate-300"
+                                    ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/10"
+                                    : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md"
                                 }`}
                               >
                                 {index + 1}. {act.name}
@@ -957,7 +1032,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                         <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
                           Available Service Packages
                         </span>
-                        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+                        <div className="space-y-3">
                           {currentAct?.items.map((item) => {
                             const itemDetails = getItemDetails(item.id, item.name, service?.image || "");
                             const isAdded = cart.some((c) => c.id === `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`);
@@ -967,25 +1042,44 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                 onClick={() => {
                                   router.push(`/services/${service?.category}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
                                 }}
-                                className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-205/60 dark:border-slate-800/80 flex flex-col gap-3.5 cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:border-accent-lux/30 group text-left shadow-sm"
+                                className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl flex gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-md group text-left shadow-sm relative overflow-hidden"
                               >
-                                <div className="flex gap-3 items-start text-left w-full">
-                                  <div className="w-14 h-14 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative border border-slate-200/10">
-                                    <img src={itemDetails.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                  </div>
-                                  <div className="space-y-1 flex-1 min-w-0">
-                                    <h4 className="font-extrabold text-[13px] text-foreground leading-snug group-hover:text-accent-lux transition-colors truncate">{item.name}</h4>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">{itemDetails.description}</p>
-                                    <span className="text-[9px] text-slate-400 font-sans block">⏱ {item.duration} mins duration</span>
-                                  </div>
+                                {/* Left Side: Only Image (Larger and rounded) */}
+                                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative">
+                                  <img src={itemDetails.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                 </div>
 
-                                <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-850 pt-3 shrink-0 gap-2">
+                                {/* Right Side: Title, Details, Price, and Actions */}
+                                <div className="flex-1 min-w-0 flex flex-col justify-between">
                                   <div>
-                                    <span className="text-[8px] uppercase font-bold text-slate-400 block leading-none font-sans">Price</span>
-                                    <span className="text-[13px] font-black text-accent-lux mt-1 block font-sans">₹{item.price}</span>
+                                    <div className="flex justify-between items-start gap-2">
+                                      <h4 className="font-extrabold text-[13px] sm:text-[14px] text-foreground leading-snug group-hover:text-accent-lux transition-colors truncate">
+                                        {item.name}
+                                      </h4>
+                                      <span className="text-[13px] sm:text-[14px] font-black text-accent-lux font-sans shrink-0">
+                                        ₹{item.price}
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed mt-1 line-clamp-2">
+                                      {itemDetails.description}
+                                    </p>
+                                    
+                                    {/* Added More Data: badges & service parameters */}
+                                    <div className="flex flex-wrap gap-2 mt-2">
+                                      <span className="text-[8px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded font-sans shrink-0">
+                                        ⏱ {item.duration} mins
+                                      </span>
+                                      <span className="text-[8px] font-bold text-success-lux bg-success-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
+                                        ✓ Vetted Pro
+                                      </span>
+                                      <span className="text-[8px] font-bold text-accent-lux bg-accent-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
+                                        ★ 4.95 Rated
+                                      </span>
+                                    </div>
                                   </div>
-                                  <div className="flex gap-2">
+
+                                  {/* CTA buttons */}
+                                  <div className="flex justify-end gap-2 mt-4 pt-2">
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();

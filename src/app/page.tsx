@@ -62,11 +62,11 @@ export default function Home() {
         {/* Reviews marquee */}
         <Reviews />
 
-        {/* CTA Download Banner */}
-        <CtaBanner />
-
         {/* FAQs Section */}
         <FaqSection />
+
+        {/* CTA Download Banner */}
+        <CtaBanner />
       </main>
 
       <Footer />
