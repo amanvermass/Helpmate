@@ -1,10 +1,26 @@
+"use client";
+
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import ServiceIllustration from "./ServiceIllustrations";
 
-const homeServices = [
+// Combined unified category list: 9 main services first, then minor chores
+const allCategories = [
+  // 9 main services showing first
+  { id: "ac", name: "Air Conditioner" },
+  { id: "appliances", name: "Appliances" },
+  { id: "cleaning", name: "Cleaning" },
+  { id: "plumbing", name: "Plumbing" },
+  { id: "electrician", name: "Electrician" },
+  { id: "carpenter", name: "Carpenter" },
+  { id: "painting", name: "Painting" },
+  { id: "pest", name: "Pest Control" },
+  { id: "car-washing", name: "Car Washing" },
+
+  // Remaining minor chores showing after
   { id: "hourly", name: "Hourly bookings" },
   { id: "bathroom", name: "Bathroom Cleaning" },
   { id: "fridge", name: "Fridge Cleaning" },
@@ -26,6 +42,16 @@ const homeServices = [
 ];
 
 const serviceIdMapping: Record<string, string> = {
+  ac: "ac-jet-service",
+  appliances: "refrigerator-smart-repair",
+  cleaning: "deep-cleaning-lux",
+  plumbing: "plumbing-smart-inspection",
+  electrician: "smart-home-automation",
+  carpenter: "modular-carpentry-fix",
+  painting: "luxury-texture-painting",
+  pest: "herbal-pest-control",
+  "car-washing": "deep-cleaning-lux",
+
   hourly: "deep-cleaning-lux",
   bathroom: "deep-cleaning-lux",
   fridge: "refrigerator-smart-repair",
@@ -54,7 +80,7 @@ export default function Categories() {
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.04,
+        staggerChildren: 0.03,
       },
     },
   };
@@ -78,7 +104,7 @@ export default function Categories() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-4">
         <div>
           <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-3">
-            Step 2: Or Browse by Service
+            Step 2: Service Verticals & Tasks
           </span>
           <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white">
             Explore Services
@@ -103,7 +129,7 @@ export default function Categories() {
         className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6"
       >
         <AnimatePresence mode="popLayout">
-          {homeServices.map((cat) => (
+          {allCategories.map((cat) => (
             <motion.div
               key={cat.id}
               variants={itemVariants}
@@ -136,6 +162,7 @@ export default function Categories() {
           ))}
         </AnimatePresence>
       </motion.div>
+
     </section>
   );
 }

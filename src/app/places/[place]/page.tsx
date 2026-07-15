@@ -277,9 +277,10 @@ export default function PlaceLandingPage({ params }: PlaceProps) {
                 {filteredServices.slice(0, visibleCount).map((srv) => (
                   <div
                     key={srv.id}
-                    className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 rounded-3xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between h-full text-left"
+                    onClick={() => router.push(`/services/${srv.id}`)}
+                    className="bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-800/80 rounded-3xl p-5 shadow-sm hover:shadow-md transition-all duration-350 flex flex-col justify-between h-full text-left cursor-pointer hover:border-accent-lux/40 group"
                   >
-                    <Link href={`/services/${srv.id}`} className="space-y-3 cursor-pointer group block">
+                    <div className="space-y-3 block">
                       <div className="h-36 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
                         <img src={srv.image} alt={srv.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                         <span className="absolute top-3 left-3 bg-black/60 backdrop-blur-md text-white text-[8px] uppercase font-bold tracking-widest px-2.5 py-1.5 border border-white/10 rounded">
@@ -290,7 +291,7 @@ export default function PlaceLandingPage({ params }: PlaceProps) {
                         <h4 className="font-bold text-xs sm:text-sm text-foreground leading-snug group-hover:text-accent-lux transition-colors line-clamp-1">{srv.name}</h4>
                         <p className="text-[10px] text-slate-400 mt-1 line-clamp-2">{srv.description}</p>
                       </div>
-                    </Link>
+                    </div>
 
                     <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-4 space-y-4">
                       <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
@@ -298,12 +299,11 @@ export default function PlaceLandingPage({ params }: PlaceProps) {
                         <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {srv.duration} mins</span>
                       </div>
 
-                      <Link
-                        href={`/services/${srv.id}`}
+                      <div
                         className="w-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-[10px] py-3 rounded-full shadow-sm text-center flex items-center justify-center gap-1 transition-colors"
                       >
                         View Details & Booking <ChevronRight className="w-3.5 h-3.5" />
-                      </Link>
+                      </div>
                     </div>
                   </div>
                 ))}

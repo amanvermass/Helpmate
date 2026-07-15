@@ -412,6 +412,154 @@ export default function ServiceIllustration({ id, className = "w-full h-full" }:
         </svg>
       );
 
+    case "ac":
+      return (
+        <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {filters}
+          <g filter="url(#soft-shadow)">
+            <rect x="15" y="30" width="70" height="24" rx="3" stroke="#48073d" strokeWidth="3" fill="none" />
+            <line x1="15" y1="45" x2="85" y2="45" stroke="#48073d" strokeWidth="2" />
+            <line x1="25" y1="54" x2="75" y2="54" stroke="#48073d" strokeWidth="2" />
+            <path d="M30 62 L26 76" stroke="#A21CAF" strokeWidth="2.5" strokeLinecap="round" />
+            <path d="M43 62 L41 78" stroke="#A21CAF" strokeWidth="2.5" strokeLinecap="round" />
+            <path d="M57 62 L59 78" stroke="#A21CAF" strokeWidth="2.5" strokeLinecap="round" />
+            <path d="M70 62 L74 76" stroke="#A21CAF" strokeWidth="2.5" strokeLinecap="round" />
+            <rect x="68" y="35" width="8" height="4" fill="#10B981" rx="1" />
+          </g>
+        </svg>
+      );
+
+    case "appliances":
+      return (
+        <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {filters}
+          <g filter="url(#soft-shadow)">
+            <rect x="18" y="20" width="28" height="60" rx="3" stroke="#48073d" strokeWidth="3" fill="none" />
+            <line x1="18" y1="46" x2="46" y2="46" stroke="#48073d" strokeWidth="2" />
+            <line x1="40" y1="30" x2="40" y2="40" stroke="#48073d" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="40" y1="52" x2="40" y2="62" stroke="#48073d" strokeWidth="2.5" strokeLinecap="round" />
+            <rect x="52" y="32" width="30" height="48" rx="3" stroke="#48073d" strokeWidth="3" fill="none" />
+            <circle cx="67" cy="56" r="11" stroke="#48073d" strokeWidth="2.5" fill="none" />
+            <circle cx="67" cy="56" r="7" fill="#E2E8F0" stroke="#A21CAF" strokeWidth="1.5" />
+            <line x1="56" y1="40" x2="78" y2="40" stroke="#48073d" strokeWidth="2" />
+            <circle cx="60" cy="36" r="1.5" fill="#48073d" />
+            <circle cx="65" cy="36" r="1.5" fill="#48073d" />
+            <circle cx="70" cy="36" r="1.5" fill="#48073d" />
+          </g>
+        </svg>
+      );
+
+    case "cleaning":
+      return (
+        <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {filters}
+          <g filter="url(#soft-shadow)">
+            <rect x="16" y="52" width="22" height="26" rx="4" stroke="#48073d" strokeWidth="3" fill="none" />
+            <circle cx="27" cy="65" r="4" stroke="#A21CAF" strokeWidth="2" />
+            <path d="M38 60 Q52 60 52 40 T70 30" fill="none" stroke="#48073d" strokeWidth="2.5" />
+            <line x1="72" y1="20" x2="54" y2="66" stroke="#48073d" strokeWidth="3.5" strokeLinecap="round" />
+            <path d="M50 66 L60 62 L66 74 L44 74 Z" fill="#A21CAF" stroke="#48073d" strokeWidth="2" />
+            <line x1="78" y1="52" x2="84" y2="52" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+            <line x1="74" y1="62" x2="80" y2="62" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+          </g>
+        </svg>
+      );
+
+    case "plumbing":
+      return (
+        <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {filters}
+          <g filter="url(#soft-shadow)">
+            <path d="M32 75 L32 50 C32 30 50 30 50 40 L50 68" fill="none" stroke="#48073d" strokeWidth="4" strokeLinecap="round" />
+            <rect x="24" y="68" width="16" height="4" fill="#48073d" />
+            <line x1="22" y1="46" x2="38" y2="46" stroke="#A21CAF" strokeWidth="3.5" strokeLinecap="round" />
+            <path d="M50 78 C50 82 47 85 44 85 C41 85 38 82 38 78 C38 74 44 70 44 70 C44 70 50 74 50 78 Z" fill="#3B82F6" stroke="#48073d" strokeWidth="1.5" />
+          </g>
+        </svg>
+      );
+
+    case "electrician":
+      return (
+        <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {filters}
+          <g filter="url(#soft-shadow)">
+            <circle cx="50" cy="45" r="22" stroke="#48073d" strokeWidth="3.5" fill="none" />
+            <path d="M50 33 L44 47 L49 47 L48 57 L56 43 L51 43 Z" fill="#EF4444" stroke="#48073d" strokeWidth="1" />
+            <path d="M28 45 C15 45 15 75 32 75 C45 75 52 68 52 78" fill="none" stroke="#48073d" strokeWidth="2.5" strokeLinecap="round" />
+            <circle cx="52" cy="78" r="3" fill="#A21CAF" />
+            <rect x="42" y="15" width="4" height="8" fill="#48073d" rx="1" />
+            <rect x="54" y="15" width="4" height="8" fill="#48073d" rx="1" />
+          </g>
+        </svg>
+      );
+
+    case "carpenter":
+      return (
+        <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {filters}
+          <g filter="url(#soft-shadow)">
+            <line x1="20" y1="75" x2="80" y2="75" stroke="#48073d" strokeWidth="4.5" strokeLinecap="round" />
+            <line x1="30" y1="75" x2="24" y2="90" stroke="#48073d" strokeWidth="3" />
+            <line x1="70" y1="75" x2="76" y2="90" stroke="#48073d" strokeWidth="3" />
+            <rect x="36" y="60" width="38" height="15" fill="#E2B18A" stroke="#48073d" strokeWidth="2.5" />
+            <path d="M28 50 L34 26 C34 26 40 20 44 26 L48 38 L54 60" fill="none" stroke="#48073d" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="34" cy="22" r="5" fill="#A21CAF" />
+            <path d="M42 54 L52 68 L56 68 L48 54 Z" fill="#EF4444" stroke="#48073d" strokeWidth="1.5" />
+            <path d="M40 50 L46 48" stroke="#48073d" strokeWidth="2.5" />
+          </g>
+        </svg>
+      );
+
+    case "painting":
+      return (
+        <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {filters}
+          <g filter="url(#soft-shadow)">
+            <rect x="25" y="24" width="34" height="16" rx="3" stroke="#48073d" strokeWidth="3" fill="none" />
+            <path d="M42 40 L42 56 L54 56 L54 75" fill="none" stroke="#48073d" strokeWidth="3" strokeLinecap="round" />
+            <path d="M22 24 C22 36 28 36 34 32 C40 28 46 36 52 32 C58 28 62 38 66 32 C70 26 70 24 70 24" fill="none" stroke="#A21CAF" strokeWidth="2" />
+            <rect x="51" y="75" width="6" height="15" fill="#48073d" rx="1.5" />
+          </g>
+        </svg>
+      );
+
+    case "pest":
+      return (
+        <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {filters}
+          <g filter="url(#soft-shadow)">
+            <rect x="36" y="36" width="28" height="42" rx="4" stroke="#48073d" strokeWidth="3" fill="none" />
+            <line x1="28" y1="30" x2="28" y2="70" stroke="#48073d" strokeWidth="2.5" strokeLinecap="round" />
+            <line x1="28" y1="30" x2="36" y2="30" stroke="#48073d" strokeWidth="2" />
+            <path d="M28 50 C20 50 20 62 36 62" fill="none" stroke="#48073d" strokeWidth="2" />
+            <circle cx="50" cy="56" r="6" fill="#A21CAF" stroke="#48073d" strokeWidth="1.5" />
+            <line x1="44" y1="56" x2="56" y2="56" stroke="#48073d" strokeWidth="1.5" />
+            <line x1="46" y1="50" x2="54" y2="62" stroke="#48073d" strokeWidth="1.5" />
+            <line x1="54" y1="50" x2="46" y2="62" stroke="#48073d" strokeWidth="1.5" />
+            <path d="M46 36 L46 25 L54 25 L54 36" fill="none" stroke="#48073d" strokeWidth="2.5" />
+            <line x1="42" y1="25" x2="58" y2="25" stroke="#48073d" strokeWidth="3" strokeLinecap="round" />
+          </g>
+        </svg>
+      );
+
+    case "car-washing":
+      return (
+        <svg viewBox="0 0 100 100" className={className} xmlns="http://www.w3.org/2000/svg">
+          {filters}
+          <g filter="url(#soft-shadow)">
+            <path d="M50 15 L50 26" stroke="#48073d" strokeWidth="3" />
+            <path d="M38 26 L62 26" stroke="#48073d" strokeWidth="4" strokeLinecap="round" />
+            <line x1="42" y1="30" x2="40" y2="38" stroke="#3B82F6" strokeWidth="2" strokeDasharray="2,2" />
+            <line x1="50" y1="30" x2="50" y2="40" stroke="#3B82F6" strokeWidth="2" strokeDasharray="2,2" />
+            <line x1="58" y1="30" x2="60" y2="38" stroke="#3B82F6" strokeWidth="2" strokeDasharray="2,2" />
+            <rect x="25" y="52" width="50" height="20" rx="4" stroke="#48073d" strokeWidth="3" fill="none" />
+            <path d="M32 52 L38 42 L62 42 L68 52" fill="none" stroke="#48073d" strokeWidth="3" strokeLinecap="round" />
+            <circle cx="36" cy="72" r="6" fill="#A21CAF" stroke="#48073d" strokeWidth="2" />
+            <circle cx="64" cy="72" r="6" fill="#A21CAF" stroke="#48073d" strokeWidth="2" />
+          </g>
+        </svg>
+      );
+
     default:
       return null;
   }

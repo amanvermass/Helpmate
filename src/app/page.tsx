@@ -12,6 +12,7 @@ import Reviews from "@/components/home/Reviews";
 import FaqSection from "@/components/home/FaqSection";
 import Footer from "@/components/common/Footer";
 import ServiceAreas from "@/components/home/ServiceAreas";
+import CtaBanner from "@/components/home/CtaBanner";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
 
@@ -60,6 +61,9 @@ export default function Home() {
 
         {/* Reviews marquee */}
         <Reviews />
+
+        {/* CTA Download Banner */}
+        <CtaBanner />
 
         {/* FAQs Section */}
         <FaqSection />
