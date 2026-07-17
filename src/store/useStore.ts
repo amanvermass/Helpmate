@@ -97,6 +97,7 @@ interface AppState {
   toggleWishlist: (id: string) => void;
   recentlyViewed: string[];
   addToRecentlyViewed: (id: string) => void;
+  seedMockBookings: () => void;
 
   // Notifications
   notifications: { id: string; title: string; message: string; type: "info" | "success" | "warning"; date: string }[];
@@ -193,7 +194,193 @@ export const useStore = create<AppState>()(
       removeCoupon: () => set({ appliedCoupon: null }),
 
       // Bookings
-      bookings: [],
+      bookings: [
+        {
+          id: "BK-890213",
+          items: [
+            { id: "foam-jet", name: "Foam & Power Jet Service", price: 599, quantity: 1, category: "ac", duration: 60 }
+          ],
+          address: { id: "1", tag: "Home", addressLine: "B-2/30, Assi Ghat Road, Near Assi Ghat", city: "Varanasi" },
+          date: "Jul 15, 2026",
+          timeSlot: "10:00 AM",
+          totalAmount: 599,
+          discount: 100,
+          finalAmount: 499,
+          status: "Completed",
+          professional: {
+            name: "Arjun Mehta",
+            rating: 4.9,
+            completedJobs: 1240,
+            avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80",
+            phone: "+91 98765 43210"
+          },
+          otp: "4829",
+          timeline: [
+            { status: "Booking Confirmed", time: "09:30 AM", done: true },
+            { status: "Professional Assigned", time: "09:35 AM", done: true },
+            { status: "In-Transit to Location", time: "09:50 AM", done: true },
+            { status: "Arrived at Address", time: "09:58 AM", done: true },
+            { status: "Service Completed", time: "11:00 AM", done: true },
+          ],
+          invoiceId: "INV-78329401",
+          dateCreated: "Jul 15, 2026"
+        },
+        {
+          id: "BK-432109",
+          items: [
+            { id: "full-home", name: "Full Home Intense Deep Clean", price: 2999, quantity: 1, category: "cleaning", duration: 240 }
+          ],
+          address: { id: "2", tag: "Work", addressLine: "S-20/54, Nadesar, Cantonment", city: "Varanasi" },
+          date: "Jul 12, 2026",
+          timeSlot: "08:00 AM",
+          totalAmount: 2999,
+          discount: 500,
+          finalAmount: 2499,
+          status: "Completed",
+          professional: {
+            name: "Neha Patil",
+            rating: 4.95,
+            completedJobs: 1530,
+            avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80",
+            phone: "+91 95432 10987"
+          },
+          otp: "1098",
+          timeline: [
+            { status: "Booking Confirmed", time: "07:30 AM", done: true },
+            { status: "Professional Assigned", time: "07:35 AM", done: true },
+            { status: "In-Transit to Location", time: "07:50 AM", done: true },
+            { status: "Arrived at Address", time: "07:58 AM", done: true },
+            { status: "Service Completed", time: "12:15 PM", done: true },
+          ],
+          invoiceId: "INV-89041235",
+          dateCreated: "Jul 12, 2026"
+        },
+        {
+          id: "BK-109283",
+          items: [
+            { id: "gas-refill", name: "Gas Leakage Fix & Refill", price: 1599, quantity: 1, category: "ac", duration: 90 }
+          ],
+          address: { id: "1", tag: "Home", addressLine: "B-2/30, Assi Ghat Road, Near Assi Ghat", city: "Varanasi" },
+          date: "Jul 17, 2026",
+          timeSlot: "02:00 PM",
+          totalAmount: 1599,
+          discount: 0,
+          finalAmount: 1599,
+          status: "Assigned",
+          professional: {
+            name: "Rahul Ranade",
+            rating: 4.88,
+            completedJobs: 980,
+            avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
+            phone: "+91 91234 56789"
+          },
+          otp: "9048",
+          timeline: [
+            { status: "Booking Confirmed", time: "01:30 PM", done: true },
+            { status: "Professional Assigned", time: "01:35 PM", done: true },
+            { status: "In-Transit to Location", time: "Pending", done: false },
+            { status: "Arrived at Address", time: "Pending", done: false },
+            { status: "Service Completed", time: "Pending", done: false },
+          ],
+          invoiceId: "INV-90483719",
+          dateCreated: "Jul 17, 2026"
+        }
+      ],
+      seedMockBookings: () => {
+        const mockBookings: Booking[] = [
+          {
+            id: "BK-890213",
+            items: [
+              { id: "foam-jet", name: "Foam & Power Jet Service", price: 599, quantity: 1, category: "ac", duration: 60 }
+            ],
+            address: { id: "1", tag: "Home", addressLine: "B-2/30, Assi Ghat Road, Near Assi Ghat", city: "Varanasi" },
+            date: "Jul 15, 2026",
+            timeSlot: "10:00 AM",
+            totalAmount: 599,
+            discount: 100,
+            finalAmount: 499,
+            status: "Completed",
+            professional: {
+              name: "Arjun Mehta",
+              rating: 4.9,
+              completedJobs: 1240,
+              avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80",
+              phone: "+91 98765 43210"
+            },
+            otp: "4829",
+            timeline: [
+              { status: "Booking Confirmed", time: "09:30 AM", done: true },
+              { status: "Professional Assigned", time: "09:35 AM", done: true },
+              { status: "In-Transit to Location", time: "09:50 AM", done: true },
+              { status: "Arrived at Address", time: "09:58 AM", done: true },
+              { status: "Service Completed", time: "11:00 AM", done: true },
+            ],
+            invoiceId: "INV-78329401",
+            dateCreated: "Jul 15, 2026"
+          },
+          {
+            id: "BK-432109",
+            items: [
+              { id: "full-home", name: "Full Home Intense Deep Clean", price: 2999, quantity: 1, category: "cleaning", duration: 240 }
+            ],
+            address: { id: "2", tag: "Work", addressLine: "S-20/54, Nadesar, Cantonment", city: "Varanasi" },
+            date: "Jul 12, 2026",
+            timeSlot: "08:00 AM",
+            totalAmount: 2999,
+            discount: 500,
+            finalAmount: 2499,
+            status: "Completed",
+            professional: {
+              name: "Neha Patil",
+              rating: 4.95,
+              completedJobs: 1530,
+              avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80",
+              phone: "+91 95432 10987"
+            },
+            otp: "1098",
+            timeline: [
+              { status: "Booking Confirmed", time: "07:30 AM", done: true },
+              { status: "Professional Assigned", time: "07:35 AM", done: true },
+              { status: "In-Transit to Location", time: "07:50 AM", done: true },
+              { status: "Arrived at Address", time: "07:58 AM", done: true },
+              { status: "Service Completed", time: "12:15 PM", done: true },
+            ],
+            invoiceId: "INV-89041235",
+            dateCreated: "Jul 12, 2026"
+          },
+          {
+            id: "BK-109283",
+            items: [
+              { id: "gas-refill", name: "Gas Leakage Fix & Refill", price: 1599, quantity: 1, category: "ac", duration: 90 }
+            ],
+            address: { id: "1", tag: "Home", addressLine: "B-2/30, Assi Ghat Road, Near Assi Ghat", city: "Varanasi" },
+            date: "Jul 17, 2026",
+            timeSlot: "02:00 PM",
+            totalAmount: 1599,
+            discount: 0,
+            finalAmount: 1599,
+            status: "Assigned",
+            professional: {
+              name: "Rahul Ranade",
+              rating: 4.88,
+              completedJobs: 980,
+              avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80",
+              phone: "+91 91234 56789"
+            },
+            otp: "9048",
+            timeline: [
+              { status: "Booking Confirmed", time: "01:30 PM", done: true },
+              { status: "Professional Assigned", time: "01:35 PM", done: true },
+              { status: "In-Transit to Location", time: "Pending", done: false },
+              { status: "Arrived at Address", time: "Pending", done: false },
+              { status: "Service Completed", time: "Pending", done: false },
+            ],
+            invoiceId: "INV-90483719",
+            dateCreated: "Jul 17, 2026"
+          }
+        ];
+        set({ bookings: mockBookings });
+      },
       createBooking: () => {
         const state = get();
         if (state.cart.length === 0 || !state.selectedAddressId || !state.selectedDate || !state.selectedTimeSlot) {

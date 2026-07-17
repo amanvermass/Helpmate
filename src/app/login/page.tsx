@@ -10,6 +10,7 @@ export default function LoginPage() {
   const { login } = useStore();
 
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
@@ -20,6 +21,17 @@ export default function LoginPage() {
       setLoginError("Please enter a valid 10-digit mobile number");
       return;
     }
+    if (!password.trim()) {
+      setLoginError("Please enter your password");
+      return;
+    }
+
+    // Hardcoded credential check
+    if (!isSignUp && (phone !== "9876543210" || password !== "admin123")) {
+      setLoginError("Invalid mobile number or password");
+      return;
+    }
+
     setLoginError("");
     login(phone);
     
@@ -50,7 +62,7 @@ export default function LoginPage() {
         <p className="text-slate-500 dark:text-slate-400 text-xs mb-8 max-w-xs mx-auto leading-relaxed">
           {isSignUp 
             ? "Sign up to access Varanasi's premium background-verified service professionals." 
-            : "Sign in with your mobile number to manage bookings and wallet credits."}
+            : "Sign in with your mobile number and password to manage bookings and wallet credits."}
         </p>
 
         <form onSubmit={handleLoginSubmit} className="space-y-5 text-left">
@@ -85,6 +97,22 @@ export default function LoginPage() {
                 required
               />
             </div>
+          </div>
+          
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 tracking-wider block mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl py-3.5 px-4 text-xs focus:outline-none focus:border-accent-lux text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-950 transition-all tracking-wider"
+                required
+              />
+            </div>
             {loginError && (
               <p className="text-[10px] text-red-650 mt-2 pl-2 font-semibold">{loginError}</p>
             )}
@@ -104,6 +132,7 @@ export default function LoginPage() {
               setIsSignUp(!isSignUp);
               setLoginError("");
               setPhone("");
+              setPassword("");
               setName("");
             }}
             className="text-xs text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors cursor-pointer"

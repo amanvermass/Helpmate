@@ -43,7 +43,8 @@ function ProfilePageContent() {
     cancelBooking,
     rescheduleBooking,
     updateBookingStatus,
-    addNotification
+    addNotification,
+    seedMockBookings
   } = useStore();
 
   const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "dashboard");
@@ -63,6 +64,13 @@ function ProfilePageContent() {
   const [newTag, setNewTag] = useState<"Home" | "Work" | "Other">("Home");
   const [newAddressLine, setNewAddressLine] = useState("");
   const [newCity, setNewCity] = useState("Varanasi");
+
+  // Seed mock bookings if empty (handles localStorage override)
+  useEffect(() => {
+    if (bookings.length === 0) {
+      seedMockBookings();
+    }
+  }, [bookings, seedMockBookings]);
 
   // Sync tab from URL
   useEffect(() => {
@@ -133,7 +141,7 @@ function ProfilePageContent() {
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* Profile Navigation Sidebar */}
-          <nav className="lg:col-span-3 glass-panel p-6 border border-slate-200/10 space-y-2 shrink-0">
+          <nav className="lg:col-span-3 glass-panel p-6 space-y-2 shrink-0">
             <div className="pb-6 border-b border-slate-100 dark:border-slate-800 text-center lg:text-left flex lg:flex-col items-center lg:items-start gap-4">
               <div className="w-16 h-16 rounded-full bg-accent-lux/10 border-2 border-accent-lux text-accent-lux flex items-center justify-center font-bold text-xl">
                 AT
@@ -181,7 +189,7 @@ function ProfilePageContent() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                   {/* Wallet Card */}
-                  <div className="glass-panel p-6 border border-slate-200/10 flex flex-col justify-between">
+                  <div className="glass-panel p-6 flex flex-col justify-between">
                     <div>
                       <span className="text-[9px] uppercase font-bold text-muted-lux tracking-wider">Wallet Balance</span>
                       <h4 className="text-2xl font-black text-foreground mt-2">₹{walletBalance}</h4>
@@ -192,7 +200,7 @@ function ProfilePageContent() {
                   </div>
 
                   {/* Loyalty Card */}
-                  <div className="glass-panel p-6 border border-slate-200/10 flex flex-col justify-between">
+                  <div className="glass-panel p-6 flex flex-col justify-between">
                     <div>
                       <span className="text-[9px] uppercase font-bold text-muted-lux tracking-wider">Loyalty Points</span>
                       <h4 className="text-2xl font-black text-foreground mt-2">{loyaltyPoints} pts</h4>
@@ -203,7 +211,7 @@ function ProfilePageContent() {
                   </div>
 
                   {/* Booking count card */}
-                  <div className="glass-panel p-6 border border-slate-200/10 flex flex-col justify-between">
+                  <div className="glass-panel p-6 flex flex-col justify-between">
                     <div>
                       <span className="text-[9px] uppercase font-bold text-muted-lux tracking-wider">Total Bookings</span>
                       <h4 className="text-2xl font-black text-foreground mt-2">{bookings.length} Services</h4>
@@ -221,14 +229,15 @@ function ProfilePageContent() {
                   </h3>
 
                   {bookings.filter((b) => b.status !== "Completed" && b.status !== "Cancelled").length === 0 ? (
-                    <div className="glass-panel p-8 text-center border border-slate-250/20 text-slate-400 text-xs">
+                    <div className="glass-panel p-8 text-center text-slate-400 text-xs">
                       No active bookings in progress. Explore categories to start scheduling.
                     </div>
                   ) : (
-                    bookings
+                    [...bookings]
                       .filter((b) => b.status !== "Completed" && b.status !== "Cancelled")
+                      .sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())
                       .map((b) => (
-                        <div key={b.id} className="glass-panel p-6 border border-slate-200/10 space-y-6">
+                        <div key={b.id} className="glass-panel p-6 space-y-6">
                           {/* Top Row */}
                           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
                             <div>
@@ -302,13 +311,15 @@ function ProfilePageContent() {
                 <h3 className="font-bold text-sm text-foreground">Service Booking History</h3>
                 
                 {bookings.length === 0 ? (
-                  <div className="glass-panel p-12 text-center border border-slate-200/10 text-slate-500 text-xs">
+                  <div className="glass-panel p-12 text-center text-slate-500 text-xs">
                     No booking records in account. Schedule your first deep clean today.
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    {bookings.map((b) => (
-                      <div key={b.id} className="glass-panel p-6 border border-slate-200/10 space-y-4">
+                    {[...bookings]
+                      .sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())
+                      .map((b) => (
+                      <div key={b.id} className="glass-panel p-6 space-y-4">
                         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
                           <div>
                             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{b.dateCreated}</span>
@@ -431,7 +442,7 @@ function ProfilePageContent() {
                 </div>
 
                 {showAddressForm && (
-                  <div className="p-5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] space-y-4 shadow-sm">
+                  <div className="glass-panel p-5 space-y-4 shadow-sm">
                     <div className="flex gap-2">
                       {(["Home", "Work", "Other"] as const).map((tag) => (
                         <button
@@ -478,7 +489,7 @@ function ProfilePageContent() {
                   {addresses.map((addr) => (
                     <div
                       key={addr.id}
-                      className="p-4 bg-white dark:bg-slate-900/40 border border-slate-150/50 dark:border-slate-850 rounded-[20px] flex items-center justify-between gap-4"
+                      className="glass-panel p-4 flex items-center justify-between gap-4"
                     >
                       <div>
                         <span className="bg-slate-100 dark:bg-slate-800 text-muted-lux text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
@@ -510,7 +521,7 @@ function ProfilePageContent() {
                 </div>
 
                 {/* Referral Module */}
-                <div className="bg-white dark:bg-slate-900/40 border border-slate-150/40 dark:border-slate-800 p-6 rounded-[24px] space-y-4">
+                <div className="glass-panel p-6 space-y-4">
                   <h4 className="text-xs uppercase font-extrabold text-muted-lux tracking-wider flex items-center gap-1.5">
                     <Smile className="w-4 h-4 text-accent-lux" /> Invite Friends, Earn Cash
                   </h4>
@@ -540,7 +551,7 @@ function ProfilePageContent() {
 
             {/* TAB: SETTINGS */}
             {activeTab === "settings" && (
-              <div className="glass-panel p-6 border border-slate-200/10 space-y-6">
+              <div className="glass-panel p-6 space-y-6">
                 <h3 className="font-bold text-sm text-foreground">Account Settings</h3>
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

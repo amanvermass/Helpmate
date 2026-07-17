@@ -57,6 +57,8 @@ function HeaderContent() {
   // Refs for outside click tracking
   const searchRef = useRef<HTMLFormElement>(null);
   const cartRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const notificationsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!searchQuery.trim()) {
@@ -85,6 +87,12 @@ function HeaderContent() {
       }
       if (cartRef.current && !cartRef.current.contains(e.target as Node)) {
         setShowCartDropdown(false);
+      }
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowProfileMenu(false);
+      }
+      if (notificationsRef.current && !notificationsRef.current.contains(e.target as Node)) {
+        setShowNotifications(false);
       }
     };
     document.addEventListener("mousedown", handleOutsideClick);
@@ -287,7 +295,7 @@ function HeaderContent() {
 
           {/* Notifications */}
           {!isHomePage && isLoggedIn && (
-            <div className="relative">
+            <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => {
                   setShowNotifications(!showNotifications);
@@ -349,7 +357,7 @@ function HeaderContent() {
 
           {/* User Profile or Sign In / Signup Button */}
           {isLoggedIn ? (
-            <div className="relative">
+            <div className="relative" ref={profileRef}>
               <button
                 onClick={() => {
                   setShowProfileMenu(!showProfileMenu);

@@ -43,7 +43,8 @@ export default function BookingPage() {
     applyCoupon,
     removeCoupon,
     createBooking,
-    addNotification
+    addNotification,
+    bookings
   } = useStore();
 
   const [step, setStep] = useState(0); // 0: Cart/Add-ons, 1: Schedule, 2: Address, 3: Payment, 4: Success
@@ -150,12 +151,26 @@ export default function BookingPage() {
   };
 
   // Pricing math
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const matchedBooking = step === 4 && createdBookingId 
+    ? bookings.find(b => b.id === createdBookingId)
+    : null;
+
+  const subtotal = matchedBooking
+    ? matchedBooking.totalAmount
+    : cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
   let discount = 0;
-  if (appliedCoupon === "LUXURY50") discount = Math.min(500, subtotal * 0.15);
-  if (appliedCoupon === "WELCOME100") discount = 100;
-  if (appliedCoupon === "SUPERDEAL") discount = Math.min(1000, subtotal * 0.25);
-  const total = Math.max(0, subtotal - discount);
+  if (matchedBooking) {
+    discount = matchedBooking.discount;
+  } else {
+    if (appliedCoupon === "LUXURY50") discount = Math.min(500, subtotal * 0.15);
+    if (appliedCoupon === "WELCOME100") discount = 100;
+    if (appliedCoupon === "SUPERDEAL") discount = Math.min(1000, subtotal * 0.25);
+  }
+
+  const total = matchedBooking
+    ? matchedBooking.finalAmount
+    : Math.max(0, subtotal - discount);
 
   return (
     <>
@@ -182,10 +197,10 @@ export default function BookingPage() {
             <div className="mb-10 max-w-3xl mx-auto">
               <div className="flex items-center justify-between relative">
                 {/* Connector line */}
-                <div className="absolute left-0 right-0 top-1/2 h-0.5 bg-slate-200 dark:bg-slate-800 -translate-y-1/2 z-0" />
+                <div className="absolute left-[18px] right-[18px] top-[18px] h-0.5 bg-slate-200 dark:bg-slate-800 -translate-y-1/2 z-0" />
                 <div 
-                  className="absolute left-0 top-1/2 h-0.5 bg-accent-lux -translate-y-1/2 transition-all duration-500 z-0"
-                  style={{ width: `${(step / 3) * 100}%` }}
+                  className="absolute left-[18px] top-[18px] h-0.5 bg-accent-lux -translate-y-1/2 transition-all duration-500 z-0"
+                  style={{ width: `calc(${(step / 3) * 100}% - ${(step / 3) * 36}px)` }}
                 />
 
                 {[
@@ -204,8 +219,8 @@ export default function BookingPage() {
                           isCurrent
                             ? "bg-accent-lux border-accent-lux text-white scale-110 shadow-lg shadow-accent-lux/20"
                             : isActive
-                            ? "bg-accent-lux/10 border-accent-lux text-accent-lux"
-                            : "bg-white dark:bg-slate-900 border-slate-250 dark:border-slate-800 text-slate-400"
+                            ? "bg-background border-accent-lux text-accent-lux"
+                            : "bg-background border-slate-250 dark:border-slate-800 text-slate-400"
                         }`}
                       >
                         <Icon className="w-4 h-4" />
@@ -226,7 +241,7 @@ export default function BookingPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Panel Stepper Content */}
-            <div className={`${step === 4 ? "col-span-12" : "lg:col-span-8"} space-y-6`}>
+            <div className="lg:col-span-8 space-y-6">
               
               <AnimatePresence mode="wait">
                 <motion.div
@@ -235,7 +250,7 @@ export default function BookingPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -15 }}
                   transition={{ duration: 0.3 }}
-                  className="glass-panel p-6 sm:p-8 border border-slate-200/10 shadow-xl rounded-[32px] text-left"
+                  className="glass-panel p-6 sm:p-8 shadow-xl rounded-[32px] text-left"
                 >
                   
                   {/* STEP 0: Cart Selection & Recommendations */}
@@ -514,81 +529,85 @@ export default function BookingPage() {
                         <p className="text-xs text-slate-450 mt-1">Select authorization method. No amount will be debited until work is done.</p>
                       </div>
 
-                      {/* Payment Option Tabs */}
-                      <div className="flex border-b border-slate-100 dark:border-slate-800">
-                        {(["card", "upi", "cod"] as const).map((method) => (
-                          <button
-                            key={method}
-                            onClick={() => setPaymentMethod(method)}
-                            className={`flex-1 py-3.5 text-xs font-bold capitalize border-b-2 text-center transition-all cursor-pointer ${
-                              paymentMethod === method
-                                ? "border-accent-lux text-accent-lux"
-                                : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                            }`}
-                          >
-                            {method === "card" && "Credit / Debit Card"}
-                            {method === "upi" && "Instant UPI"}
-                            {method === "cod" && "Cash/UPI After Service"}
-                          </button>
-                        ))}
-                      </div>
+                      {/* Payment Options & Details Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+                        
+                        {/* Payment Option Tabs (Left) */}
+                        <div className="md:col-span-1 flex flex-col bg-slate-50/50 dark:bg-slate-900/30 border-r border-slate-200 dark:border-slate-800">
+                          {(["card", "upi", "cod"] as const).map((method) => (
+                            <button
+                              key={method}
+                              onClick={() => setPaymentMethod(method)}
+                              className={`py-4 px-4 text-xs font-bold capitalize text-left transition-all cursor-pointer border-b border-slate-200 dark:border-slate-800 last:border-b-0 ${
+                                paymentMethod === method
+                                  ? "bg-white dark:bg-slate-900 border-l-4 border-l-accent-lux text-accent-lux"
+                                  : "border-l-4 border-l-transparent text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              }`}
+                            >
+                              {method === "card" && "Credit / Debit Card"}
+                              {method === "upi" && "Instant UPI"}
+                              {method === "cod" && "Cash/UPI After Service"}
+                            </button>
+                          ))}
+                        </div>
 
-                      {/* Payment Details Container */}
-                      <div className="pt-2">
-                        {paymentMethod === "card" && (
-                          <div className="space-y-4">
-                            <div className="space-y-1">
-                              <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Card Number</label>
-                              <input
-                                type="text"
-                                placeholder="4111 2222 3333 4444"
-                                value={cardNumber}
-                                onChange={(e) => setCardNumber(e.target.value)}
-                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-xl text-xs focus:outline-none focus:border-accent-lux"
-                              />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                        {/* Payment Details Container (Right) */}
+                        <div className="md:col-span-2 p-6 bg-white dark:bg-slate-900">
+                          {paymentMethod === "card" && (
+                            <div className="space-y-4">
                               <div className="space-y-1">
-                                <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Expiry Date</label>
+                                <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Card Number</label>
                                 <input
                                   type="text"
-                                  placeholder="MM/YY"
-                                  value={cardExpiry}
-                                  onChange={(e) => setCardExpiry(e.target.value)}
+                                  placeholder="4111 2222 3333 4444"
+                                  value={cardNumber}
+                                  onChange={(e) => setCardNumber(e.target.value)}
                                   className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-xl text-xs focus:outline-none focus:border-accent-lux"
                                 />
                               </div>
-                              <div className="space-y-1">
-                                <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">CVV</label>
-                                <input
-                                  type="password"
-                                  placeholder="***"
-                                  value={cardCvv}
-                                  onChange={(e) => setCardCvv(e.target.value)}
-                                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-xl text-xs focus:outline-none focus:border-accent-lux"
-                                />
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                  <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">Expiry Date</label>
+                                  <input
+                                    type="text"
+                                    placeholder="MM/YY"
+                                    value={cardExpiry}
+                                    onChange={(e) => setCardExpiry(e.target.value)}
+                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-xl text-xs focus:outline-none focus:border-accent-lux"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[9px] uppercase font-bold text-slate-400 tracking-wider">CVV</label>
+                                  <input
+                                    type="password"
+                                    placeholder="***"
+                                    value={cardCvv}
+                                    onChange={(e) => setCardCvv(e.target.value)}
+                                    className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-3 rounded-xl text-xs focus:outline-none focus:border-accent-lux"
+                                  />
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        )}
+                          )}
 
-                        {paymentMethod === "upi" && (
-                          <div className="flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-950/20 border border-slate-200/10 rounded-2xl">
-                            <Smartphone className="w-12 h-12 text-accent-lux animate-pulse mb-4" />
-                            <p className="text-xs font-bold text-foreground text-center">Scan QR Code or Approve UPI Request</p>
-                            <p className="text-[10px] text-slate-400 text-center mt-1">A payment request notification will trigger in your UPI application.</p>
-                          </div>
-                        )}
-
-                        {paymentMethod === "cod" && (
-                          <div className="flex items-center gap-3 p-5 bg-amber-550/10 border border-amber-500/10 text-amber-600 dark:text-amber-500 rounded-2xl text-left">
-                            <ShieldCheck className="w-5 h-5 shrink-0" />
-                            <div>
-                              <p className="text-xs font-bold">Pay Cash or Card After Completion</p>
-                              <p className="text-[10px] text-slate-400 mt-1">Pay comfortably to our verified professionals once the services are finished.</p>
+                          {paymentMethod === "upi" && (
+                            <div className="flex flex-col items-center justify-center p-8 bg-slate-50 dark:bg-slate-950/20 border border-slate-200/10 rounded-2xl h-full">
+                              <Smartphone className="w-12 h-12 text-accent-lux animate-pulse mb-4" />
+                              <p className="text-xs font-bold text-foreground text-center">Scan QR Code or Approve UPI Request</p>
+                              <p className="text-[10px] text-slate-400 text-center mt-1">A payment request notification will trigger in your UPI application.</p>
                             </div>
-                          </div>
-                        )}
+                          )}
+
+                          {paymentMethod === "cod" && (
+                            <div className="flex items-center gap-3 p-5 bg-amber-550/10 border border-amber-500/10 text-amber-600 dark:text-amber-500 rounded-2xl text-left h-full">
+                              <ShieldCheck className="w-5 h-5 shrink-0" />
+                              <div>
+                                <p className="text-xs font-bold">Pay Cash or Card After Completion</p>
+                                <p className="text-[10px] text-slate-400 mt-1">Pay comfortably to our verified professionals once the services are finished.</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   )}
@@ -657,87 +676,86 @@ export default function BookingPage() {
             </div>
 
             {/* Right Sticky Summary Sidebar */}
-            {step < 4 && (
-              <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
-                
-                {/* Promo Coupon Section inside Summary column */}
-                {step === 3 && (
-                  <div className="glass-panel p-6 border border-slate-200/10 space-y-4 text-left">
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
-                    <div className="flex gap-2 mt-2">
-                      <input
-                        type="text"
-                        placeholder="Enter code"
-                        value={couponInput}
-                        onChange={(e) => setCouponInput(e.target.value)}
-                        className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-xs text-foreground focus:outline-none focus:border-accent-lux"
-                      />
-                      <button
-                        onClick={handleApplyCoupon}
-                        className="px-4 py-2 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-750 text-xs font-bold text-white cursor-pointer"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                    {couponError && <p className="text-[10px] text-red-500 mt-2 pl-2">{couponError}</p>}
-                    {appliedCoupon && (
-                      <div className="mt-3 flex items-center justify-between bg-success-lux/10 border border-success-lux/20 text-success-lux px-3.5 py-2 rounded-xl text-[11px] font-bold">
-                        <span className="flex items-center gap-1.5"><Percent className="w-3.5 h-3.5" /> Code {appliedCoupon} Active</span>
-                        <button onClick={removeCoupon} className="hover:underline text-[10px] cursor-pointer">Remove</button>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Price Breakdown Invoice Card */}
-                <div className="glass-panel p-6 border border-slate-200/10 space-y-5 text-left">
-                  <div>
-                    <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Booking Invoice</h3>
-                  </div>
-
-                  <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-800 pt-4 text-xs">
-                    <div className="flex justify-between items-center text-slate-500">
-                      <span>Services Base Subtotal</span>
-                      <span className="font-bold text-foreground">₹{subtotal}</span>
-                    </div>
-
-                    {discount > 0 && (
-                      <div className="flex justify-between items-center text-success-lux">
-                        <span>Coupon Discounts</span>
-                        <span className="font-bold">-₹{discount}</span>
-                      </div>
-                    )}
-
-                    <div className="flex justify-between items-center text-slate-500">
-                      <span>Varanasi Regional Tax (18%)</span>
-                      <span className="font-bold text-foreground">₹0</span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-slate-500">
-                      <span>Luxury Partner Dispatch Fee</span>
-                      <span className="text-success-lux font-extrabold">FREE</span>
-                    </div>
-
-                    <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-4 text-sm">
-                      <span className="font-bold text-foreground">Total Due Now</span>
-                      <span className="font-black text-accent-lux text-base">₹{total}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 text-[10px] text-slate-400 dark:text-slate-450 border-t border-slate-100 dark:border-slate-800 pt-4">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-success-lux" /> Flat-rate guaranteed pricing
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-accent-lux" /> Arrives within the scheduling window
-                    </div>
-                  </div>
+            {step <= 4 && (
+               <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
+                 
+                 {/* Price Breakdown Invoice Card */}
+                 <div className="glass-panel p-6 space-y-5 text-left">
+                   <div>
+                     <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Booking Invoice</h3>
+                   </div>
+ 
+                   <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-800 pt-4 text-xs">
+                     <div className="flex justify-between items-center text-slate-500">
+                       <span>Services Base Subtotal</span>
+                       <span className="font-bold text-foreground">₹{subtotal}</span>
+                     </div>
+ 
+                     {discount > 0 && (
+                       <div className="flex justify-between items-center text-success-lux">
+                         <span>Coupon ({appliedCoupon})</span>
+                         <span className="font-bold">-₹{discount}</span>
+                       </div>
+                     )}
+ 
+                     <div className="flex justify-between items-center text-slate-500">
+                       <span>Varanasi Regional Tax (18%)</span>
+                       <span className="font-bold text-foreground">₹0</span>
+                     </div>
+ 
+                     <div className="flex justify-between items-center text-slate-500">
+                       <span>Luxury Partner Dispatch Fee</span>
+                       <span className="text-success-lux font-extrabold">FREE</span>
+                     </div>
+ 
+                     <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-4 text-sm">
+                       <span className="font-bold text-foreground">Total Due Now</span>
+                       <span className="font-black text-accent-lux text-base">₹{total}</span>
+                     </div>
+                   </div>
+ 
+                   {/* Promo Coupon Section inside Summary Card */}
+                   {step === 3 && (
+                     <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
+                       <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">Discount Coupon</span>
+                       <div className="flex gap-2">
+                         <input
+                           type="text"
+                           placeholder="Enter code"
+                           value={couponInput}
+                           onChange={(e) => setCouponInput(e.target.value)}
+                           className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-xs text-foreground focus:outline-none focus:border-accent-lux animate-fadeIn"
+                         />
+                         <button
+                           onClick={handleApplyCoupon}
+                           className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-750 text-xs font-bold text-white cursor-pointer transition-colors"
+                         >
+                           Apply
+                         </button>
+                       </div>
+                       {couponError && <p className="text-[10px] text-red-500 pl-2 animate-shake">{couponError}</p>}
+                       {appliedCoupon && (
+                         <div className="flex items-center justify-between bg-success-lux/10 border border-success-lux/20 text-success-lux px-3.5 py-2 rounded-xl text-[11px] font-bold animate-fadeIn">
+                           <span className="flex items-center gap-1.5"><Percent className="w-3.5 h-3.5" /> Code {appliedCoupon} Active</span>
+                           <button onClick={removeCoupon} className="hover:underline text-[10px] cursor-pointer">Remove</button>
+                         </div>
+                       )}
+                     </div>
+                   )}
+ 
+                   <div className="space-y-3 text-[10px] text-slate-400 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
+                     <div className="flex items-center gap-2">
+                       <ShieldCheck className="w-4 h-4 text-success-lux" /> Flat-rate guaranteed pricing
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <Clock className="w-4 h-4 text-accent-lux" /> Arrives within the scheduling window
+                     </div>
+                   </div>
+                 </div>
                 </div>
-
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
       </main>
 
       <Footer />

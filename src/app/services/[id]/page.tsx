@@ -21,6 +21,7 @@ import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { services, reviews as mockReviews } from "@/utils/mockData";
 import { useStore } from "@/store/useStore";
+import confetti from "canvas-confetti";
 
 // Stepper Interface Config for CRM manageability
 export interface ServiceWizardItem {
@@ -467,7 +468,28 @@ function ServiceDetailPageContent({ params }: PageProps) {
     );
   };
 
-  const handleAddToCart = () => {
+  const triggerSmallConfetti = (e: React.MouseEvent, customColors?: string[]) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const x = (rect.left + rect.width / 2) / window.innerWidth;
+    const y = (rect.top + rect.height / 2) / window.innerHeight;
+    confetti({
+      particleCount: 20,
+      spread: 360,
+      startVelocity: 12,
+      ticks: 40,
+      scalar: 0.6,
+      colors: customColors || ['#22c55e', '#16a34a', '#15803d'],
+      origin: { x, y },
+      zIndex: 1000
+    });
+  };
+
+  const triggerBigConfetti = () => {
+    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 1000 });
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    triggerSmallConfetti(e);
     const uniqueId = selectedItem 
       ? `${service.id}-${selectedSub}-${selectedAct}-${selectedItem.id}`
       : service.id;
@@ -487,7 +509,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
     );
   };
 
-  const handleBookNow = () => {
+  const handleBookNow = (e: React.MouseEvent) => {
+    triggerBigConfetti();
     const uniqueId = selectedItem 
       ? `${service.id}-${selectedSub}-${selectedAct}-${selectedItem.id}`
       : service.id;
@@ -501,10 +524,11 @@ function ServiceDetailPageContent({ params }: PageProps) {
       duration: activeDuration
     });
 
-    router.push("/booking");
+    setTimeout(() => router.push("/booking"), 300);
   };
 
-  const handleItemAddToCart = (item: any) => {
+  const handleItemAddToCart = (e: React.MouseEvent, item: any) => {
+    triggerSmallConfetti(e);
     const uniqueId = `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`;
     addToCart({
       id: uniqueId,
@@ -521,7 +545,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
     );
   };
 
-  const handleItemBookNow = (item: any) => {
+  const handleItemBookNow = (e: React.MouseEvent, item: any) => {
+    triggerBigConfetti();
     const uniqueId = `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`;
     clearCart();
     addToCart({
@@ -532,7 +557,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
       duration: item.duration
     });
 
-    router.push("/booking");
+    setTimeout(() => router.push("/booking"), 300);
   };
 
   // Matched Specialist Logic (BookMyBai / Pronto Verification Feature)
@@ -595,16 +620,15 @@ function ServiceDetailPageContent({ params }: PageProps) {
         }
 
         @keyframes arrow-slide-full {
-          0% { transform: translate3d(-100%, -50%, 0); opacity: 0; }
+          0% { left: -10%; transform: translateY(-50%); opacity: 0; }
           10% { opacity: 0.35; }
           50% { opacity: 0.65; }
           90% { opacity: 0.35; }
-          100% { transform: translate3d(240%, -50%, 0); opacity: 0; }
+          100% { left: 110%; transform: translateY(-50%); opacity: 0; }
         }
         .arrows-bg-track {
           position: absolute;
           top: 50%;
-          left: 0;
           display: flex;
           align-items: center;
           gap: 5px;
@@ -873,12 +897,28 @@ function ServiceDetailPageContent({ params }: PageProps) {
                   </div>
 
                   <div className="flex flex-col gap-2.5 pt-2">
-                    <button
-                      onClick={handleAddToCart}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-350 text-slate-850 dark:text-slate-200 font-extrabold text-xs py-3.5 rounded-full shadow-sm flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      Add to Cart
-                    </button>
+                    {(() => {
+                      const mainId = selectedItem 
+                        ? `${service.id}-${selectedSub}-${selectedAct}-${selectedItem.id}`
+                        : service.id;
+                      const isMainAdded = cart.some(c => c.id === mainId);
+                      return (
+                        <button
+                          disabled={isMainAdded}
+                          onClick={(e) => {
+                            if (isMainAdded) return;
+                            handleAddToCart(e);
+                          }}
+                          className={`w-full font-extrabold text-xs py-3.5 rounded-full shadow-sm flex items-center justify-center gap-1.5 transition-colors ${
+                            isMainAdded 
+                              ? "bg-emerald-500/10 border border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-80 cursor-not-allowed" 
+                              : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-350 text-slate-850 dark:text-slate-200 cursor-pointer"
+                          }`}
+                        >
+                          {isMainAdded ? "Added to Cart ✓" : "Add to Cart"}
+                        </button>
+                      );
+                    })()}
                     <button
                       onClick={handleBookNow}
                       className="w-full bg-accent-lux hover:bg-accent-lux/95 text-white font-extrabold text-xs py-3.5 rounded-full shadow-md flex items-center justify-center gap-1.5 transition-all hover:scale-[1.01] cursor-pointer relative overflow-hidden"
@@ -945,16 +985,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
               {/* Left Column - Stepper Wizard */}
               <div className="lg:col-span-8 space-y-6">
                 <div className="glass-panel p-6 sm:p-8 border border-slate-200/10 space-y-6 text-left">
-                  
-                  {/* CRM Badge */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] uppercase font-bold text-accent-lux bg-accent-lux/10 px-2.5 py-0.5 rounded tracking-wider">
-                      ⚙️ CRM Managed Stepper
-                    </span>
-                    <span className="text-[8px] text-slate-450 dark:text-slate-555 font-bold uppercase tracking-wider font-sans">
-                      Helpmate CMS v2.4
-                    </span>
-                  </div>
+               
 
                   {/* Progress Tracker Stepper circles */}
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
@@ -1024,7 +1055,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md"
                                 }`}
                               >
-                                {index + 1}. {act.name}
+                                {act.name}
                               </button>
                             );
                           })}
@@ -1040,14 +1071,14 @@ function ServiceDetailPageContent({ params }: PageProps) {
                             Available Service Packages
                           </span>
                           <div className="flex items-center gap-1.5">
-                            <div className="relative">
+                            <div className="relative ">
                               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                               <input
                                 type="text"
                                 placeholder="Search..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 pr-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-300 w-28 sm:w-36 focus:outline-none focus:ring-1 focus:ring-accent-lux/30 transition-all placeholder:text-slate-400"
+                                className="pl-8 pr-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-300 w-56 sm:w-100 focus:outline-none focus:ring-1 focus:ring-accent-lux/30 transition-all placeholder:text-slate-400"
                               />
                             </div>
                             <button 
@@ -1089,8 +1120,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                   <button 
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      const isSaved = savedPackages.includes(item.id);
+                                      if (!isSaved) triggerSmallConfetti(e, ['#801C6E', '#48073d', '#A21CAF']);
                                       setSavedPackages(prev => 
-                                        prev.includes(item.id) 
+                                        isSaved
                                           ? prev.filter(id => id !== item.id)
                                           : [...prev, item.id]
                                       );
@@ -1152,14 +1185,16 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                   {/* CTA buttons */}
                                   <div className="flex justify-end gap-2 mt-4 pt-2">
                                     <button
+                                      disabled={isAdded}
                                       onClick={(e) => {
+                                        if (isAdded) return;
                                         e.stopPropagation();
-                                        handleItemAddToCart(item);
+                                        handleItemAddToCart(e, item);
                                       }}
-                                      className={`px-3 py-1.5 rounded-full font-bold text-[10px] cursor-pointer transition-all border shadow-sm ${
+                                      className={`px-3 py-1.5 rounded-full font-bold text-[10px] transition-all border shadow-sm ${
                                         isAdded 
-                                          ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-450 hover:bg-emerald-500/20" 
-                                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 hover:border-slate-350"
+                                          ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-80 cursor-not-allowed" 
+                                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 hover:border-slate-350 cursor-pointer"
                                       }`}
                                     >
                                       {isAdded ? "Added ✓" : "Add to Cart"}
@@ -1167,7 +1202,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        handleItemBookNow(item);
+                                        handleItemBookNow(e, item);
                                       }}
                                       className="px-3.5 py-1.5 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-[10px] shadow-md transition-colors cursor-pointer relative overflow-hidden"
                                     >
@@ -1191,12 +1226,12 @@ function ServiceDetailPageContent({ params }: PageProps) {
                   </div>
 
                   {/* Trust/Guarantee checklist */}
-                  <div className="space-y-3 text-[11px] text-slate-500 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
+                    <div className="flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-success-lux" /> Vetted 5-Star Specialist
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-accent-lux" /> On-time Guarantee (₹1,000 late refund)
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-accent-lux" /> On-time Insourence
                     </div>
                   </div>
 
@@ -1226,7 +1261,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
                               <span className="text-[9px] text-slate-400 font-semibold font-sans mt-0.5 block">⏱ {item.duration} mins</span>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <span className="font-extrabold text-foreground font-sans">₹{item.price}</span>
+                              <div className="flex flex-col items-end mr-1">
+                                <span className="font-extrabold text-accent-lux font-sans leading-none">₹{item.price}</span>
+                                <span className="text-[9px] text-slate-400 line-through font-sans mt-0.5">₹{Math.round(item.price * 1.25)}</span>
+                              </div>
                               <button
                                 onClick={() => removeFromCart(item.id)}
                                 className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer p-1"
@@ -1261,10 +1299,20 @@ function ServiceDetailPageContent({ params }: PageProps) {
                       </div>
 
                       <button
-                        onClick={() => router.push("/booking")}
-                        className="w-full bg-accent-lux hover:bg-accent-lux/95 text-white font-extrabold text-xs py-3.5 rounded-full shadow-md flex items-center justify-center gap-1.5 transition-all hover:scale-[1.01] cursor-pointer"
+                        onClick={() => {
+                          triggerBigConfetti();
+                          setTimeout(() => router.push("/booking"), 300);
+                        }}
+                        className="w-full bg-accent-lux hover:bg-accent-lux/95 text-white font-extrabold text-xs py-3.5 rounded-full shadow-md flex items-center justify-center gap-1.5 transition-all hover:scale-[1.01] cursor-pointer relative overflow-hidden"
                       >
-                        Proceed to Book <ChevronRight className="w-4 h-4" />
+                        <div className="arrows-bg-track opacity-25 dark:opacity-20">
+                          <ChevronRight className="w-4 h-4 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+                          <ChevronRight className="w-4 h-4 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+                        </div>
+                        <div className="shimmer-button-glow pointer-events-none" />
+                        <span className="relative z-10 flex items-center justify-center gap-1.5 font-sans">
+                          Proceed to Book <ChevronRight className="w-4 h-4" />
+                        </span>
                       </button>
                     </div>
                   ) : (

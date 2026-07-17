@@ -18,9 +18,9 @@ const allCategories = [
   { id: "carpenter", name: "Carpenter" },
   { id: "painting", name: "Painting" },
   { id: "pest", name: "Pest Control" },
-  { id: "car-washing", name: "Car Washing" },
 
   // Remaining minor chores showing after
+  { id: "car-washing", name: "Car Washing" },
   { id: "hourly", name: "Hourly bookings" },
   { id: "bathroom", name: "Bathroom Cleaning" },
   { id: "fridge", name: "Fridge Cleaning" },
@@ -100,7 +100,7 @@ export default function Categories() {
     }
   };
 
-  const visibleCategories = isExpanded ? allCategories : allCategories.slice(0, 9);
+  const visibleCategories = isExpanded ? allCategories : allCategories.slice(0, 8);
 
   return (
     <section className="py-20 px-6 max-w-7xl mx-auto font-sans relative">
@@ -129,7 +129,7 @@ export default function Categories() {
         initial="hidden"
         whileInView="show"
         viewport={{ once: true, margin: "-100px" }}
-        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6"
+        className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-6"
       >
         <AnimatePresence mode="popLayout">
           {visibleCategories.map((cat) => (

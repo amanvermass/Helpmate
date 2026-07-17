@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useStore } from "@/store/useStore";
+import { useRouter, usePathname } from "next/navigation";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient({
@@ -15,7 +16,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   }));
   
   const theme = useStore((state) => state.theme);
+  const isLoggedIn = useStore((state) => state.isLoggedIn);
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     setMounted(true);
@@ -31,9 +35,20 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     }
   }, [theme, mounted]);
 
+  useEffect(() => {
+    if (mounted && !isLoggedIn && pathname !== "/login") {
+      router.push("/login");
+    }
+  }, [mounted, isLoggedIn, pathname, router]);
+
   // Prevent flash during hydration
   if (!mounted) {
     return <div style={{ visibility: "hidden" }}>{children}</div>;
+  }
+
+  // If not logged in and not on login page, we can also prevent rendering the main content to avoid flicker
+  if (!isLoggedIn && pathname !== "/login") {
+    return null; // The useEffect will handle the redirect
   }
 
   return (
