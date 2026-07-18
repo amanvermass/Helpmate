@@ -484,10 +484,6 @@ function ServiceDetailPageContent({ params }: PageProps) {
     });
   };
 
-  const triggerBigConfetti = () => {
-    confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 1000 });
-  };
-
   const handleAddToCart = (e: React.MouseEvent) => {
     triggerSmallConfetti(e);
     const uniqueId = selectedItem 
@@ -510,7 +506,6 @@ function ServiceDetailPageContent({ params }: PageProps) {
   };
 
   const handleBookNow = (e: React.MouseEvent) => {
-    triggerBigConfetti();
     const uniqueId = selectedItem 
       ? `${service.id}-${selectedSub}-${selectedAct}-${selectedItem.id}`
       : service.id;
@@ -524,7 +519,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
       duration: activeDuration
     });
 
-    setTimeout(() => router.push("/booking"), 300);
+    router.push("/booking");
   };
 
   const handleItemAddToCart = (e: React.MouseEvent, item: any) => {
@@ -546,7 +541,6 @@ function ServiceDetailPageContent({ params }: PageProps) {
   };
 
   const handleItemBookNow = (e: React.MouseEvent, item: any) => {
-    triggerBigConfetti();
     const uniqueId = `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`;
     clearCart();
     addToCart({
@@ -557,7 +551,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
       duration: item.duration
     });
 
-    setTimeout(() => router.push("/booking"), 300);
+    router.push("/booking");
   };
 
   // Matched Specialist Logic (BookMyBai / Pronto Verification Feature)
@@ -934,12 +928,12 @@ function ServiceDetailPageContent({ params }: PageProps) {
                     </button>
                   </div>
 
-                  <div className="space-y-3 text-[11px] text-slate-500 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
-                    <div className="flex items-center gap-2">
+                   <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
+                    <div className="flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-success-lux" /> Vetted 5-Star Specialist
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-accent-lux" /> On-time Guarantee (₹1,000 late refund)
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-accent-lux" /> On-time Insourence
                     </div>
                   </div>
                 </div>
@@ -1300,8 +1294,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
                       <button
                         onClick={() => {
-                          triggerBigConfetti();
-                          setTimeout(() => router.push("/booking"), 300);
+                          router.push("/booking");
                         }}
                         className="w-full bg-accent-lux hover:bg-accent-lux/95 text-white font-extrabold text-xs py-3.5 rounded-full shadow-md flex items-center justify-center gap-1.5 transition-all hover:scale-[1.01] cursor-pointer relative overflow-hidden"
                       >

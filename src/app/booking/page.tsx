@@ -220,7 +220,7 @@ export default function BookingPage() {
                             ? "bg-accent-lux border-accent-lux text-white scale-110 shadow-lg shadow-accent-lux/20"
                             : isActive
                             ? "bg-background border-accent-lux text-accent-lux"
-                            : "bg-background border-slate-250 dark:border-slate-800 text-slate-400"
+                            : "bg-background border-slate-200 dark:border-slate-800 text-slate-400"
                         }`}
                       >
                         <Icon className="w-4 h-4" />
@@ -273,7 +273,7 @@ export default function BookingPage() {
                           cart.map((item) => (
                             <div
                               key={item.id}
-                              className="flex justify-between items-center p-4 sm:p-5 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-850"
+                              className="flex justify-between items-center p-4 sm:p-5 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800"
                             >
                               <div>
                                 <span className="text-xs sm:text-sm font-bold text-foreground">{item.name}</span>
@@ -313,7 +313,7 @@ export default function BookingPage() {
                                 });
                                 addNotification("Added to Cart", "Bio-Disinfection Treatment added.", "success");
                               }}
-                              className="p-4 bg-white dark:bg-slate-950/20 border border-slate-150 dark:border-slate-800 rounded-2xl text-left hover:border-accent-lux transition-all cursor-pointer flex flex-col justify-between h-28 group"
+                              className="p-4 bg-white dark:bg-slate-950/20 shadow-md hover:shadow-lg rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between h-28 group"
                             >
                               <div>
                                 <span className="text-xs font-bold text-foreground group-hover:text-accent-lux transition-colors">Bio-Disinfection Cover</span>
@@ -336,7 +336,7 @@ export default function BookingPage() {
                                 });
                                 addNotification("Added to Cart", "Satisfaction Warranty added.", "success");
                               }}
-                              className="p-4 bg-white dark:bg-slate-950/20 border border-slate-150 dark:border-slate-800 rounded-2xl text-left hover:border-accent-lux transition-all cursor-pointer flex flex-col justify-between h-28 group"
+                              className="p-4 bg-white dark:bg-slate-950/20 shadow-md hover:shadow-lg rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between h-28 group"
                             >
                               <div>
                                 <span className="text-xs font-bold text-foreground group-hover:text-accent-lux transition-colors">90-Day Extension warranty</span>
@@ -373,7 +373,7 @@ export default function BookingPage() {
                               className={`p-4 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
                                 isSelected
                                   ? "bg-accent-lux text-white border-accent-lux shadow-lg shadow-accent-lux/20 scale-105"
-                                  : "bg-slate-50 dark:bg-slate-900 border-slate-150 dark:border-slate-800/80 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
+                                  : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800/80 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
                               }`}
                             >
                               <span className="text-[9px] font-bold uppercase tracking-wider opacity-85">{d.label}</span>
@@ -397,7 +397,7 @@ export default function BookingPage() {
                                 className={`p-4 rounded-2xl border text-center cursor-pointer text-xs font-bold transition-all duration-300 ${
                                   isSelected
                                     ? "bg-accent-lux text-white border-accent-lux shadow-lg shadow-accent-lux/20 scale-105"
-                                    : "bg-slate-50 dark:bg-slate-900 border-slate-150 dark:border-slate-800/80 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
+                                    : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800/80 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
                                 }`}
                               >
                                 {slot}
@@ -499,10 +499,10 @@ export default function BookingPage() {
                               className={`p-5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-start gap-4 select-none ${
                                 isSelected
                                   ? "border-accent-lux bg-accent-lux/[0.03] shadow-sm"
-                                  : "border-slate-150 dark:border-slate-850 hover:border-accent-lux/40 bg-white dark:bg-slate-950/20"
+                                  : "border-slate-200 dark:border-slate-800 hover:border-accent-lux/40 bg-white dark:bg-slate-950/20"
                               }`}
                             >
-                              <div className="w-5 h-5 rounded-full border border-slate-350 dark:border-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+                              <div className="w-5 h-5 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 mt-0.5">
                                 {isSelected && <div className="w-2.5 h-2.5 bg-accent-lux rounded-full animate-pulse" />}
                               </div>
                               <div>
@@ -626,7 +626,7 @@ export default function BookingPage() {
                         </p>
                       </div>
 
-                      <div className="w-full bg-slate-50 dark:bg-slate-950/30 p-6 rounded-3xl border border-slate-100 dark:border-slate-850 text-left space-y-4 shadow-sm">
+                      <div className="w-full bg-slate-50 dark:bg-slate-950/30 p-6 rounded-3xl border border-slate-100 dark:border-slate-800 text-left space-y-4 shadow-sm">
                         <div className="flex justify-between items-center text-[10px] text-slate-400 uppercase tracking-widest font-black">
                           <span>Booking Summary</span>
                           <span>Invoice Ready</span>

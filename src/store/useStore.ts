@@ -109,6 +109,9 @@ interface AppState {
   setChatOpen: (open: boolean) => void;
   chatMessages: ChatMessage[];
   sendChatMessage: (text: string, sender?: "user" | "bot" | "partner") => void;
+  updateProfile: (name: string, phone: string) => void;
+  addWalletFunds: (amount: number) => void;
+  redeemLoyaltyPoints: (points: number) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -140,6 +143,9 @@ export const useStore = create<AppState>()(
         })),
       login: (phone) => set({ isLoggedIn: true, guestMode: false, userPhone: phone, userName: "User " + phone.slice(-4) }),
       logout: () => set({ isLoggedIn: false, guestMode: true, userPhone: "", userName: "", bookings: [], cart: [] }),
+      updateProfile: (name, phone) => set({ userName: name, userPhone: phone }),
+      addWalletFunds: (amount) => set((state) => ({ walletBalance: state.walletBalance + amount })),
+      redeemLoyaltyPoints: (points) => set((state) => ({ loyaltyPoints: Math.max(0, state.loyaltyPoints - points) })),
 
       // Cart
       cart: [],

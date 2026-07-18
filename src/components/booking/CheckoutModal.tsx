@@ -261,7 +261,7 @@ export default function CheckoutModal({
                         duration: 30
                       })
                     }
-                    className="p-3 bg-white dark:bg-slate-950/20 border border-slate-150 dark:border-slate-800 rounded-2xl text-left hover:border-accent-lux transition-all cursor-pointer flex flex-col justify-between h-24"
+                    className="p-3 bg-white dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl text-left hover:border-accent-lux transition-all cursor-pointer flex flex-col justify-between h-24"
                   >
                     <span className="text-[11px] font-bold text-foreground">Bio-Disinfection</span>
                     <div className="flex justify-between items-end w-full">
@@ -279,7 +279,7 @@ export default function CheckoutModal({
                         duration: 0
                       })
                     }
-                    className="p-3 bg-white dark:bg-slate-950/20 border border-slate-150 dark:border-slate-800 rounded-2xl text-left hover:border-accent-lux transition-all cursor-pointer flex flex-col justify-between h-24"
+                    className="p-3 bg-white dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl text-left hover:border-accent-lux transition-all cursor-pointer flex flex-col justify-between h-24"
                   >
                     <span className="text-[11px] font-bold text-foreground">90-Day Extension</span>
                     <div className="flex justify-between items-end w-full">
@@ -309,7 +309,7 @@ export default function CheckoutModal({
                         className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
                           isSelected
                             ? "bg-accent-lux text-white border-accent-lux shadow-lg shadow-accent-lux/20"
-                            : "bg-slate-50 dark:bg-slate-900 border-slate-150 dark:border-slate-800 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
+                            : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
                         }`}
                       >
                         <span className="text-[10px] font-semibold">{d.label}</span>
@@ -334,7 +334,7 @@ export default function CheckoutModal({
                         className={`p-3 rounded-2xl border text-center cursor-pointer text-xs font-bold transition-all duration-300 ${
                           isSelected
                             ? "bg-accent-lux text-white border-accent-lux shadow-lg shadow-accent-lux/20"
-                            : "bg-slate-50 dark:bg-slate-900 border-slate-150 dark:border-slate-800 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
+                            : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
                         }`}
                       >
                         {slot}
@@ -424,10 +424,10 @@ export default function CheckoutModal({
                       className={`p-4 rounded-2xl border cursor-pointer transition-all duration-350 flex items-start gap-3 select-none ${
                         isSelected
                           ? "border-accent-lux bg-accent-lux/5 shadow-md shadow-accent-lux/5"
-                          : "border-slate-150 dark:border-slate-800 hover:border-accent-lux/40 bg-white dark:bg-slate-950/20"
+                          : "border-slate-200 dark:border-slate-800 hover:border-accent-lux/40 bg-white dark:bg-slate-950/20"
                       }`}
                     >
-                      <div className="w-5 h-5 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-5 h-5 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 mt-0.5">
                         {isSelected && <div className="w-2.5 h-2.5 bg-accent-lux rounded-full" />}
                       </div>
                       <div>
