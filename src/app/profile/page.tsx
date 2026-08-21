@@ -419,45 +419,97 @@ function ProfilePageContent() {
                         </div>
 
                         {/* Rescheduling Form Panel */}
-                        {reschedulingId === b.id && (
-                          <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4 mt-4">
-                            <h4 className="text-xs font-bold text-foreground">Select New Slot</h4>
-                            <div className="grid grid-cols-2 gap-4">
-                              <input
-                                type="date"
-                                value={rescheduleDate}
-                                onChange={(e) => setRescheduleDate(e.target.value)}
-                                className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3.5 py-2 rounded-xl text-xs"
-                              />
-                              <select
-                                value={rescheduleSlot}
-                                onChange={(e) => setRescheduleSlot(e.target.value)}
-                                className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3.5 py-2 rounded-xl text-xs text-foreground"
-                              >
-                                <option value="">Select Time Window</option>
-                                <option value="08:00 AM">08:00 AM</option>
-                                <option value="10:00 AM">10:00 AM</option>
-                                <option value="12:00 PM">12:00 PM</option>
-                                <option value="02:00 PM">02:00 PM</option>
-                                <option value="04:00 PM">04:00 PM</option>
-                              </select>
+                        {reschedulingId === b.id && (() => {
+                          const todayISO = new Date().toISOString().split("T")[0];
+                          return (
+                            <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4 mt-4 text-left">
+                              <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 text-accent-lux" /> Select New Reschedule Date & Time
+                              </h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Pick Date (Calendar)</label>
+                                  <input
+                                    type="date"
+                                    min={todayISO}
+                                    value={rescheduleDate}
+                                    onChange={(e) => setRescheduleDate(e.target.value)}
+                                    onClick={(e) => {
+                                      try {
+                                        (e.currentTarget as HTMLInputElement).showPicker?.();
+                                      } catch (err) {}
+                                    }}
+                                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-accent-lux cursor-pointer"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Pick Arrival Time</label>
+                                  <div className="flex gap-2">
+                                    <select
+                                      value={["08:00 AM", "10:00 AM", "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"].includes(rescheduleSlot) ? rescheduleSlot : "custom"}
+                                      onChange={(e) => {
+                                        if (e.target.value !== "custom") {
+                                          setRescheduleSlot(e.target.value);
+                                        }
+                                      }}
+                                      className="w-1/2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-foreground font-semibold cursor-pointer"
+                                    >
+                                      <option value="">Preset Slot</option>
+                                      <option value="08:00 AM">08:00 AM</option>
+                                      <option value="10:00 AM">10:00 AM</option>
+                                      <option value="12:00 PM">12:00 PM</option>
+                                      <option value="02:00 PM">02:00 PM</option>
+                                      <option value="04:00 PM">04:00 PM</option>
+                                      <option value="06:00 PM">06:00 PM</option>
+                                      <option value="custom">Custom...</option>
+                                    </select>
+                                    <input
+                                      type="time"
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val) {
+                                          const [hStr, mStr] = val.split(":");
+                                          let hour = parseInt(hStr, 10);
+                                          const ampm = hour >= 12 ? "PM" : "AM";
+                                          hour = hour % 12;
+                                          if (hour === 0) hour = 12;
+                                          const hourStr = hour < 10 ? `0${hour}` : `${hour}`;
+                                          setRescheduleSlot(`${hourStr}:${mStr || '00'} ${ampm}`);
+                                        }
+                                      }}
+                                      onClick={(e) => {
+                                        try {
+                                          (e.currentTarget as HTMLInputElement).showPicker?.();
+                                        } catch (err) {}
+                                      }}
+                                      className="w-1/2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-foreground font-semibold cursor-pointer"
+                                      title="Open Time Picker"
+                                    />
+                                  </div>
+                                  {rescheduleSlot && (
+                                    <p className="text-[10px] text-accent-lux font-semibold mt-1">
+                                      Selected Slot: {rescheduleSlot}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2 pt-1">
+                                <button
+                                  onClick={() => setReschedulingId(null)}
+                                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  onClick={() => handleRescheduleSubmit(b.id)}
+                                  className="px-4 py-2 rounded-xl bg-accent-lux hover:bg-accent-lux/95 text-white text-[10px] font-bold cursor-pointer shadow-md"
+                                >
+                                  Save Changes
+                                </button>
+                              </div>
                             </div>
-                            <div className="flex justify-end gap-2">
-                              <button
-                                onClick={() => setReschedulingId(null)}
-                                className="px-4 py-2 rounded-xl bg-slate-200 text-[10px] font-bold text-slate-700"
-                              >
-                                Cancel
-                              </button>
-                              <button
-                                onClick={() => handleRescheduleSubmit(b.id)}
-                                className="px-4 py-2 rounded-xl bg-accent-lux text-white text-[10px] font-bold"
-                              >
-                                Save Changes
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>

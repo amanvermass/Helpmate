@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   X,
@@ -15,11 +15,20 @@ import {
   ShieldCheck,
   ChevronRight,
   ChevronLeft,
-  Smartphone
+  Smartphone,
+  Sparkles,
+  ShoppingBag,
+  Info,
+  Home,
+  Briefcase,
+  Building,
+  Tag
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore, Address, CartItem } from "@/store/useStore";
 import confetti from "canvas-confetti";
+import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/booking/CustomDateTimePickerModal";
+import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
 
 interface Props {
   isOpen: boolean;
@@ -69,14 +78,49 @@ export default function CheckoutModal({
   const [newAddressLine, setNewAddressLine] = useState("");
   const [newCity, setNewCity] = useState("Varanasi");
 
-  // Payment Selection
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "upi" | "cod">("card");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
+  // Custom Date & Time expand state & refs
+  const [showCustomDate, setShowCustomDate] = useState(false);
+  const [showCustomTime, setShowCustomTime] = useState(false);
+  const datePickerRef = useRef<HTMLDivElement>(null);
+  const timePickerRef = useRef<HTMLDivElement>(null);
 
-  // Simulated booking tracking
-  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
+  // Click outside listener for pickers
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target as Node)) {
+        setShowCustomDate(false);
+      }
+      if (timePickerRef.current && !timePickerRef.current.contains(e.target as Node)) {
+        setShowCustomTime(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const format24To12 = (time24: string): string => {
+    if (!time24) return "";
+    const [hStr, mStr] = time24.split(":");
+    let hour = parseInt(hStr, 10);
+    if (isNaN(hour)) return time24;
+    const minutes = mStr || "00";
+    const ampm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12;
+    if (hour === 0) hour = 12;
+    const hourStr = hour < 10 ? `0${hour}` : `${hour}`;
+    return `${hourStr}:${minutes} ${ampm}`;
+  };
+
+  const format12To24 = (time12: string): string => {
+    if (!time12) return "";
+    const match = time12.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return "";
+    let [_, hStr, mStr, ampm] = match;
+    let hour = parseInt(hStr, 10);
+    if (ampm.toUpperCase() === "PM" && hour < 12) hour += 12;
+    if (ampm.toUpperCase() === "AM" && hour === 12) hour = 0;
+    return `${hour < 10 ? '0' : ''}${hour}:${mStr}`;
+  };
 
   // Initialize cart with current service if empty
   useEffect(() => {
@@ -120,7 +164,7 @@ export default function CheckoutModal({
     if (success) {
       setCouponInput("");
     } else {
-      setCouponError("Invalid coupon code. Try LUXURY50");
+      setCouponError("Invalid coupon code.");
     }
   };
 
@@ -136,12 +180,16 @@ export default function CheckoutModal({
   };
 
   const handleNextStep = () => {
+    if (step === 0 && cart.length === 0) {
+      alert("Your cart is empty. Please select a service to continue.");
+      return;
+    }
     if (step === 1 && (!selectedDate || !selectedTimeSlot)) {
-      alert("Please select a date and time slot.");
+      alert("Please select a date and arrival time window.");
       return;
     }
     if (step === 2 && !selectedAddressId) {
-      alert("Please select or add a delivery address.");
+      alert("Please select or add a service address.");
       return;
     }
     if (step < 3) {
@@ -152,10 +200,9 @@ export default function CheckoutModal({
       if (newBk) {
         setCreatedBookingId(newBk.id);
         setStep(4);
-        // Blast Confetti
         confetti({
-          particleCount: 150,
-          spread: 80,
+          particleCount: 120,
+          spread: 70,
           origin: { y: 0.6 }
         });
       }
@@ -163,82 +210,132 @@ export default function CheckoutModal({
   };
 
   const handlePrevStep = () => {
-    if (step > 0) setStep(step - 1);
+    if (step > 0) {
+      setStep(step - 1);
+    }
   };
+
+  // Payment Selection
+  const [paymentMethod, setPaymentMethod] = useState<"pay_after" | "upi" | "card" | "cod">("pay_after");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [showCouponsSlider, setShowCouponsSlider] = useState(false);
+
+  // Simulated booking tracking
+  const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
 
   // Pricing math
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   let discount = 0;
-  if (appliedCoupon === "LUXURY50") discount = Math.min(500, subtotal * 0.15);
-  if (appliedCoupon === "WELCOME100") discount = 100;
-  if (appliedCoupon === "SUPERDEAL") discount = Math.min(1000, subtotal * 0.25);
+  if (appliedCoupon === "HELPMATE20") discount = Math.min(300, Math.round(subtotal * 0.20));
+  else if (appliedCoupon === "LUXURY50") discount = 150;
+  else if (appliedCoupon === "COOLING100") discount = 100;
+  else if (appliedCoupon === "SUPERFEST") discount = Math.min(500, Math.round(subtotal * 0.25));
+  else if (appliedCoupon === "WELCOME100") discount = 100;
+  else if (appliedCoupon === "SUPERDEAL") discount = Math.min(1000, Math.round(subtotal * 0.25));
   const total = Math.max(0, subtotal - discount);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 font-sans">
-      {/* Background Mask */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-md"
-      />
-
-      {/* Main Dialog Box */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-2xl bg-background/90 dark:bg-slate-900/90 glass-panel shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="glass-panel w-full max-w-3xl rounded-[32px] shadow-2xl overflow-hidden my-8 relative text-left border border-slate-200 dark:border-slate-800"
       >
         {/* Modal Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-base text-foreground flex items-center gap-1.5">
-              <ShieldCheck className="w-5 h-5 text-accent-lux" /> Booking Concierge
-            </h3>
-            {step < 4 && (
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                Step {step + 1} of 4:{" "}
-                {step === 0 && "Review Service Cart"}
-                {step === 1 && "Select Scheduling Slot"}
-                {step === 2 && "Configure Location Address"}
-                {step === 3 && "Complete Secure Checkout"}
-              </p>
-            )}
+        <div className="p-6 bg-slate-50/80 dark:bg-slate-900/80 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-accent-lux/10 flex items-center justify-center text-accent-lux">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-base text-foreground tracking-tight">Express Checkout</h3>
+              <p className="text-[11px] text-slate-400">Complete your luxury service reservation</p>
+            </div>
           </div>
-          {step < 4 && (
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-colors cursor-pointer"
-            >
-              <X className="w-4 h-4 text-foreground" />
-            </button>
-          )}
+          <button
+            onClick={onClose}
+            className="w-9 h-9 rounded-full bg-slate-200/50 dark:bg-slate-800 flex items-center justify-center text-slate-400 hover:text-foreground cursor-pointer transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Modal Body / Steps Scroll area */}
-        <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
-          {/* STEP 0: Cart list & Add-ons */}
+        {/* Stepper Header Bar */}
+        {step < 4 && (
+          <div className="px-8 pt-6 pb-2 border-b border-slate-100 dark:border-slate-800/60 bg-slate-50/30 dark:bg-slate-950/20">
+            <div className="flex items-center justify-between relative max-w-lg mx-auto">
+              <div className="absolute left-[18px] right-[18px] top-[18px] h-0.5 bg-slate-200 dark:bg-slate-800 -translate-y-1/2 z-0" />
+              <div
+                className="absolute left-[18px] top-[18px] h-0.5 bg-accent-lux -translate-y-1/2 transition-all duration-500 z-0"
+                style={{ width: `calc(${(step / 3) * 100}% - ${(step / 3) * 36}px)` }}
+              />
+
+              {[
+                { label: "Cart", icon: ShoppingBag },
+                { label: "Schedule", icon: Calendar },
+                { label: "Address", icon: MapPin },
+                { label: "Payment", icon: CreditCard }
+              ].map((s, idx) => {
+                const Icon = s.icon;
+                const isActive = step >= idx;
+                const isCurrent = step === idx;
+                return (
+                  <div key={idx} className="flex flex-col items-center relative z-10">
+                    <div
+                      className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
+                        isCurrent
+                          ? "bg-accent-lux border-accent-lux text-white scale-110 shadow-lg shadow-accent-lux/20"
+                          : isActive
+                          ? "bg-background border-accent-lux text-accent-lux"
+                          : "bg-background border-slate-200 dark:border-slate-800 text-slate-400"
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span
+                      className={`text-[9px] font-black uppercase tracking-wider mt-2 transition-colors duration-500 ${
+                        isActive ? "text-accent-lux" : "text-slate-400"
+                      }`}
+                    >
+                      {s.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Modal Body */}
+        <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto">
+          {/* STEP 0: Cart Review */}
           {step === 0 && (
             <div className="space-y-6">
-              <h4 className="font-bold text-sm text-foreground">Confirm Selected Service</h4>
+              <div>
+                <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                  <ShoppingBag className="w-4 h-4 text-accent-lux" /> Review Cart Items
+                </h4>
+                <p className="text-xs text-slate-400 mt-1">Confirm details of your selected services</p>
+              </div>
+
               <div className="space-y-3">
                 {cart.map((item) => (
                   <div
                     key={item.id}
-                    className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-850"
+                    className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800"
                   >
                     <div>
                       <span className="text-xs font-bold text-foreground">{item.name}</span>
-                      <p className="text-[10px] text-slate-400 mt-1 capitalize">{item.category} • {item.duration} mins</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 capitalize">{item.category} • {item.duration} mins</p>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm font-bold text-foreground">₹{item.price * item.quantity}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-extrabold text-foreground">₹{item.price * item.quantity}</span>
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="text-red-400 hover:text-red-500 cursor-pointer"
+                        className="text-slate-400 hover:text-red-500 cursor-pointer p-1 rounded-lg"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -246,118 +343,236 @@ export default function CheckoutModal({
                   </div>
                 ))}
               </div>
-
-              {/* Suggestions for Add-ons */}
-              <div className="pt-2">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Premium Add-ons</span>
-                <div className="grid grid-cols-2 gap-4 mt-3">
-                  <button
-                    onClick={() =>
-                      addToCart({
-                        id: "addon-disinfect",
-                        name: "Full Shield Bio-Disinfection",
-                        price: 399,
-                        category: "cleaning",
-                        duration: 30
-                      })
-                    }
-                    className="p-3 bg-white dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl text-left hover:border-accent-lux transition-all cursor-pointer flex flex-col justify-between h-24"
-                  >
-                    <span className="text-[11px] font-bold text-foreground">Bio-Disinfection</span>
-                    <div className="flex justify-between items-end w-full">
-                      <span className="text-xs font-bold text-accent-lux">+₹399</span>
-                      <Plus className="w-4 h-4 text-slate-400" />
-                    </div>
-                  </button>
-                  <button
-                    onClick={() =>
-                      addToCart({
-                        id: "addon-warranty",
-                        name: "Extended 90-Day Warranty Cover",
-                        price: 199,
-                        category: "cleaning",
-                        duration: 0
-                      })
-                    }
-                    className="p-3 bg-white dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl text-left hover:border-accent-lux transition-all cursor-pointer flex flex-col justify-between h-24"
-                  >
-                    <span className="text-[11px] font-bold text-foreground">90-Day Extension</span>
-                    <div className="flex justify-between items-end w-full">
-                      <span className="text-xs font-bold text-accent-lux">+₹199</span>
-                      <Plus className="w-4 h-4 text-slate-400" />
-                    </div>
-                  </button>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* STEP 1: Schedule Selection */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-accent-lux" /> Select Booking Date
-                </h4>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mt-4">
-                  {dates.map((d) => {
-                    const isSelected = selectedDate === d.iso;
-                    return (
-                      <button
-                        key={d.iso}
-                        onClick={() => setSelectedDate(d.iso)}
-                        className={`p-3 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
-                          isSelected
-                            ? "bg-accent-lux text-white border-accent-lux shadow-lg shadow-accent-lux/20"
-                            : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
-                        }`}
-                      >
-                        <span className="text-[10px] font-semibold">{d.label}</span>
-                        <span className="text-sm font-extrabold mt-1">{d.dayNum}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                    {/* STEP 1: Quick Cards with Active Highlight State */}
+          {step === 1 && (() => {
+            const todayISO = new Date().toISOString().split("T")[0];
+            const isPresetDate = dates.slice(0, 5).some((d) => d.iso === selectedDate);
+            const isCustomDateActive = !!(selectedDate && (!isPresetDate || showCustomDate));
+            const isPresetTime = timeSlots.includes(selectedTimeSlot || "");
+            const isCustomTimeActive = !!(selectedTimeSlot && (!isPresetTime || showCustomTime));
 
-              <div>
-                <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-accent-lux" /> Select Arrival Time Window
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
-                  {timeSlots.map((slot) => {
-                    const isSelected = selectedTimeSlot === slot;
-                    return (
+            return (
+              <div className="space-y-6 text-left">
+                <div>
+                  <h4 className="font-extrabold text-sm text-foreground flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-[#782860]" /> Select Booking Date
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-1">Choose a preset day or pick any custom calendar date</p>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
+                    {dates.slice(0, 5).map((d) => {
+                      const isSelected = selectedDate === d.iso && !showCustomDate && !isCustomDateActive;
+                      return (
+                        <button
+                          key={d.iso}
+                          type="button"
+                          onClick={() => {
+                            setSelectedDate(d.iso);
+                            setShowCustomDate(false);
+                          }}
+                          className={`relative p-3 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
+                            isSelected
+                              ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
+                              : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
+                              <CheckCircle className="w-3.5 h-3.5 fill-emerald-500 text-white" />
+                            </span>
+                          )}
+                          <span className="text-[10px] font-bold uppercase tracking-wider">{d.label}</span>
+                          <span className="text-sm font-black mt-1">{d.dayNum}</span>
+                        </button>
+                      );
+                    })}
+
+                    {/* Custom Date Card Button */}
+                    <div ref={datePickerRef} className="relative">
                       <button
-                        key={slot}
-                        onClick={() => setSelectedTimeSlot(slot)}
-                        className={`p-3 rounded-2xl border text-center cursor-pointer text-xs font-bold transition-all duration-300 ${
-                          isSelected
-                            ? "bg-accent-lux text-white border-accent-lux shadow-lg shadow-accent-lux/20"
-                            : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-accent-lux/40 text-slate-700 dark:text-slate-300"
+                        type="button"
+                        onClick={() => {
+                          setShowCustomDate((prev) => {
+                            const next = !prev;
+                            if (next) setShowCustomTime(false);
+                            return next;
+                          });
+                          if (!selectedDate || isPresetDate) {
+                            setSelectedDate(todayISO);
+                          }
+                        }}
+                        className={`w-full h-full p-3 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
+                          isCustomDateActive || showCustomDate
+                            ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
+                            : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
                         }`}
                       >
-                        {slot}
+                        {(isCustomDateActive || showCustomDate) && (
+                          <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
+                            <CheckCircle className="w-3.5 h-3.5 fill-emerald-500 text-white" />
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span className="text-[9px] font-bold uppercase">Custom</span>
+                        </div>
+                        <span className="text-[11px] font-extrabold mt-1 truncate max-w-full">
+                          {isCustomDateActive && selectedDate ? selectedDate : "Calendar"}
+                        </span>
                       </button>
-                    );
-                  })}
+
+                      {/* Floating Popover on Top */}
+                      <AnimatePresence>
+                        {showCustomDate && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                            transition={{ duration: 0.18 }}
+                            className="absolute bottom-full right-0 mb-2 z-50 shadow-2xl rounded-2xl"
+                          >
+                            <InlineCustomDatePicker
+                              selectedDate={selectedDate}
+                              onSelectDate={(iso) => {
+                                setSelectedDate(iso);
+                                setShowCustomDate(false);
+                              }}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 relative">
+                  <h4 className="font-extrabold text-sm text-foreground flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#782860]" /> Select Arrival Time Window
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mt-4">
+                    {timeSlots.map((slot) => {
+                      const isSelected = selectedTimeSlot === slot && !isCustomTimeActive && !showCustomTime;
+                      return (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTimeSlot(slot);
+                            setShowCustomTime(false);
+                          }}
+                          className={`relative p-3 rounded-2xl border text-center cursor-pointer text-xs font-black transition-all duration-300 ${
+                            isSelected
+                              ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
+                              : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
+                          }`}
+                        >
+                          {isSelected && (
+                            <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
+                              <CheckCircle className="w-3.5 h-3.5 fill-emerald-500 text-white" />
+                            </span>
+                          )}
+                          {slot}
+                        </button>
+                      );
+                    })}
+
+                    {/* Custom Time Card Button */}
+                    <div ref={timePickerRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowCustomTime((prev) => {
+                            const next = !prev;
+                            if (next) setShowCustomDate(false);
+                            return next;
+                          });
+                          if (!selectedTimeSlot || isPresetTime) {
+                            setSelectedTimeSlot("09:00 AM");
+                          }
+                        }}
+                        className={`w-full h-full p-3 rounded-2xl border text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-300 ${
+                          isCustomTimeActive || showCustomTime
+                            ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
+                            : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
+                        }`}
+                      >
+                        {(isCustomTimeActive || showCustomTime) && (
+                          <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
+                            <CheckCircle className="w-3.5 h-3.5 fill-emerald-500 text-white" />
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span className="text-[9px] font-bold uppercase">Custom</span>
+                        </div>
+                        <span className="text-[11px] font-extrabold mt-0.5 truncate max-w-full">
+                          {isCustomTimeActive && selectedTimeSlot ? selectedTimeSlot : "Clock Dial"}
+                        </span>
+                      </button>
+
+                      {/* Floating Popover on Top */}
+                      <AnimatePresence>
+                        {showCustomTime && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                            transition={{ duration: 0.18 }}
+                            className="absolute bottom-full right-0 mb-2 z-50 shadow-2xl rounded-2xl"
+                          >
+                            <InlineCustomTimePicker
+                              selectedTime={selectedTimeSlot}
+                              onSelectTime={(time12) => {
+                                setSelectedTimeSlot(time12);
+                                setShowCustomTime(false);
+                              }}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+
+                {/* IMPORTANT AVAILABILITY NOTE BANNER */}
+                <div className="pt-4 border-t border-slate-100 dark:border-slate-800 bg-amber-50/70 dark:bg-amber-950/25 p-4 rounded-2xl border border-amber-200/80 dark:border-amber-900/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-left">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <Info className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-[11px] font-black text-amber-950 dark:text-amber-200 uppercase tracking-wider">
+                        Important Availability Note
+                      </h4>
+                      <p className="text-xs text-amber-900/90 dark:text-amber-300/80 mt-0.5 leading-relaxed">
+                        Please note: Available dates and arrival time slots may vary depending on service type, location, and real-time partner availability. Schedules are updated dynamically and may differ over time.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* STEP 2: Address configuration */}
           {step === 2 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-accent-lux" /> Select Service Address
-                </h4>
+            <div className="space-y-6 text-left">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                <div>
+                  <h4 className="font-extrabold text-sm text-foreground flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#782860]" /> Select Service Location
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">Specify where our uniformed team will perform the work</p>
+                </div>
                 <button
+                  type="button"
                   onClick={() => setShowAddAddress(!showAddAddress)}
-                  className="text-xs text-accent-lux font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                  className="px-3.5 py-1.5 bg-[#782860]/10 text-[#782860] dark:bg-[#782860]/20 dark:text-purple-300 hover:bg-[#782860] hover:text-white font-extrabold text-xs rounded-2xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add New Address
+                  <Plus className="w-3.5 h-3.5" /> Add Address
                 </button>
               </div>
 
@@ -368,43 +583,55 @@ export default function CheckoutModal({
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-4 overflow-hidden"
+                    transition={{ duration: 0.2 }}
+                    className="p-5 bg-slate-50 dark:bg-slate-950/60 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 overflow-hidden shadow-inner text-left"
                   >
+                    <h5 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                      <Plus className="w-3.5 h-3.5 text-[#782860]" /> Add New Location
+                    </h5>
+
                     <div className="flex gap-2">
-                      {(["Home", "Work", "Other"] as const).map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => setNewTag(tag)}
-                          className={`px-3 py-1 rounded-full text-[10px] font-bold ${
-                            newTag === tag
-                              ? "bg-primary-lux text-white"
-                              : "bg-white dark:bg-slate-900 text-slate-500 border border-slate-200"
-                          }`}
-                        >
-                          {tag}
-                        </button>
-                      ))}
+                      {(["Home", "Work", "Other"] as const).map((tag) => {
+                        const isTagActive = newTag === tag;
+                        const TagIcon = tag === "Home" ? Home : tag === "Work" ? Briefcase : Building;
+                        return (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => setNewTag(tag)}
+                            className={`px-3 py-1.5 rounded-2xl text-xs font-extrabold cursor-pointer transition-all flex items-center gap-1 ${
+                              isTagActive
+                                ? "bg-[#782860] text-white shadow-md shadow-[#782860]/30 scale-105"
+                                : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800"
+                            }`}
+                          >
+                            <TagIcon className="w-3 h-3" />
+                            {tag}
+                          </button>
+                        );
+                      })}
                     </div>
                     <div className="space-y-2">
                       <input
                         type="text"
-                        placeholder="Street Address, Apt, Suite..."
+                        placeholder="House / Flat No., Building Name, Street & Landmark..."
                         value={newAddressLine}
                         onChange={(e) => setNewAddressLine(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-xs text-foreground focus:outline-none focus:border-accent-lux"
+                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-3 rounded-2xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-[#782860]/40 transition-all"
                       />
                     </div>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2.5 pt-1">
                       <button
+                        type="button"
                         onClick={() => setShowAddAddress(false)}
-                        className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-[10px] font-bold text-slate-700"
+                        className="px-4 py-2 rounded-2xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
                       >
                         Cancel
                       </button>
                       <button
+                        type="button"
                         onClick={handleAddAddressSubmit}
-                        className="px-4 py-2 rounded-xl bg-accent-lux hover:bg-accent-lux/95 text-[10px] font-bold text-white"
+                        className="px-5 py-2 rounded-2xl bg-gradient-to-r from-[#782860] to-[#a03480] text-xs font-black text-white cursor-pointer shadow-md shadow-[#782860]/25"
                       >
                         Save Location
                       </button>
@@ -417,26 +644,43 @@ export default function CheckoutModal({
               <div className="space-y-3">
                 {addresses.map((addr) => {
                   const isSelected = selectedAddressId === addr.id;
+                  const TagIcon = addr.tag === "Home" ? Home : addr.tag === "Work" ? Briefcase : Building;
+
                   return (
                     <div
                       key={addr.id}
                       onClick={() => setSelectedAddressId(addr.id)}
-                      className={`p-4 rounded-2xl border cursor-pointer transition-all duration-350 flex items-start gap-3 select-none ${
+                      className={`p-4.5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-start justify-between gap-3 select-none ${
                         isSelected
-                          ? "border-accent-lux bg-accent-lux/5 shadow-md shadow-accent-lux/5"
-                          : "border-slate-200 dark:border-slate-800 hover:border-accent-lux/40 bg-white dark:bg-slate-950/20"
+                          ? "border-[#782860] bg-gradient-to-r from-[#782860]/5 via-purple-500/5 to-transparent shadow-md ring-2 ring-[#782860]/30 scale-[1.01]"
+                          : "border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 bg-slate-50/50 dark:bg-slate-950/20"
                       }`}
                     >
-                      <div className="w-5 h-5 rounded-full border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                        {isSelected && <div className="w-2.5 h-2.5 bg-accent-lux rounded-full" />}
+                      <div className="flex items-start gap-3">
+                        <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                          isSelected ? "border-[#782860] bg-[#782860]" : "border-slate-300 dark:border-slate-700"
+                        }`}>
+                          {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                        </div>
+                        <div className="space-y-0.5 text-left">
+                          <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                            isSelected
+                              ? "bg-[#782860] text-white"
+                              : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                          }`}>
+                            <TagIcon className="w-2.5 h-2.5" />
+                            {addr.tag}
+                          </span>
+                          <p className="text-xs font-extrabold text-foreground pt-1 leading-snug">{addr.addressLine}</p>
+                          <p className="text-[10px] text-slate-400 font-medium">{addr.city}, UP</p>
+                        </div>
                       </div>
-                      <div>
-                        <span className="inline-block bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[8px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                          {addr.tag}
+
+                      {isSelected && (
+                        <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-[10px] rounded-xl flex items-center gap-1 shrink-0 border border-emerald-500/20">
+                          <CheckCircle className="w-3 h-3" /> Selected
                         </span>
-                        <p className="text-xs font-bold text-foreground mt-2">{addr.addressLine}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{addr.city}</p>
-                      </div>
+                      )}
                     </div>
                   );
                 })}
@@ -448,17 +692,27 @@ export default function CheckoutModal({
           {step === 3 && (
             <div className="space-y-6">
               {/* Coupon Code Section */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
+              <div className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800 text-left">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowCouponsSlider(true)}
+                    className="text-[11px] font-extrabold text-[#782860] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Tag className="w-3 h-3" /> View Admin Offers (5)
+                  </button>
+                </div>
                 <div className="flex gap-2 mt-2">
                   <input
                     type="text"
-                    placeholder="Enter code (LUXURY50)"
+                    placeholder="Enter code (HELPMATE20)"
                     value={couponInput}
                     onChange={(e) => setCouponInput(e.target.value)}
                     className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-xs text-foreground focus:outline-none focus:border-accent-lux"
                   />
                   <button
+                    type="button"
                     onClick={handleApplyCoupon}
                     className="px-5 py-2.5 rounded-xl bg-primary-lux dark:bg-slate-800 hover:bg-slate-700 text-xs font-bold text-white cursor-pointer"
                   >
@@ -467,37 +721,69 @@ export default function CheckoutModal({
                 </div>
                 {couponError && <p className="text-[10px] text-red-500 mt-2 pl-2">{couponError}</p>}
                 {appliedCoupon && (
-                  <div className="mt-3 flex items-center justify-between bg-success-lux/10 border border-success-lux/20 text-success-lux px-3.5 py-2 rounded-xl text-[11px] font-bold">
-                    <span className="flex items-center gap-1.5"><Percent className="w-3.5 h-3.5" /> Code {appliedCoupon} Applied!</span>
-                    <button onClick={removeCoupon} className="hover:underline text-[10px]">Remove</button>
+                  <div className="mt-3 flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl text-[11px] font-bold">
+                    <span className="flex items-center gap-1.5"><Percent className="w-3.5 h-3.5 text-emerald-500" /> Code {appliedCoupon} Applied!</span>
+                    <button type="button" onClick={removeCoupon} className="hover:underline text-[10px] text-rose-500 cursor-pointer">Remove</button>
                   </div>
                 )}
               </div>
 
               {/* Payment Methods */}
-              <div>
+              <div className="text-left">
                 <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 mb-4">
-                  <CreditCard className="w-4 h-4 text-accent-lux" /> Select Payment Method
+                  <CreditCard className="w-4 h-4 text-[#782860]" /> Select Payment Method
                 </h4>
-                <div className="flex border-b border-slate-100 dark:border-slate-800 mb-6">
-                  {(["card", "upi", "cod"] as const).map((method) => (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
+                  {(["pay_after", "upi", "card", "cod"] as const).map((method) => (
                     <button
                       key={method}
+                      type="button"
                       onClick={() => setPaymentMethod(method)}
-                      className={`flex-1 py-3 text-xs font-bold capitalize border-b-2 text-center transition-all ${
+                      className={`p-3 rounded-2xl text-xs font-extrabold capitalize text-center transition-all cursor-pointer border flex flex-col items-center justify-center gap-1 ${
                         paymentMethod === method
-                          ? "border-accent-lux text-accent-lux"
-                          : "border-transparent text-slate-400 hover:text-slate-600"
+                          ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-md ring-2 ring-[#782860]/40 scale-105"
+                          : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-[#782860]/40"
                       }`}
                     >
-                      {method === "card" && "Credit / Debit Card"}
-                      {method === "upi" && "Instant UPI"}
-                      {method === "cod" && "Cash on Delivery"}
+                      <span>
+                        {method === "pay_after" && "Pay After Service"}
+                        {method === "upi" && "Instant UPI"}
+                        {method === "card" && "Credit / Debit Card"}
+                        {method === "cod" && "Cash on Delivery"}
+                      </span>
+                      {method === "pay_after" && (
+                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full ${
+                          paymentMethod === "pay_after" ? "bg-white/20 text-white" : "bg-emerald-500/10 text-emerald-600"
+                        }`}>
+                          Popular
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
 
                 {/* Method Details */}
+                {paymentMethod === "pay_after" && (
+                  <div className="flex flex-col justify-center gap-3 p-5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-700 dark:text-emerald-300 rounded-2xl text-left">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md">
+                        <ShieldCheck className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-emerald-950 dark:text-emerald-200">
+                          Pay After Service Completion
+                        </h4>
+                        <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400">
+                          Zero Upfront Payment Required Today
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-emerald-900/90 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
+                      Inspect the completed work first! Pay comfortably via Cash, UPI, or Card directly to our verified professional after you are 100% satisfied.
+                    </p>
+                  </div>
+                )}
+
                 {paymentMethod === "card" && (
                   <div className="space-y-4">
                     <div className="space-y-1">
@@ -544,11 +830,11 @@ export default function CheckoutModal({
                 )}
 
                 {paymentMethod === "cod" && (
-                  <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 text-amber-600 rounded-2xl">
-                    <ShieldCheck className="w-5 h-5" />
+                  <div className="flex items-center gap-3 p-5 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-500 rounded-2xl text-left">
+                    <ShieldCheck className="w-5 h-5 shrink-0 text-amber-500" />
                     <div>
-                      <p className="text-xs font-bold">Pay Cash or Card After Service</p>
-                      <p className="text-[10px] text-amber-500 mt-0.5">We will request an approval of the inspection price prior to starting.</p>
+                      <p className="text-xs font-bold">Pay Cash or Card After Completion</p>
+                      <p className="text-[10px] text-slate-400 mt-1">Pay comfortably to our verified professionals once the services are finished.</p>
                     </div>
                   </div>
                 )}
@@ -621,6 +907,18 @@ export default function CheckoutModal({
             </div>
           </div>
         )}
+
+        {/* Available Admin Coupons Drawer */}
+        <AvailableCouponsSlider
+          isOpen={showCouponsSlider}
+          onClose={() => setShowCouponsSlider(false)}
+          cartTotal={subtotal}
+          appliedCoupon={appliedCoupon}
+          onApplyCoupon={(code) => {
+            applyCoupon(code);
+          }}
+          onRemoveCoupon={removeCoupon}
+        />
       </motion.div>
     </div>
   );

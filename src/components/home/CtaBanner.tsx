@@ -41,7 +41,7 @@ export default function CtaBanner() {
       {/* Background Image of workers spanning full width/height (end-to-end, no container card) */}
       <div className="absolute inset-0 z-0">
         <img 
-          src="/cta-imgbg.png" 
+          src="/cta-imgbgn.png" 
           alt="HelpMate Technicians Background" 
           className="w-full h-full object-cover object-center pointer-events-none"
         />

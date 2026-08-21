@@ -191,7 +191,8 @@ export const useStore = create<AppState>()(
       appliedCoupon: null,
       applyCoupon: (code) => {
         const cleaned = code.trim().toUpperCase();
-        if (cleaned === "LUXURY50" || cleaned === "WELCOME100" || cleaned === "SUPERDEAL") {
+        const validCodes = ["HELPMATE20", "LUXURY50", "COOLING100", "SUPERFEST", "WELCOME100", "SUPERDEAL"];
+        if (validCodes.includes(cleaned)) {
           set({ appliedCoupon: cleaned });
           return true;
         }
