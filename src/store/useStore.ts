@@ -67,6 +67,16 @@ interface AppState {
   login: (phone: string) => void;
   logout: () => void;
 
+  // Membership Benefits
+  isMember: boolean;
+  membershipTier: "VIP Pass" | "Helpmate Club Plus" | "Club Plus" | null;
+  membershipExpiry: string | null;
+  freeServicesAvailable: number;
+  totalMembershipSavings: number;
+  buyMembership: (tier?: "VIP Pass" | "Helpmate Club Plus" | "Club Plus") => void;
+  toggleMembership: () => void;
+  claimFreeService: () => void;
+
   // Cart
   cart: CartItem[];
   addToCart: (item: Omit<CartItem, "quantity">) => void;
@@ -146,6 +156,31 @@ export const useStore = create<AppState>()(
       updateProfile: (name, phone) => set({ userName: name, userPhone: phone }),
       addWalletFunds: (amount) => set((state) => ({ walletBalance: state.walletBalance + amount })),
       redeemLoyaltyPoints: (points) => set((state) => ({ loyaltyPoints: Math.max(0, state.loyaltyPoints - points) })),
+
+      // Membership State & Actions
+      isMember: false,
+      membershipTier: null,
+      membershipExpiry: null,
+      freeServicesAvailable: 2,
+      totalMembershipSavings: 1450,
+      buyMembership: (tier = "VIP Pass") =>
+        set({
+          isMember: true,
+          membershipTier: tier,
+          membershipExpiry: "Aug 22, 2027",
+          freeServicesAvailable: 2,
+        }),
+      toggleMembership: () =>
+        set((state) => ({
+          isMember: !state.isMember,
+          membershipTier: !state.isMember ? "VIP Pass" : null,
+          membershipExpiry: !state.isMember ? "Aug 22, 2027" : null,
+          freeServicesAvailable: !state.isMember ? 2 : 0,
+        })),
+      claimFreeService: () =>
+        set((state) => ({
+          freeServicesAvailable: Math.max(0, state.freeServicesAvailable - 1),
+        })),
 
       // Cart
       cart: [],

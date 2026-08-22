@@ -29,6 +29,7 @@ import { useStore, Address, CartItem } from "@/store/useStore";
 import confetti from "canvas-confetti";
 import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/booking/CustomDateTimePickerModal";
 import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
+import MembershipBanner from "@/components/membership/MembershipBanner";
 
 interface Props {
   isOpen: boolean;
@@ -65,7 +66,8 @@ export default function CheckoutModal({
     appliedCoupon,
     applyCoupon,
     removeCoupon,
-    createBooking
+    createBooking,
+    isMember
   } = useStore();
 
   const [step, setStep] = useState(0); // 0: Addons/Cart, 1: Schedule, 2: Address, 3: Payment
@@ -227,13 +229,16 @@ export default function CheckoutModal({
 
   // Pricing math
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  let discount = 0;
-  if (appliedCoupon === "HELPMATE20") discount = Math.min(300, Math.round(subtotal * 0.20));
-  else if (appliedCoupon === "LUXURY50") discount = 150;
-  else if (appliedCoupon === "COOLING100") discount = 100;
-  else if (appliedCoupon === "SUPERFEST") discount = Math.min(500, Math.round(subtotal * 0.25));
-  else if (appliedCoupon === "WELCOME100") discount = 100;
-  else if (appliedCoupon === "SUPERDEAL") discount = Math.min(1000, Math.round(subtotal * 0.25));
+  let couponDiscount = 0;
+  if (appliedCoupon === "HELPMATE20") couponDiscount = Math.min(300, Math.round(subtotal * 0.20));
+  else if (appliedCoupon === "LUXURY50") couponDiscount = 150;
+  else if (appliedCoupon === "COOLING100") couponDiscount = 100;
+  else if (appliedCoupon === "SUPERFEST") couponDiscount = Math.min(500, Math.round(subtotal * 0.25));
+  else if (appliedCoupon === "WELCOME100") couponDiscount = 100;
+  else if (appliedCoupon === "SUPERDEAL") couponDiscount = Math.min(1000, Math.round(subtotal * 0.25));
+
+  const memberDiscount = isMember ? Math.round(subtotal * 0.15) : 0;
+  const discount = couponDiscount + memberDiscount;
   const total = Math.max(0, subtotal - discount);
 
   return (
@@ -343,6 +348,9 @@ export default function CheckoutModal({
                   </div>
                 ))}
               </div>
+
+              {/* MEMBERSHIP PROMOTIONAL BANNER */}
+              <MembershipBanner variant="compact" />
             </div>
           )}
 

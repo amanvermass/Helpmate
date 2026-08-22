@@ -32,6 +32,7 @@ import confetti from "canvas-confetti";
 
 import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/booking/CustomDateTimePickerModal";
 import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
+import MembershipBanner from "@/components/membership/MembershipBanner";
 
 export default function BookingPage() {
   const router = useRouter();
@@ -52,7 +53,9 @@ export default function BookingPage() {
     removeCoupon,
     createBooking,
     addNotification,
-    bookings
+    bookings,
+    isMember,
+    membershipTier
   } = useStore();
 
   const [step, setStep] = useState(0); // 0: Cart/Add-ons, 1: Schedule, 2: Address, 3: Payment, 4: Success
@@ -212,17 +215,20 @@ export default function BookingPage() {
     ? matchedBooking.totalAmount
     : cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  let discount = 0;
+  let couponDiscount = 0;
   if (matchedBooking) {
-    discount = matchedBooking.discount;
+    couponDiscount = matchedBooking.discount;
   } else {
-    if (appliedCoupon === "HELPMATE20") discount = Math.min(300, Math.round(subtotal * 0.20));
-    else if (appliedCoupon === "LUXURY50") discount = 150;
-    else if (appliedCoupon === "COOLING100") discount = 100;
-    else if (appliedCoupon === "SUPERFEST") discount = Math.min(500, Math.round(subtotal * 0.25));
-    else if (appliedCoupon === "WELCOME100") discount = 100;
-    else if (appliedCoupon === "SUPERDEAL") discount = Math.min(1000, Math.round(subtotal * 0.25));
+    if (appliedCoupon === "HELPMATE20") couponDiscount = Math.min(300, Math.round(subtotal * 0.20));
+    else if (appliedCoupon === "LUXURY50") couponDiscount = 150;
+    else if (appliedCoupon === "COOLING100") couponDiscount = 100;
+    else if (appliedCoupon === "SUPERFEST") couponDiscount = Math.min(500, Math.round(subtotal * 0.25));
+    else if (appliedCoupon === "WELCOME100") couponDiscount = 100;
+    else if (appliedCoupon === "SUPERDEAL") couponDiscount = Math.min(1000, Math.round(subtotal * 0.25));
   }
+
+  const memberDiscount = (!matchedBooking && isMember) ? Math.round(subtotal * 0.15) : 0;
+  const discount = couponDiscount + memberDiscount;
 
   const total = matchedBooking
     ? matchedBooking.finalAmount
@@ -1014,27 +1020,34 @@ export default function BookingPage() {
                        <span className="font-bold text-foreground">₹{subtotal}</span>
                      </div>
  
-                     {discount > 0 && (
-                       <div className="flex justify-between items-center text-success-lux">
-                         <span>Coupon ({appliedCoupon})</span>
-                         <span className="font-bold">-₹{discount}</span>
-                       </div>
-                     )}
- 
-                     <div className="flex justify-between items-center text-slate-500">
-                       <span>Varanasi Regional Tax (18%)</span>
-                       <span className="font-bold text-foreground">₹0</span>
-                     </div>
- 
-                     <div className="flex justify-between items-center text-slate-500">
-                       <span>Luxury Partner Dispatch Fee</span>
-                       <span className="text-success-lux font-extrabold">FREE</span>
-                     </div>
- 
-                     <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-4 text-sm">
-                       <span className="font-bold text-foreground">Total Due Now</span>
-                       <span className="font-black text-accent-lux text-base">₹{total}</span>
-                     </div>
+                     {couponDiscount > 0 && (
+                        <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                          <span>Promo Coupon ({appliedCoupon})</span>
+                          <span>-₹{couponDiscount}</span>
+                        </div>
+                      )}
+
+                      {memberDiscount > 0 && (
+                        <div className="flex justify-between items-center text-amber-600 dark:text-amber-400 font-bold">
+                          <span className="flex items-center gap-1">👑 VIP Member Discount (15%)</span>
+                          <span>-₹{memberDiscount}</span>
+                        </div>
+                      )}
+
+                      <div className="flex justify-between items-center text-slate-500">
+                        <span>Varanasi Regional Tax (18%)</span>
+                        <span className="font-bold text-foreground">₹0</span>
+                      </div>
+
+                      <div className="flex justify-between items-center text-slate-500">
+                        <span>Luxury Partner Dispatch Fee</span>
+                        <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">FREE</span>
+                      </div>
+
+                      <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-4 text-sm">
+                        <span className="font-bold text-foreground">Total Due Now</span>
+                        <span className="font-black text-accent-lux text-base">₹{total}</span>
+                      </div>
 
                      {/* Promo Coupon Section inside Summary Card */}
                      <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
@@ -1082,6 +1095,9 @@ export default function BookingPage() {
                        </div>
                      </div>
                    </div>
+
+                   {/* MEMBERSHIP PROMOTIONAL CARD */}
+                   <MembershipBanner variant="checkout" />
                  </div>
                 </div>
               )}

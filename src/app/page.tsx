@@ -13,6 +13,7 @@ import FaqSection from "@/components/home/FaqSection";
 import Footer from "@/components/common/Footer";
 import ServiceAreas from "@/components/home/ServiceAreas";
 import CtaBanner from "@/components/home/CtaBanner";
+import MembershipBanner from "@/components/membership/MembershipBanner";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
 
@@ -64,6 +65,11 @@ export default function Home() {
 
         {/* FAQs Section */}
         <FaqSection />
+
+        {/* Membership Customer Benefits Promotional Section */}
+        <div className="max-w-7xl mx-auto px-6">
+          <MembershipBanner variant="full" />
+        </div>
 
         {/* CTA Download Banner */}
         <CtaBanner />
