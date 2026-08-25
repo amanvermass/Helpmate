@@ -3,20 +3,22 @@
 import { useState, useEffect } from "react";
 import { X, Phone, Mail, Globe, MapPin, ShieldCheck, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useStore } from "@/store/useStore";
 
 let hasSeenPromoGlobal = false;
 
 export default function PromoModal() {
+  const { isLocationSet } = useStore();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    if (hasSeenPromoGlobal) return;
+    if (hasSeenPromoGlobal || !isLocationSet) return;
 
     const timer = setTimeout(() => {
       setIsOpen(true);
-    }, 1200); // Small natural delay after load
+    }, 400);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isLocationSet]);
 
   const handleClose = () => {
     setIsOpen(false);

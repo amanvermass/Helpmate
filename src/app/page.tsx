@@ -60,7 +60,7 @@ export default function Home() {
         {/* Step Guide (How it works) */}
         <HowItWorks />
 
-        {/* Reviews marquee */}
+        {/* Reviews & Video Reviews Section */}
         <Reviews />
 
         {/* FAQs Section */}

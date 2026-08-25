@@ -84,7 +84,15 @@ interface AppState {
   updateCartQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
 
-  // Booking details
+  // Location & Booking details
+  selectedLocation: string;
+  setSelectedLocation: (loc: string) => void;
+  locationPermissionDenied: boolean;
+  setLocationPermissionDenied: (denied: boolean) => void;
+  hasPromptedLocation: boolean;
+  setHasPromptedLocation: (prompted: boolean) => void;
+  isLocationSet: boolean;
+  setIsLocationSet: (val: boolean) => void;
   selectedAddressId: string | null;
   setSelectedAddressId: (id: string | null) => void;
   selectedDate: string | null;
@@ -216,7 +224,15 @@ export const useStore = create<AppState>()(
           appliedCoupon: null,
         }),
 
-      // Checkout Details
+      // Location & Checkout Details
+      selectedLocation: "Varanasi",
+      setSelectedLocation: (loc) => set({ selectedLocation: loc }),
+      locationPermissionDenied: false,
+      setLocationPermissionDenied: (denied) => set({ locationPermissionDenied: denied }),
+      hasPromptedLocation: false,
+      setHasPromptedLocation: (prompted) => set({ hasPromptedLocation: prompted }),
+      isLocationSet: false,
+      setIsLocationSet: (val) => set({ isLocationSet: val }),
       selectedAddressId: "1",
       setSelectedAddressId: (id) => set({ selectedAddressId: id }),
       selectedDate: null,

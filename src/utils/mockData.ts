@@ -35,6 +35,25 @@ export interface Review {
   date: string;
 }
 
+export interface VideoReview {
+  id: string;
+  handle: string;
+  name: string;
+  avatar: string;
+  serviceId: string;
+  serviceName: string;
+  rating: number;
+  comment: string;
+  videoUrl: string;
+  poster: string;
+  views: string;
+  likes: string;
+  commentsCount: string;
+  location: string;
+  date: string;
+  audioTrack: string;
+}
+
 export interface Professional {
   id: string;
   name: string;
@@ -611,5 +630,98 @@ export const faqs = [
   {
     question: "How does the HelpMate Wallet and membership work?",
     answer: "Every referral adds ₹250 to your wallet. You can use wallet credits to pay for services. Our Elite Membership (₹999/year) offers free booking convenience, 10% cashbacks on all bookings, and priority scheduling."
+  }
+];
+
+export const videoReviews: VideoReview[] = [
+  {
+    id: "v-rev-1",
+    handle: "Radhika Sharma",
+    name: "Radhika Sharma",
+    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=120&h=120&q=80",
+    serviceId: "deep-cleaning-lux",
+    serviceName: "Classic Deep Home Cleaning",
+    rating: 5.0,
+    comment: "Look at the floor tile transformation after 4 hours of deep cleaning. Truly impressed with their attention to detail!",
+    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-woman-cleaning-a-table-with-a-rag-41584-large.mp4",
+    poster: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=600&q=80",
+    views: "1.4k plays",
+    likes: "420",
+    commentsCount: "32",
+    location: "Sigra, Varanasi",
+    date: "Yesterday",
+    audioTrack: "Verified Service Video"
+  },
+  {
+    id: "v-rev-2",
+    handle: "Varun Kapoor",
+    name: "Varun Kapoor",
+    avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80",
+    serviceId: "ac-foam-powerjet",
+    serviceName: "Foam & Power Jet AC Service",
+    rating: 5.0,
+    comment: "Room temperature dropped to 17°C in minutes after the foam power jet wash. Excellent professional service.",
+    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-air-conditioner-installation-worker-41804-large.mp4",
+    poster: "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?auto=format&fit=crop&w=600&q=80",
+    views: "980 plays",
+    likes: "310",
+    commentsCount: "24",
+    location: "Cantonment, Varanasi",
+    date: "2 days ago",
+    audioTrack: "Verified Service Video"
+  },
+  {
+    id: "v-rev-3",
+    handle: "Priya Singh",
+    name: "Priya Singh",
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80",
+    serviceId: "facial-spa-combo",
+    serviceName: "Luxury Facial & Hair Spa",
+    rating: 5.0,
+    comment: "Salon experience right inside my home! Soft ambient music, organic oils & the best facial massage ever.",
+    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-young-woman-applying-facial-cream-42790-large.mp4",
+    poster: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80",
+    views: "2.1k plays",
+    likes: "640",
+    commentsCount: "48",
+    location: "Lanka, Varanasi",
+    date: "3 days ago",
+    audioTrack: "Verified Service Video"
+  },
+  {
+    id: "v-rev-4",
+    handle: "Amit Verma",
+    name: "Amit Verma",
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&h=120&q=80",
+    serviceId: "elec-checkup",
+    serviceName: "Full Home Electrical Audit",
+    rating: 5.0,
+    comment: "Super professional electrician fixed short circuit in 20 mins. Thermal check & digital testing included!",
+    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-electrician-fixing-an-electrical-panel-41801-large.mp4",
+    poster: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=600&q=80",
+    views: "850 plays",
+    likes: "210",
+    commentsCount: "15",
+    location: "Godowlia, Varanasi",
+    date: "4 days ago",
+    audioTrack: "Verified Service Video"
+  },
+  {
+    id: "v-rev-5",
+    handle: "Sneha Rastogi",
+    name: "Sneha Rastogi",
+    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&h=120&q=80",
+    serviceId: "sofa-shampoo",
+    serviceName: "Sofa & Upholstery Shampooing",
+    rating: 5.0,
+    comment: "Stain extraction result on my sofa cushion. Removed deep dirt marks in less than 30 minutes!",
+    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-hands-of-a-man-cleaning-a-car-42823-large.mp4",
+    poster: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80",
+    views: "1.7k plays",
+    likes: "520",
+    commentsCount: "38",
+    location: "Nadesar, Varanasi",
+    date: "5 days ago",
+    audioTrack: "Verified Service Video"
   }
 ];
