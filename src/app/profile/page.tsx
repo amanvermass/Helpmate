@@ -28,12 +28,18 @@ import {
   Key,
   Bell,
   Smartphone,
-  Mail
+  Mail,
+  Users,
+  HeartHandshake,
+  Briefcase,
+  Building,
+  Trash2
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { useStore, Booking } from "@/store/useStore";
+import { AddAddressForm } from "@/components/booking/AddAddressForm";
 
 function ProfilePageContent() {
   const searchParams = useSearchParams();
@@ -526,77 +532,88 @@ function ProfilePageContent() {
                   </h3>
                   <button
                     onClick={() => setShowAddressForm(!showAddressForm)}
-                    className="text-xs text-accent-lux font-bold hover:underline flex items-center gap-1"
+                    className="text-xs text-accent-lux font-bold hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     Add Address
                   </button>
                 </div>
 
-                {showAddressForm && (
-                  <div className="glass-panel p-5 space-y-4 shadow-sm">
-                    <div className="flex gap-2">
-                      {(["Home", "Work", "Other"] as const).map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => setNewTag(tag)}
-                          className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                            newTag === tag
-                              ? "bg-primary-lux text-white"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-500"
-                          }`}
-                        >
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        placeholder="Street Address, Apt, Suite..."
-                        value={newAddressLine}
-                        onChange={(e) => setNewAddressLine(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-4 py-2.5 rounded-xl text-xs focus:outline-none"
+                <AnimatePresence>
+                  {showAddressForm && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <AddAddressForm
+                        onSave={(newAddr) => {
+                          addAddress(newAddr);
+                          setShowAddressForm(false);
+                        }}
+                        onCancel={() => setShowAddressForm(false)}
                       />
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => setShowAddressForm(false)}
-                        className="px-4 py-2 rounded-xl bg-slate-200 text-[10px] font-bold text-slate-700"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleAddAddress}
-                        className="px-4 py-2 rounded-xl bg-accent-lux text-white text-[10px] font-bold"
-                      >
-                        Save
-                      </button>
-                    </div>
-                  </div>
-                )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <div className="space-y-3">
-                  {addresses.map((addr) => (
-                    <div
-                      key={addr.id}
-                      className="glass-panel p-4 flex items-center justify-between gap-4"
-                    >
-                      <div>
-                        <span className="bg-slate-100 dark:bg-slate-800 text-muted-lux text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded">
-                          {addr.tag}
-                        </span>
-                        <p className="text-xs font-bold text-foreground mt-2">{addr.addressLine}</p>
-                        <p className="text-[10px] text-muted-lux mt-0.5">{addr.city}</p>
-                      </div>
-                      <button
-                        onClick={() => removeAddress(addr.id)}
-                        className="text-red-400 hover:text-red-500 text-xs font-semibold"
+                  {addresses.map((addr) => {
+                    const TagIcon = addr.tag.toLowerCase().includes("work") || addr.tag.toLowerCase().includes("office") ? Briefcase : addr.tag.toLowerCase().includes("home") ? User : Building;
+                    const RecipientIcon = addr.recipientType === "Family Member" ? Users : addr.recipientType === "Friend / Neighbor" ? HeartHandshake : addr.recipientType === "Office / Work" ? Briefcase : User;
+
+                    return (
+                      <div
+                        key={addr.id}
+                        className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-slate-200/60 dark:border-slate-800 rounded-3xl text-left"
                       >
-                        Delete
-                      </button>
-                    </div>
-                  ))}
+                        <div className="space-y-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black px-3 py-0.5 rounded-full bg-[#782860] text-white uppercase tracking-wider">
+                              <TagIcon className="w-3 h-3" />
+                              {addr.tag}
+                            </span>
+
+                            {addr.recipientType && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
+                                <RecipientIcon className="w-3 h-3" />
+                                {addr.recipientType}
+                              </span>
+                            )}
+
+                            {addr.locality && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 font-mono">
+                                <MapPin className="w-3 h-3" />
+                                {addr.locality} ({addr.pincode || "Varanasi"})
+                              </span>
+                            )}
+
+                            {addr.isDefault && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                Primary Default
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs font-extrabold text-foreground pt-0.5 leading-snug">{addr.addressLine}</p>
+
+                          {(addr.recipientName || addr.recipientPhone) && (
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
+                              {addr.recipientName && <span>Recipient: {addr.recipientName}</span>}
+                              {addr.recipientPhone && <span className="text-slate-400">| {addr.recipientPhone}</span>}
+                            </p>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={() => removeAddress(addr.id)}
+                          className="px-3 py-1.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 self-start md:self-center"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Delete
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

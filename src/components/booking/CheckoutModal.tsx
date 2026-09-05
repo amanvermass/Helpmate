@@ -22,7 +22,11 @@ import {
   Home,
   Briefcase,
   Building,
-  Tag
+  Tag,
+  Users,
+  User,
+  HeartHandshake,
+  Phone
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore, Address, CartItem } from "@/store/useStore";
@@ -30,6 +34,7 @@ import confetti from "canvas-confetti";
 import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/booking/CustomDateTimePickerModal";
 import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
 import MembershipBanner from "@/components/membership/MembershipBanner";
+import { AddAddressForm } from "@/components/booking/AddAddressForm";
 
 interface Props {
   isOpen: boolean;
@@ -592,58 +597,14 @@ export default function CheckoutModal({
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="p-5 bg-slate-50 dark:bg-slate-950/60 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 overflow-hidden shadow-inner text-left"
                   >
-                    <h5 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
-                      <Plus className="w-3.5 h-3.5 text-[#782860]" /> Add New Location
-                    </h5>
-
-                    <div className="flex gap-2">
-                      {(["Home", "Work", "Other"] as const).map((tag) => {
-                        const isTagActive = newTag === tag;
-                        const TagIcon = tag === "Home" ? Home : tag === "Work" ? Briefcase : Building;
-                        return (
-                          <button
-                            key={tag}
-                            type="button"
-                            onClick={() => setNewTag(tag)}
-                            className={`px-3 py-1.5 rounded-2xl text-xs font-extrabold cursor-pointer transition-all flex items-center gap-1 ${
-                              isTagActive
-                                ? "bg-[#782860] text-white shadow-md shadow-[#782860]/30 scale-105"
-                                : "bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800"
-                            }`}
-                          >
-                            <TagIcon className="w-3 h-3" />
-                            {tag}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        placeholder="House / Flat No., Building Name, Street & Landmark..."
-                        value={newAddressLine}
-                        onChange={(e) => setNewAddressLine(e.target.value)}
-                        className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 py-3 rounded-2xl text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-[#782860]/40 transition-all"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2.5 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => setShowAddAddress(false)}
-                        className="px-4 py-2 rounded-2xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleAddAddressSubmit}
-                        className="px-5 py-2 rounded-2xl bg-gradient-to-r from-[#782860] to-[#a03480] text-xs font-black text-white cursor-pointer shadow-md shadow-[#782860]/25"
-                      >
-                        Save Location
-                      </button>
-                    </div>
+                    <AddAddressForm
+                      onSave={(newAddr) => {
+                        addAddress(newAddr);
+                        setShowAddAddress(false);
+                      }}
+                      onCancel={() => setShowAddAddress(false)}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -652,7 +613,8 @@ export default function CheckoutModal({
               <div className="space-y-3">
                 {addresses.map((addr) => {
                   const isSelected = selectedAddressId === addr.id;
-                  const TagIcon = addr.tag === "Home" ? Home : addr.tag === "Work" ? Briefcase : Building;
+                  const TagIcon = addr.tag.toLowerCase().includes("work") || addr.tag.toLowerCase().includes("office") ? Briefcase : addr.tag.toLowerCase().includes("home") ? Home : Building;
+                  const RecipientIcon = addr.recipientType === "Family Member" ? Users : addr.recipientType === "Friend / Neighbor" ? HeartHandshake : addr.recipientType === "Office / Work" ? Briefcase : User;
 
                   return (
                     <div
@@ -665,22 +627,45 @@ export default function CheckoutModal({
                       }`}
                     >
                       <div className="flex items-start gap-3">
-                        <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                        <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${
                           isSelected ? "border-[#782860] bg-[#782860]" : "border-slate-300 dark:border-slate-700"
                         }`}>
                           {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                         </div>
-                        <div className="space-y-0.5 text-left">
-                          <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                            isSelected
-                              ? "bg-[#782860] text-white"
-                              : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                          }`}>
-                            <TagIcon className="w-2.5 h-2.5" />
-                            {addr.tag}
-                          </span>
-                          <p className="text-xs font-extrabold text-foreground pt-1 leading-snug">{addr.addressLine}</p>
-                          <p className="text-[10px] text-slate-400 font-medium">{addr.city}, UP</p>
+                        <div className="space-y-1 text-left">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                              isSelected
+                                ? "bg-[#782860] text-white"
+                                : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                            }`}>
+                              <TagIcon className="w-2.5 h-2.5" />
+                              {addr.tag}
+                            </span>
+
+                            {addr.recipientType && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
+                                <RecipientIcon className="w-2.5 h-2.5" />
+                                {addr.recipientType}
+                              </span>
+                            )}
+
+                            {addr.locality && (
+                              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 font-mono">
+                                <MapPin className="w-2.5 h-2.5" />
+                                {addr.locality} ({addr.pincode || "Varanasi"})
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs font-extrabold text-foreground pt-0.5 leading-snug">{addr.addressLine}</p>
+
+                          {(addr.recipientName || addr.recipientPhone) && (
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
+                              {addr.recipientName && <span>For: {addr.recipientName}</span>}
+                              {addr.recipientPhone && <span className="text-slate-400">| {addr.recipientPhone}</span>}
+                            </p>
+                          )}
                         </div>
                       </div>
 

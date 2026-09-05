@@ -10,12 +10,35 @@ export interface CartItem {
   duration: number; // in mins
 }
 
+export type AddressRecipientType = "Self" | "Family Member" | "Friend / Neighbor" | "Office / Work" | "Other";
+
 export interface Address {
   id: string;
-  tag: "Home" | "Work" | "Other";
+  tag: string;
+  recipientType?: AddressRecipientType;
+  recipientName?: string;
+  recipientPhone?: string;
+  locality?: string;
+  pincode?: string;
+  houseNo?: string;
+  landmark?: string;
   addressLine: string;
   city: string;
+  isDefault?: boolean;
 }
+
+export const varanasiLocalities = [
+  { id: "loc-1", name: "Sigra", pincode: "221002" },
+  { id: "loc-2", name: "Lanka / Assi Ghat", pincode: "221005" },
+  { id: "loc-3", name: "Godowlia", pincode: "221001" },
+  { id: "loc-4", name: "Bhelupur", pincode: "221010" },
+  { id: "loc-5", name: "Mahmoorganj", pincode: "221010" },
+  { id: "loc-6", name: "Shivpur", pincode: "221003" },
+  { id: "loc-7", name: "Sarnath", pincode: "221007" },
+  { id: "loc-8", name: "Varanasi Cantt / Nadesar", pincode: "221002" },
+  { id: "loc-9", name: "Lahurabir", pincode: "221001" },
+  { id: "loc-10", name: "Rathyatra", pincode: "221010" },
+];
 
 export interface Booking {
   id: string;
@@ -148,8 +171,34 @@ export const useStore = create<AppState>()(
       walletBalance: 1250,
       loyaltyPoints: 340,
       addresses: [
-        { id: "1", tag: "Home", addressLine: "B-2/30, Assi Ghat Road, Near Assi Ghat", city: "Varanasi" },
-        { id: "2", tag: "Work", addressLine: "S-20/54, Nadesar, Cantonment", city: "Varanasi" },
+        {
+          id: "1",
+          tag: "Home (Primary)",
+          recipientType: "Self",
+          recipientName: "Rohan Verma",
+          recipientPhone: "+91 98765 01928",
+          locality: "Lanka / Assi Ghat",
+          pincode: "221005",
+          houseNo: "B-2/30",
+          landmark: "Near Assi Ghat Crossing",
+          addressLine: "B-2/30, Assi Ghat Road, Near Assi Ghat",
+          city: "Varanasi",
+          isDefault: true,
+        },
+        {
+          id: "2",
+          tag: "Commercial Office HQ",
+          recipientType: "Office / Work",
+          recipientName: "Rohan Verma (Work HQ)",
+          recipientPhone: "+91 98765 01928",
+          locality: "Varanasi Cantt / Nadesar",
+          pincode: "221002",
+          houseNo: "S-20/54",
+          landmark: "Behind Hotel Taj Nadesar",
+          addressLine: "S-20/54, Nadesar, Cantonment",
+          city: "Varanasi",
+          isDefault: false,
+        },
       ],
       addAddress: (address) =>
         set((state) => ({
