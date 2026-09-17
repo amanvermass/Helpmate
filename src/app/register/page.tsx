@@ -1,51 +1,82 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useStore } from "@/store/useStore";
-import { loginCustomerApi } from "@/services/authApi";
-import { Loader2, Eye, EyeOff, ShieldCheck, CheckCircle2, AlertCircle, Phone, Lock, ArrowRight, UserPlus } from "lucide-react";
+import { registerCustomerApi } from "@/services/authApi";
+import { Loader2, Eye, EyeOff, CheckCircle2, AlertCircle, ShieldCheck, User, Phone, Lock, ArrowRight } from "lucide-react";
+import confetti from "canvas-confetti";
 
-function LoginContent() {
+export default function RegisterPage() {
   const router = useRouter();
   const { setAuth } = useStore();
 
-  const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const [loginError, setLoginError] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLoginSubmit = async (e: React.FormEvent) => {
+  const triggerConfetti = () => {
+    confetti({
+      particleCount: 50,
+      spread: 70,
+      origin: { y: 0.6 },
+      colors: ["#801C6E", "#48073d", "#A21CAF", "#E879F9"]
+    });
+  };
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoginError("");
+    setErrorMsg("");
     setSuccessMsg("");
 
-    const cleanedPhone = phone.trim().replace(/\D/g, "");
-    if (!cleanedPhone || cleanedPhone.length !== 10) {
-      setLoginError("Please enter a valid 10-digit mobile number");
+    const cleanedName = fullName.trim();
+    if (!cleanedName || cleanedName.length < 2) {
+      setErrorMsg("Please enter your full name (at least 2 characters)");
+      return;
+    }
+
+    const cleanedMobile = mobile.trim().replace(/\D/g, "");
+    if (!cleanedMobile || cleanedMobile.length !== 10) {
+      setErrorMsg("Please enter a valid 10-digit mobile number");
       return;
     }
 
     if (!password) {
-      setLoginError("Please enter your password");
+      setErrorMsg("Please enter a password");
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMsg("Password must be at least 6 characters long");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match. Please check again.");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const res = await loginCustomerApi({
-        mobile: cleanedPhone,
+      const res = await registerCustomerApi({
+        fullName: cleanedName,
+        mobile: cleanedMobile,
         password: password,
       });
 
       if (res.success && res.data) {
-        setSuccessMsg("Login successful! Welcome back.");
+        triggerConfetti();
+        setSuccessMsg("Registration successful! Logging you in...");
         setAuth({
           token: res.data.token,
           customer: res.data.customer,
@@ -53,12 +84,12 @@ function LoginContent() {
 
         setTimeout(() => {
           router.push("/");
-        }, 600);
+        }, 1200);
       } else {
-        setLoginError(res.message || "Invalid mobile number or password.");
+        setErrorMsg(res.message || "Registration failed. Mobile number may already be registered.");
       }
     } catch (err: any) {
-      setLoginError("An unexpected error occurred. Please check network connection.");
+      setErrorMsg(err.message || "Network connection error. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -71,8 +102,8 @@ function LoginContent() {
       <div className="absolute bottom-10 left-10 w-96 h-96 bg-purple-200/40 rounded-full blur-[140px] pointer-events-none" />
 
       <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: "easeOut" }}
         className="w-full max-w-md bg-white border border-slate-200 p-8 sm:p-10 rounded-3xl text-left shadow-xl shadow-slate-200/50 relative z-10 space-y-6"
       >
@@ -86,22 +117,22 @@ function LoginContent() {
             />
           </Link>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-            Sign In to HelpMate
+            Create Account
           </h1>
           <p className="text-xs text-slate-500 max-w-xs mx-auto leading-relaxed">
-            Sign in with your mobile number and password to manage bookings and wallet.
+            Register to book Varanasi's top-rated background verified luxury service specialists.
           </p>
         </div>
 
         {/* Error / Success Alerts */}
-        {loginError && (
+        {errorMsg && (
           <motion.div
             initial={{ opacity: 0, y: -6 }}
             animate={{ opacity: 1, y: 0 }}
             className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold flex items-start gap-2.5"
           >
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{loginError}</span>
+            <span>{errorMsg}</span>
           </motion.div>
         )}
 
@@ -116,9 +147,28 @@ function LoginContent() {
           </motion.div>
         )}
 
-        {/* Sign In Form */}
-        <form onSubmit={handleLoginSubmit} className="space-y-4">
-          {/* Mobile Field */}
+        {/* Registration Form */}
+        <form onSubmit={handleRegisterSubmit} className="space-y-4">
+          {/* Full Name */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block mb-1.5">
+              Full Name
+            </label>
+            <div className="relative">
+              <User className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+              <input
+                type="text"
+                placeholder="Vivek Singh"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-4 text-xs font-medium focus:outline-none focus:border-accent-lux focus:bg-white text-slate-900 transition-all placeholder:text-slate-400"
+                required
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Mobile Number */}
           <div>
             <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block mb-1.5">
               Mobile Number
@@ -130,8 +180,8 @@ function LoginContent() {
               <input
                 type="tel"
                 placeholder="8840845695"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                value={mobile}
+                onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-16 pr-4 text-xs font-bold tracking-wider focus:outline-none focus:border-accent-lux focus:bg-white text-slate-900 transition-all placeholder:text-slate-400 font-sans"
                 required
                 disabled={isLoading}
@@ -139,7 +189,7 @@ function LoginContent() {
             </div>
           </div>
 
-          {/* Password Field */}
+          {/* Password */}
           <div>
             <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block mb-1.5">
               Password
@@ -148,7 +198,7 @@ function LoginContent() {
               <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
               <input
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
+                placeholder="Minimum 6 characters"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-11 text-xs font-medium focus:outline-none focus:border-accent-lux focus:bg-white text-slate-900 transition-all placeholder:text-slate-400"
@@ -165,6 +215,41 @@ function LoginContent() {
             </div>
           </div>
 
+          {/* Confirm Password */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block mb-1.5">
+              Confirm Password
+            </label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Re-enter your password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-3.5 pl-11 pr-11 text-xs font-medium focus:outline-none focus:border-accent-lux focus:bg-white text-slate-900 transition-all placeholder:text-slate-400"
+                required
+                disabled={isLoading}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            {confirmPassword && (
+              <p
+                className={`text-[10px] font-bold mt-1.5 pl-2 ${
+                  password === confirmPassword ? "text-emerald-600" : "text-red-500"
+                }`}
+              >
+                {password === confirmPassword ? "✓ Passwords match" : "✗ Passwords do not match"}
+              </p>
+            )}
+          </div>
+
           {/* Submit Button */}
           <button
             type="submit"
@@ -174,36 +259,27 @@ function LoginContent() {
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Signing In...</span>
+                <span>Registering Customer Account...</span>
               </>
             ) : (
               <>
-                <span>Sign In to Account</span>
+                <span>Register Account</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
         </form>
 
-        {/* Register Button Link */}
-        <div className="pt-4 border-t border-slate-100 text-center">
-          <Link
-            href="/register"
-            className="w-full py-3 px-4 rounded-2xl border border-slate-200 hover:border-accent-lux bg-slate-50 hover:bg-white text-slate-700 hover:text-accent-lux font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-          >
-            <UserPlus className="w-4 h-4 text-accent-lux" />
-            <span>Not registered? Create an Account</span>
-          </Link>
+        {/* Footer Toggle to Login */}
+        <div className="pt-4 border-t border-slate-100 text-center space-y-2">
+          <p className="text-xs text-slate-500">
+            Already registered?{" "}
+            <Link href="/login" className="text-accent-lux hover:underline font-bold">
+              Sign In to Account
+            </Link>
+          </p>
         </div>
       </motion.div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center font-sans">Loading authentication page...</div>}>
-      <LoginContent />
-    </Suspense>
   );
 }

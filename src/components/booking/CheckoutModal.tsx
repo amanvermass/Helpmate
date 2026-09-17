@@ -26,15 +26,17 @@ import {
   Users,
   User,
   HeartHandshake,
-  Phone
+  Phone,
+  Edit3
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useStore, Address, CartItem } from "@/store/useStore";
+import { useStore, Address, CartItem, getItemAddonTotal } from "@/store/useStore";
 import confetti from "canvas-confetti";
 import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/booking/CustomDateTimePickerModal";
 import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
 import MembershipBanner from "@/components/membership/MembershipBanner";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
+import { fetchScheduleAvailabilityApi } from "@/services/scheduleApi";
 
 interface Props {
   isOpen: boolean;
@@ -60,8 +62,12 @@ export default function CheckoutModal({
     cart,
     addToCart,
     removeFromCart,
+    toggleAddonInCart,
+    cartPricing,
     addresses,
     addAddress,
+    updateAddressAsync,
+    fetchAddresses,
     selectedAddressId,
     setSelectedAddressId,
     selectedDate,
@@ -72,13 +78,23 @@ export default function CheckoutModal({
     applyCoupon,
     removeCoupon,
     createBooking,
-    isMember
+    createBookingAsync,
+    isMember,
+    token
   } = useStore();
 
+  useEffect(() => {
+    if (isOpen && token) {
+      fetchAddresses();
+    }
+  }, [isOpen, token, fetchAddresses]);
+
   const [step, setStep] = useState(0); // 0: Addons/Cart, 1: Schedule, 2: Address, 3: Payment
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
   const [showAddAddress, setShowAddAddress] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   
   // New address form state
   const [newTag, setNewTag] = useState<Address["tag"]>("Home");
@@ -90,6 +106,52 @@ export default function CheckoutModal({
   const [showCustomTime, setShowCustomTime] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const timePickerRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic schedule availability from backend API
+  const [availableDates, setAvailableDates] = useState<{ label: string; dayNum: number; fullDate: string; iso: string; available?: boolean }[]>([]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let isMounted = true;
+    async function loadScheduleAvailability() {
+      setIsLoadingSchedule(true);
+      try {
+        const res = await fetchScheduleAvailabilityApi(token);
+        if (isMounted && res.success && res.data) {
+          if (res.data.dates && res.data.dates.length > 0) {
+            const mappedDates = res.data.dates.map((d) => {
+              const dateObj = new Date(d.date + "T00:00:00");
+              return {
+                label: d.day || dateObj.toLocaleDateString("en-US", { weekday: "short" }),
+                dayNum: dateObj.getDate(),
+                fullDate: dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                iso: d.date,
+                available: d.available !== false
+              };
+            });
+            setAvailableDates(mappedDates);
+          }
+          if (res.data.timeSlots && res.data.timeSlots.length > 0) {
+            const mappedSlots = res.data.timeSlots.map((s: any) => {
+              if (typeof s === "string") return s;
+              return s.startTime || s.value || "";
+            }).filter(Boolean);
+            setAvailableTimeSlots(mappedSlots);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching schedule availability:", err);
+      } finally {
+        if (isMounted) setIsLoadingSchedule(false);
+      }
+    }
+    loadScheduleAvailability();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, token]);
 
   // Click outside listener for pickers
   useEffect(() => {
@@ -145,9 +207,10 @@ export default function CheckoutModal({
   if (!isOpen) return null;
 
   // Available Time Slots
-  const timeSlots = ["08:00 AM", "10:00 AM", "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
+  const defaultTimeSlots = ["08:00 AM", "10:00 AM", "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
+  const timeSlots = availableTimeSlots.length > 0 ? availableTimeSlots : defaultTimeSlots;
 
-  // Generate next 6 dates starting today
+  // Generate next 6 dates starting today (Fallback)
   const getDates = () => {
     const dates = [];
     for (let i = 0; i < 6; i++) {
@@ -157,13 +220,14 @@ export default function CheckoutModal({
         label: d.toLocaleDateString("en-US", { weekday: "short" }),
         dayNum: d.getDate(),
         fullDate: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-        iso: d.toISOString().split("T")[0]
+        iso: d.toISOString().split("T")[0],
+        available: true
       });
     }
     return dates;
   };
 
-  const dates = getDates();
+  const dates = availableDates.length > 0 ? availableDates : getDates();
 
   const handleApplyCoupon = () => {
     setCouponError("");
@@ -202,17 +266,26 @@ export default function CheckoutModal({
     if (step < 3) {
       setStep(step + 1);
     } else {
-      // Create final booking
-      const newBk = createBooking();
-      if (newBk) {
-        setCreatedBookingId(newBk.id);
-        setStep(4);
-        confetti({
-          particleCount: 120,
-          spread: 70,
-          origin: { y: 0.6 }
+      // Create final booking via API
+      setIsSubmittingBooking(true);
+      const methodToPass = (paymentMethod === "pay_after" || paymentMethod === "cod") ? "pay_after_service" : paymentMethod;
+      createBookingAsync(methodToPass)
+        .then((res) => {
+          if (res.success && res.booking) {
+            setCreatedBookingId(res.booking.id);
+            setStep(4);
+            confetti({
+              particleCount: 120,
+              spread: 70,
+              origin: { y: 0.6 }
+            });
+          } else {
+            alert(res.message || "Failed to create booking. Please try again.");
+          }
+        })
+        .finally(() => {
+          setIsSubmittingBooking(false);
         });
-      }
     }
   };
 
@@ -233,7 +306,9 @@ export default function CheckoutModal({
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
 
   // Pricing math
-  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const itemsSubtotal = cartPricing?.itemsSubtotal ?? cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const addonSubtotal = cartPricing?.addonSubtotal ?? cart.reduce((sum, item) => sum + getItemAddonTotal(item), 0);
+  const subtotal = cartPricing?.subtotal ?? (itemsSubtotal + addonSubtotal);
   let couponDiscount = 0;
   if (appliedCoupon === "HELPMATE20") couponDiscount = Math.min(300, Math.round(subtotal * 0.20));
   else if (appliedCoupon === "LUXURY50") couponDiscount = 150;
@@ -244,7 +319,11 @@ export default function CheckoutModal({
 
   const memberDiscount = isMember ? Math.round(subtotal * 0.15) : 0;
   const discount = couponDiscount + memberDiscount;
-  const total = Math.max(0, subtotal - discount);
+  const gstRate = cartPricing?.gstRate ?? 18;
+  const gst = cartPricing?.gst ?? (subtotal > 0 ? Math.round((subtotal - discount) * 0.18 * 100) / 100 : 0);
+  const convenienceFee = cartPricing?.convenienceFee ?? (subtotal > 0 ? 49 : 0);
+  const grandTotal = cartPricing && discount === 0 ? cartPricing.grandTotal : Math.max(0, Math.round((subtotal - discount + gst + convenienceFee) * 100) / 100);
+  const total = grandTotal;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
@@ -332,26 +411,64 @@ export default function CheckoutModal({
               </div>
 
               <div className="space-y-3">
-                {cart.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800"
-                  >
-                    <div>
-                      <span className="text-xs font-bold text-foreground">{item.name}</span>
-                      <p className="text-[10px] text-slate-400 mt-0.5 capitalize">{item.category} • {item.duration} mins</p>
+                {cart.map((item) => {
+                  const addonTotal = (item.selectedAddons || []).reduce(
+                    (sum, a) => sum + (a.totalPrice || ((a.price || 0) * (a.quantity || 1))),
+                    0
+                  );
+                  const itemTotal = (item.price * item.quantity) + addonTotal;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-xs font-bold text-foreground">{item.name}</span>
+                          <p className="text-[10px] text-slate-400 mt-0.5 capitalize">{item.category} • {item.duration} mins • Qty: {item.quantity}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-extrabold text-foreground font-sans">₹{itemTotal}</span>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="text-slate-400 hover:text-red-500 cursor-pointer p-1 rounded-lg"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {item.selectedAddons && item.selectedAddons.length > 0 && (
+                        <div className="pt-2 border-t border-slate-200/50 dark:border-slate-800 space-y-1">
+                          <span className="text-[9px] uppercase font-bold text-accent-lux flex items-center gap-1">
+                            <Sparkles className="w-3 h-3 animate-pulse" /> Included Add-ons ({item.selectedAddons.length})
+                          </span>
+                          <div className="space-y-1">
+                            {item.selectedAddons.map((addon) => (
+                              <div key={addon.addonId} className="flex justify-between items-center text-[11px] bg-white dark:bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                                <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-accent-lux shrink-0" />
+                                  {addon.addonName} {addon.quantity > 1 ? `(x${addon.quantity})` : ""}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-foreground font-sans">+₹{addon.totalPrice || ((addon.price || 0) * (addon.quantity || 1))}</span>
+                                  <button
+                                    onClick={() => toggleAddonInCart(item.itemId || item.id, addon.addonId, "remove")}
+                                    className="text-slate-400 hover:text-rose-500 cursor-pointer p-0.5"
+                                    title="Remove add-on"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-extrabold text-foreground">₹{item.price * item.quantity}</span>
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="text-slate-400 hover:text-red-500 cursor-pointer p-1 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* MEMBERSHIP PROMOTIONAL BANNER */}
@@ -582,10 +699,18 @@ export default function CheckoutModal({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowAddAddress(!showAddAddress)}
+                  onClick={() => {
+                    if (showAddAddress) {
+                      setShowAddAddress(false);
+                      setEditingAddress(null);
+                    } else {
+                      setEditingAddress(null);
+                      setShowAddAddress(true);
+                    }
+                  }}
                   className="px-3.5 py-1.5 bg-[#782860]/10 text-[#782860] dark:bg-[#782860]/20 dark:text-purple-300 hover:bg-[#782860] hover:text-white font-extrabold text-xs rounded-2xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
                 >
-                  <Plus className="w-3.5 h-3.5" /> Add Address
+                  <Plus className="w-3.5 h-3.5" /> {showAddAddress ? "Cancel" : "Add Address"}
                 </button>
               </div>
 
@@ -599,11 +724,20 @@ export default function CheckoutModal({
                     transition={{ duration: 0.2 }}
                   >
                     <AddAddressForm
-                      onSave={(newAddr) => {
-                        addAddress(newAddr);
+                      initialData={editingAddress || undefined}
+                      onSave={async (savedAddr) => {
+                        if (editingAddress) {
+                          await updateAddressAsync(editingAddress.id, savedAddr);
+                        } else {
+                          await addAddress(savedAddr);
+                        }
+                        setEditingAddress(null);
                         setShowAddAddress(false);
                       }}
-                      onCancel={() => setShowAddAddress(false)}
+                      onCancel={() => {
+                        setEditingAddress(null);
+                        setShowAddAddress(false);
+                      }}
                     />
                   </motion.div>
                 )}
@@ -669,11 +803,25 @@ export default function CheckoutModal({
                         </div>
                       </div>
 
-                      {isSelected && (
-                        <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-[10px] rounded-xl flex items-center gap-1 shrink-0 border border-emerald-500/20">
-                          <CheckCircle className="w-3 h-3" /> Selected
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingAddress(addr);
+                            setShowAddAddress(true);
+                          }}
+                          className="px-2 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <Edit3 className="w-2.5 h-2.5" /> Edit
+                        </button>
+
+                        {isSelected && (
+                          <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-[10px] rounded-xl flex items-center gap-1 border border-emerald-500/20">
+                            <CheckCircle className="w-3 h-3" /> Selected
+                          </span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -879,7 +1027,7 @@ export default function CheckoutModal({
             {/* Price Overview */}
             <div className="flex flex-col">
               <span className="text-[9px] uppercase font-bold text-slate-400">Due Now</span>
-              <span className="text-base font-extrabold text-foreground">₹{total}</span>
+              <span className="text-base font-extrabold text-foreground font-sans">₹{grandTotal}</span>
             </div>
 
             <div className="flex gap-3">

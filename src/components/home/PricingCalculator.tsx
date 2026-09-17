@@ -157,7 +157,7 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
     <section className="py-20 px-6 max-w-7xl mx-auto font-sans relative" id="pricing-calculator">
       <div className="text-left mb-12">
         <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-3">
-          Step 1: Estimate Price
+          Estimate Price
         </span>
         <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white mt-1">
           Interactive Pricing Calculator

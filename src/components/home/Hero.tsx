@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation";
 import { Search, Star, Users, Shield, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { services } from "@/utils/mockData";
+import { fetchCustomerSearchSuggestionsApi } from "@/services/searchApi";
+import { formatImageUrl } from "@/utils/image";
 
 export default function Hero() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<typeof services>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
 
   // Stats counting simulator
@@ -44,16 +46,66 @@ export default function Hero() {
     };
   }, []);
 
+  // Fetch search suggestions from API when searchQuery changes
   useEffect(() => {
-    if (!searchQuery.trim()) {
+    let isCancelled = false;
+    const query = searchQuery.trim();
+
+    if (!query) {
       setSuggestions([]);
       return;
     }
-    const filtered = services.filter((s) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setSuggestions(filtered.slice(0, 4));
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetchCustomerSearchSuggestionsApi(query, 5);
+        if (isCancelled) return;
+
+        if (res.success && res.data && res.data.length > 0) {
+          const formatted = res.data.map((item) => {
+            const catName = item.category?.name || "Service";
+            const catSlug = catName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+            return {
+              id: item.packageId,
+              name: item.packageName,
+              category: catName,
+              categorySlug: catSlug,
+              price: item.price,
+              duration: item.duration || 60,
+              image: formatImageUrl(item.imageUrl || ""),
+            };
+          });
+          setSuggestions(formatted);
+        } else {
+          // Fallback to local mock filtering if API returns empty
+          const filtered = services.filter(
+            (s) =>
+              s.name.toLowerCase().includes(query.toLowerCase()) ||
+              s.category.toLowerCase().includes(query.toLowerCase())
+          );
+          setSuggestions(
+            filtered.slice(0, 5).map((s) => ({
+              id: s.id,
+              name: s.name,
+              category: s.category,
+              categorySlug: s.category.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+              price: s.price,
+              duration: s.duration || 60,
+              image: s.image,
+            }))
+          );
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          setSuggestions([]);
+        }
+      }
+    }, 150);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [searchQuery]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -63,23 +115,27 @@ export default function Hero() {
     }
   };
 
-  const handleSuggestionClick = (id: string) => {
-    router.push(`/services/${id}`);
+  const handleSuggestionClick = (item: any) => {
+    if (item.categorySlug && item.id) {
+      router.push(`/services/${item.categorySlug}?item=${item.id}`);
+    } else {
+      router.push(`/services/${item.id}`);
+    }
   };
 
   return (
-    <section className="relative min-h-[90vh] flex flex-col items-center justify-center py-20 px-6 overflow-hidden">
-      
+    <section className="relative min-h-[90vh] flex flex-col items-center justify-center py-20 px-6">
+
       {/* Background Animated Blobs */}
-      <div className="blob-container">
+      <div className="blob-container absolute inset-0 overflow-hidden pointer-events-none">
         <div className="blob bg-accent-lux w-[400px] h-[400px] -top-20 -left-20 animate-float-blob" />
         <div className="blob bg-secondary-lux w-[400px] h-[400px] bottom-10 right-10" style={{ animationDelay: "4s" }} />
       </div>
 
       <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center z-10 font-sans mt-8">
-        
+
         {/* Left Column: Text Content & Controls */}
-        <div className="lg:col-span-7 text-left space-y-6">
+        <div className="lg:col-span-7 text-left space-y-6 relative z-30">
           {/* Subtitle Badge */}
           <motion.p
             initial={{ opacity: 0, y: 15 }}
@@ -118,7 +174,7 @@ export default function Hero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="max-w-2xl relative"
+            className="max-w-2xl relative z-40"
           >
             <form
               onSubmit={handleSearchSubmit}
@@ -149,15 +205,15 @@ export default function Hero() {
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 15 }}
-                  className="absolute left-0 right-0 mt-3 p-3 glass-panel z-30 shadow-2xl text-left border border-slate-200/20"
+                  className="absolute left-0 right-0 mt-3 p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl z-50 shadow-2xl text-left max-h-[360px] overflow-y-auto"
                 >
                   <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider px-3 mb-2">Live Suggestions</p>
                   <div className="space-y-1">
                     {suggestions.map((item, idx) => (
                       <button
-                        key={item.id}
-                        onClick={() => handleSuggestionClick(item.id)}
-                        className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left transition-colors cursor-pointer"
+                        key={item.id || idx}
+                        onClick={() => handleSuggestionClick(item)}
+                        className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-left transition-colors cursor-pointer"
                       >
                         <div className="flex items-center gap-3">
                           <img src={item.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover" />

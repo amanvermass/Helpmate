@@ -18,12 +18,16 @@ import {
   ShieldCheck,
   CheckCircle2,
   X,
-  ShoppingCart
+  ShoppingCart,
+  Trash2,
+  Bookmark
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useStore } from "@/store/useStore";
+import { useStore, getItemAddonTotal } from "@/store/useStore";
+import { formatImageUrl } from "@/utils/image";
 import { citiesServed, services } from "@/utils/mockData";
 import LocationModal from "./LocationModal";
+import { fetchCustomerPackagesApi, CustomerPackageItem } from "@/services/packageApi";
 
 function HeaderContent() {
   const router = useRouter();
@@ -44,10 +48,15 @@ function HeaderContent() {
     setGuestMode,
     cart,
     removeFromCart,
+    clearCart,
+    updateCartQuantity,
+    toggleAddonInCart,
+    cartPricing,
     selectedLocation,
     setSelectedLocation,
     hasPromptedLocation,
-    setHasPromptedLocation
+    setHasPromptedLocation,
+    bookmarkedPackageIds
   } = useStore();
 
   const [scrolled, setScrolled] = useState(false);
@@ -75,16 +84,26 @@ function HeaderContent() {
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
 
+  const [apiSuggestions, setApiSuggestions] = useState<CustomerPackageItem[]>([]);
+
   useEffect(() => {
+    let isMounted = true;
     if (!searchQuery.trim()) {
-      setSuggestions([]);
+      setApiSuggestions([]);
       return;
     }
-    const filtered = services.filter((s) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.category.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setSuggestions(filtered.slice(0, 4));
+
+    const timer = setTimeout(async () => {
+      const res = await fetchCustomerPackagesApi({ search: searchQuery.trim(), limit: 4 });
+      if (isMounted && res.success && res.data) {
+        setApiSuggestions(res.data);
+      }
+    }, 200);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [searchQuery]);
 
   useEffect(() => {
@@ -129,8 +148,8 @@ function HeaderContent() {
   return (
     <header
       className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 font-sans ${scrolled
-          ? "bg-background/80 dark:bg-background/80 backdrop-blur-xl py-3 shadow-sm"
-          : "bg-transparent py-5"
+        ? "bg-background/80 dark:bg-background/80 backdrop-blur-xl py-3 shadow-sm"
+        : "bg-transparent py-5"
         }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6">
@@ -169,36 +188,54 @@ function HeaderContent() {
 
           {/* Auto Suggestions Dropdown */}
           <AnimatePresence>
-            {suggestions.length > 0 && (
+            {apiSuggestions.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 15 }}
                 className="absolute left-0 right-0 mt-2 p-2.5 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl z-50 shadow-2xl text-left"
               >
-                <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider px-2.5 mb-1.5">Suggestions</p>
+                <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider px-2.5 mb-1.5">Live Packages</p>
                 <div className="space-y-0.5">
-                  {suggestions.map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setSuggestions([]);
-                        setSearchQuery("");
-                        router.push(`/services/${item.id}`);
-                      }}
-                      className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left transition-colors cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <img src={item.image} alt={item.name} className="w-8 h-8 rounded-lg object-cover" />
-                        <div>
-                          <p className="text-[11px] font-bold text-foreground line-clamp-1">{item.name}</p>
-                          <p className="text-[9px] text-slate-400 capitalize">{item.category} • {item.duration} mins</p>
+                  {apiSuggestions.map((item) => {
+                    const catSlug = item.category?.name
+                      ? item.category.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")
+                      : "service";
+                    const subId = item.subCategory?.id;
+                    const actId = item.serviceAction?.id;
+                    const pkgId = item.package.id;
+                    const targetUrl = `/services/${catSlug}?${subId ? `sub=${encodeURIComponent(subId)}&` : ""}${actId ? `act=${encodeURIComponent(actId)}&` : ""}item=${encodeURIComponent(pkgId)}`;
+
+                    return (
+                      <button
+                        key={item.package.id}
+                        type="button"
+                        onClick={() => {
+                          setApiSuggestions([]);
+                          setSearchQuery("");
+                          router.push(targetUrl);
+                        }}
+                        className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left transition-colors cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          {item.package.imageUrl ? (
+                            <img src={formatImageUrl(item.package.imageUrl)} alt={item.package.name} referrerPolicy="no-referrer" className="w-8 h-8 rounded-lg object-cover" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-accent-lux/10 flex items-center justify-center text-accent-lux text-xs font-bold">
+                              {item.package.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="text-[11px] font-bold text-foreground line-clamp-1">{item.package.name}</p>
+                            <p className="text-[9px] text-slate-400 capitalize">
+                              {item.category?.name || "Service"} • {item.package.duration || 60} mins
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <span className="text-[11px] font-bold text-accent-lux shrink-0">₹{item.price}</span>
-                    </button>
-                  ))}
+                        <span className="text-[11px] font-bold text-accent-lux shrink-0">₹{item.package.price}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </motion.div>
             )}
@@ -208,13 +245,13 @@ function HeaderContent() {
         {/* Right Nav Options */}
         <div className="flex items-center gap-4">
           {/* Theme Switcher */}
-          <button
+          {/* <button
             onClick={toggleTheme}
             className="w-9 h-9 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200/80 dark:hover:bg-slate-700/80 transition-colors text-slate-600 dark:text-slate-300 cursor-pointer"
             aria-label="Toggle Theme"
           >
             {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
+          </button> */}
 
           {/* Shopping Cart Indicator */}
           <div ref={cartRef} className="relative">
@@ -242,12 +279,20 @@ function HeaderContent() {
                   initial={{ opacity: 0, y: 15, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 15, scale: 0.95 }}
-                  className="absolute right-0 mt-3 w-80 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl z-50 p-3 text-left"
+                  className="absolute right-0 mt-3 w-84 bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-2xl z-50 p-3 text-left font-sans"
                 >
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800 mb-2">
                     <span className="font-bold text-xs text-foreground">Selected Services</span>
                     {cart.length > 0 && (
-                      <span className="text-[10px] text-slate-400 font-bold">{cart.length} items</span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => clearCart()}
+                          className="text-[10px] font-bold text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/60 px-2 py-0.5 rounded-md transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" /> Clear All
+                        </button>
+                        <span className="text-[10px] text-slate-400 font-bold">{cart.length} items</span>
+                      </div>
                     )}
                   </div>
 
@@ -258,39 +303,94 @@ function HeaderContent() {
                         <span className="text-[10px] uppercase font-bold tracking-wider">Your cart is empty</span>
                       </div>
                     ) : (
-                      cart.map((item) => (
-                        <div
-                          key={item.id}
-                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
-                        >
-                          <div className="flex-1 min-w-0 pr-3">
-                            <h4 className="text-[11px] font-bold text-foreground truncate leading-tight">{item.name}</h4>
-                            <p className="text-[9px] text-slate-400 mt-1 capitalize">{item.category} • {item.duration} mins</p>
+                      cart.map((item) => {
+                        const addonTotal = (item.selectedAddons || []).reduce(
+                          (sum, a) => sum + (a.totalPrice || ((a.price || 0) * (a.quantity || 1))),
+                          0
+                        );
+                        const itemTotal = (item.price * (item.quantity || 1)) + addonTotal;
+
+                        return (
+                          <div
+                            key={item.id}
+                            className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800 space-y-1.5"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1 min-w-0 pr-2">
+                                <h4 className="text-[11px] font-bold text-foreground truncate leading-tight">{item.name}</h4>
+                                <p className="text-[9px] text-slate-400 mt-0.5 capitalize">⏱ {item.duration} mins</p>
+                              </div>
+                              <div className="flex items-center gap-2 shrink-0">
+                                {/* Quantity Stepper */}
+                                <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white dark:bg-slate-800">
+                                  <button
+                                    onClick={() => updateCartQuantity(item.id, (item.quantity || 1) - 1)}
+                                    className="w-5 h-5 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-bold text-xs cursor-pointer"
+                                  >
+                                    -
+                                  </button>
+                                  <span className="px-1 text-xs font-bold text-foreground font-sans min-w-[14px] text-center">
+                                    {item.quantity || 1}
+                                  </span>
+                                  <button
+                                    onClick={() => updateCartQuantity(item.id, (item.quantity || 1) + 1)}
+                                    className="w-5 h-5 flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors font-bold text-xs cursor-pointer"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+
+                                <span className="text-xs font-black text-accent-lux font-sans min-w-[40px] text-right">
+                                  ₹{itemTotal}
+                                </span>
+                                <button
+                                  onClick={() => removeFromCart(item.id)}
+                                  className="text-slate-400 hover:text-red-500 cursor-pointer p-0.5"
+                                  title="Remove item"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Render Selected Add-ons inside Cart Dropdown */}
+                            {item.selectedAddons && item.selectedAddons.length > 0 && (
+                              <div className="pt-1 border-t border-slate-200/50 dark:border-slate-800/80 space-y-1">
+                                <span className="text-[9px] uppercase font-bold text-accent-lux tracking-wider">Add-ons ({item.selectedAddons.length})</span>
+                                {item.selectedAddons.map((addon) => (
+                                  <div key={addon.addonId} className="flex items-center justify-between text-[9px] bg-white/60 dark:bg-slate-800/50 px-2 py-0.5 rounded-md">
+                                    <span className="text-slate-600 dark:text-slate-300 font-medium truncate max-w-[140px]">
+                                      + {addon.addonName} {addon.quantity > 1 ? `(x${addon.quantity})` : ""}
+                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <span className="font-bold text-foreground">+₹{addon.totalPrice || ((addon.price || 0) * (addon.quantity || 1))}</span>
+                                      <button
+                                        onClick={() => toggleAddonInCart(item.itemId || item.id, addon.addonId, "remove")}
+                                        className="text-slate-400 hover:text-rose-500 ml-0.5 cursor-pointer"
+                                        title="Remove add-on"
+                                      >
+                                        <X className="w-2.5 h-2.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-black text-accent-lux">₹{item.price}</span>
-                            <button
-                              onClick={() => removeFromCart(item.id)}
-                              className="text-slate-400 hover:text-red-500 cursor-pointer p-0.5"
-                              title="Remove item"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 
                   {cart.length > 0 && (
                     <div className="border-t border-slate-100 dark:border-slate-800 pt-3 mt-3 space-y-3">
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-slate-500">Total Price</span>
-                        <span className="font-black text-foreground">
-                          ₹{cart.reduce((sum, item) => sum + item.price, 0)}
+                        <span className="text-slate-500 font-medium">Subtotal Amount</span>
+                        <span className="font-black text-foreground font-sans">
+                          ₹{cartPricing ? cartPricing.subtotal : cart.reduce((sum, item) => sum + (item.price * (item.quantity || 1)) + getItemAddonTotal(item), 0)}
                         </span>
                       </div>
-                      
+
                       <button
                         onClick={() => {
                           setShowCartDropdown(false);
@@ -419,6 +519,20 @@ function HeaderContent() {
                       >
                         <Calendar className="w-3.5 h-3.5" /> My Bookings
                       </Link>
+                      <Link
+                        href="/profile?tab=bookmarks"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center justify-between px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Bookmark className="w-3.5 h-3.5 text-accent-lux" /> Saved Packages
+                        </div>
+                        {bookmarkedPackageIds.length > 0 && (
+                          <span className="bg-accent-lux/10 text-accent-lux font-bold text-[10px] px-2 py-0.5 rounded-full border border-accent-lux/20">
+                            {bookmarkedPackageIds.length}
+                          </span>
+                        )}
+                      </Link>
                       <button
                         onClick={() => {
                           setShowProfileMenu(false);
@@ -443,22 +557,21 @@ function HeaderContent() {
               </AnimatePresence>
             </div>
           ) : (
-            <button
-              onClick={() => {
-                router.push("/login");
-              }}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs shadow-md shadow-accent-lux/25 transition-all cursor-pointer"
+            <Link
+              href="/login"
+              className="px-4.5 py-2 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs shadow-md shadow-accent-lux/20 transition-all cursor-pointer flex items-center gap-1.5"
             >
-              Sign Up / Login
-            </button>
+              <User className="w-3.5 h-3.5" />
+              <span>Sign In / Sign Up</span>
+            </Link>
           )}
         </div>
       </div>
 
       {/* Location Selector Modal with Geolocation & Manual Fallback */}
-      <LocationModal 
-        isOpen={showLocationModal} 
-        onClose={() => setShowLocationModal(false)} 
+      <LocationModal
+        isOpen={showLocationModal}
+        onClose={() => setShowLocationModal(false)}
       />
     </header>
   );

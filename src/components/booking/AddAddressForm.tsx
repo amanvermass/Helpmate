@@ -17,7 +17,7 @@ import {
 import { Address, AddressRecipientType, varanasiLocalities, useStore } from "@/store/useStore";
 
 interface AddAddressFormProps {
-  onSave: (address: Omit<Address, "id">) => void;
+  onSave: (address: Omit<Address, "id"> & { localityId?: string }) => void;
   onCancel?: () => void;
   initialData?: Partial<Address>;
   className?: string;
@@ -51,6 +51,9 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
   );
   const [locality, setLocality] = useState<string>(
     initialData?.locality || varanasiLocalities[0].name
+  );
+  const [localityId, setLocalityId] = useState<string>(
+    initialData?.localityId || "6a6b0d83dc4a5f2b04e35a90"
   );
   const [pincode, setPincode] = useState<string>(
     initialData?.pincode || varanasiLocalities[0].pincode
@@ -144,6 +147,7 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
       recipientName: recipientName || currentUser.name,
       recipientPhone: recipientPhone || currentUser.phone,
       locality,
+      localityId: localityId || "6a6b0d83dc4a5f2b04e35a90",
       pincode,
       houseNo,
       landmark,

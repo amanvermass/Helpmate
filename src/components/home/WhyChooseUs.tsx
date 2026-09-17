@@ -51,7 +51,7 @@ export default function WhyChooseUs() {
         {/* Left text column - Sticky */}
         <div className="lg:col-span-5 flex flex-col items-center lg:items-start text-center lg:text-left lg:sticky lg:top-28 self-start">
           <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest mb-4 block">
-            Step 4: Safety & Quality
+            Safety & Quality
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-primary-lux dark:text-white leading-tight">
             Our 5 Reliability <br className="hidden lg:inline" /> Service Guarantees

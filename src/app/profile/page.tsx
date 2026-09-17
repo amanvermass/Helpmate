@@ -33,39 +33,71 @@ import {
   HeartHandshake,
   Briefcase,
   Building,
-  Trash2
+  Trash2,
+  Edit3,
+  Bookmark
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
-import { useStore, Booking } from "@/store/useStore";
+import { useStore, Booking, Address } from "@/store/useStore";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
+import { formatImageUrl } from "@/utils/image";
 
 function ProfilePageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
+
   const {
     userName,
     userPhone,
     walletBalance,
     loyaltyPoints,
     bookings,
+    isLoadingBookings,
+    isLoadingAddresses,
+    isLoadingBookmarks,
+    fetchBookings,
     addresses,
     addAddress,
     removeAddress,
+    updateAddressAsync,
+    fetchAddresses,
+    bookmarkedPackages,
+    fetchBookmarks,
+    toggleBookmark,
+    addToCart,
     cancelBooking,
     rescheduleBooking,
     updateBookingStatus,
     addNotification,
-    seedMockBookings,
     updateProfile,
     addWalletFunds,
-    redeemLoyaltyPoints
+    redeemLoyaltyPoints,
+    token
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState(searchParams.get("tab") || "dashboard");
-  
+  useEffect(() => {
+    if (token) {
+      fetchAddresses();
+      fetchBookmarks();
+      fetchBookings();
+    }
+  }, [token, fetchAddresses, fetchBookmarks, fetchBookings]);
+
+  const [activeTab, setActiveTab] = useState(
+    searchParams.get("tab") === "saved" ? "bookmarks" : (searchParams.get("tab") || "dashboard")
+  );
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab === "saved" || tab === "bookmarks") {
+      setActiveTab("bookmarks");
+    } else if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   // Reschedule state
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
@@ -78,6 +110,7 @@ function ProfilePageContent() {
 
   // Address Form State
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [newTag, setNewTag] = useState<"Home" | "Work" | "Other">("Home");
   const [newAddressLine, setNewAddressLine] = useState("");
   const [newCity, setNewCity] = useState("Varanasi");
@@ -110,12 +143,7 @@ function ProfilePageContent() {
     setEditPhone(userPhone);
   }, [userName, userPhone]);
 
-  // Seed mock bookings if empty (handles localStorage override)
-  useEffect(() => {
-    if (bookings.length === 0) {
-      seedMockBookings();
-    }
-  }, [bookings, seedMockBookings]);
+
 
   // Sync tab from URL
   useEffect(() => {
@@ -184,7 +212,7 @@ function ProfilePageContent() {
 
       <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background pb-16">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          
+
           {/* Profile Navigation Sidebar */}
           <nav className="lg:col-span-3 glass-panel p-6 space-y-2 shrink-0">
             <div className="pb-6 border-b border-slate-100 dark:border-slate-800 text-center lg:text-left flex lg:flex-col items-center lg:items-start gap-4">
@@ -204,6 +232,7 @@ function ProfilePageContent() {
               {[
                 { id: "dashboard", label: "Dashboard Overview", icon: <Award className="w-4 h-4" /> },
                 { id: "bookings", label: "Booking History", icon: <Calendar className="w-4 h-4" /> },
+                { id: "bookmarks", label: "Saved Packages", icon: <Bookmark className="w-4 h-4" /> },
                 { id: "addresses", label: "Manage Locations", icon: <MapPin className="w-4 h-4" /> },
                 { id: "wallet", label: "Wallet & Loyalty", icon: <Wallet className="w-4 h-4" /> },
                 { id: "settings", label: "Account Settings", icon: <Settings className="w-4 h-4" /> }
@@ -214,11 +243,10 @@ function ProfilePageContent() {
                     setActiveTab(tab.id);
                     router.push(`/profile?tab=${tab.id}`);
                   }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${
-                    activeTab === tab.id
-                      ? "bg-accent-lux text-white shadow-lg shadow-accent-lux/10"
-                      : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                  }`}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeTab === tab.id
+                    ? "bg-accent-lux text-white shadow-lg shadow-accent-lux/10"
+                    : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                    }`}
                 >
                   {tab.icon} {tab.label}
                 </button>
@@ -228,7 +256,7 @@ function ProfilePageContent() {
 
           {/* Main Panel Content */}
           <div className="lg:col-span-9 space-y-6">
-            
+
             {/* TAB: DASHBOARD */}
             {activeTab === "dashboard" && (
               <div className="space-y-6">
@@ -273,7 +301,19 @@ function ProfilePageContent() {
                     <TrendingUp className="w-4.5 h-4.5 text-accent-lux" /> Real-time Booking Tracker
                   </h3>
 
-                  {bookings.filter((b) => b.status !== "Completed" && b.status !== "Cancelled").length === 0 ? (
+                  {isLoadingBookings ? (
+                    <div className="space-y-4">
+                      {[1, 2].map((n) => (
+                        <div key={n} className="glass-panel p-6 space-y-4 animate-pulse">
+                          <div className="flex justify-between items-center">
+                            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
+                            <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded-full w-24" />
+                          </div>
+                          <div className="h-12 bg-slate-200/60 dark:bg-slate-800/60 rounded-2xl w-full" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : bookings.filter((b) => b.status !== "Completed" && b.status !== "Cancelled").length === 0 ? (
                     <div className="glass-panel p-8 text-center text-slate-400 text-xs">
                       No active bookings in progress. Explore categories to start scheduling.
                     </div>
@@ -290,7 +330,7 @@ function ProfilePageContent() {
                               <h4 className="text-sm font-bold text-foreground mt-0.5">Booking #{b.id}</h4>
                               <p className="text-[10px] text-slate-400 capitalize mt-0.5">{b.items[0]?.name}</p>
                             </div>
-                            
+
                             {/* Simulator Trigger */}
                             <button
                               onClick={() => advanceSimulatedBooking(b.id, b.status)}
@@ -327,12 +367,11 @@ function ProfilePageContent() {
                                 {sIdx < b.timeline.length - 1 && (
                                   <div className="hidden sm:block absolute top-3.5 left-[60%] right-[-40%] h-0.5 bg-slate-200 dark:bg-slate-800 z-0" />
                                 )}
-                                
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${
-                                  step.done
-                                    ? "bg-accent-lux text-white shadow-lg shadow-accent-lux/20"
-                                    : "bg-slate-100 dark:bg-slate-900 border border-slate-200 text-slate-400"
-                                }`}>
+
+                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${step.done
+                                  ? "bg-accent-lux text-white shadow-lg shadow-accent-lux/20"
+                                  : "bg-slate-100 dark:bg-slate-900 border border-slate-200 text-slate-400"
+                                  }`}>
                                   <CheckCircle className="w-4 h-4" />
                                 </div>
 
@@ -354,8 +393,26 @@ function ProfilePageContent() {
             {activeTab === "bookings" && (
               <div className="space-y-6">
                 <h3 className="font-bold text-sm text-foreground">Service Booking History</h3>
-                
-                {bookings.length === 0 ? (
+
+                {isLoadingBookings ? (
+                  <div className="space-y-4">
+                    {[1, 2, 3].map((n) => (
+                      <div key={n} className="glass-panel p-6 space-y-4 animate-pulse">
+                        <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                          <div className="space-y-2 w-1/3">
+                            <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-20" />
+                            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-32" />
+                          </div>
+                          <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded-full w-16" />
+                        </div>
+                        <div className="flex justify-between items-center pt-2">
+                          <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
+                          <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-xl w-24" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : bookings.length === 0 ? (
                   <div className="glass-panel p-12 text-center text-slate-500 text-xs">
                     No booking records in account. Schedule your first deep clean today.
                   </div>
@@ -364,160 +421,157 @@ function ProfilePageContent() {
                     {[...bookings]
                       .sort((a, b) => new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime())
                       .map((b) => (
-                      <div key={b.id} className="glass-panel p-6 space-y-4">
-                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
-                          <div>
-                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{b.dateCreated}</span>
-                            <h4 className="text-xs sm:text-sm font-bold text-foreground mt-0.5 flex items-center gap-2">
-                              Booking #{b.id}
-                              <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
-                                b.status === "Completed" && "bg-success-lux/10 text-success-lux"
-                              } ${
-                                b.status === "Cancelled" && "bg-red-500/10 text-red-500"
-                              } ${
-                                b.status !== "Completed" && b.status !== "Cancelled" && "bg-accent-lux/10 text-accent-lux"
-                              }`}>
-                                {b.status}
-                              </span>
-                            </h4>
-                          </div>
-
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs sm:text-sm font-extrabold text-foreground">₹{b.finalAmount}</span>
-                          </div>
-                        </div>
-
-                        {/* Invoice & Actions Row */}
-                        <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-                          <div className="text-[10px] text-slate-400">
-                            <strong>Service Variant:</strong> {b.items[0]?.name}
-                          </div>
-
-                          <div className="flex gap-2">
-                            {/* Reschedule option */}
-                            {b.status !== "Completed" && b.status !== "Cancelled" && (
-                              <>
-                                <button
-                                  onClick={() => setReschedulingId(b.id)}
-                                  className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 text-[10px] font-bold rounded-xl cursor-pointer"
-                                >
-                                  Reschedule
-                                </button>
-                                <button
-                                  onClick={() => handleCancelBooking(b.id)}
-                                  className="px-3.5 py-2 border border-red-200 text-red-500 hover:bg-red-500/10 text-[10px] font-bold rounded-xl cursor-pointer"
-                                >
-                                  Cancel Booking
-                                </button>
-                              </>
-                            )}
-
-                            {/* Completed rating option */}
-                            {b.status === "Completed" && (
-                              <button
-                                onClick={() => setReviewingBooking(b)}
-                                className="px-3.5 py-2 bg-accent-lux hover:bg-accent-lux/95 text-white text-[10px] font-bold rounded-xl cursor-pointer flex items-center gap-1"
-                              >
-                                <Smile className="w-3.5 h-3.5" /> Leave Review
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Rescheduling Form Panel */}
-                        {reschedulingId === b.id && (() => {
-                          const todayISO = new Date().toISOString().split("T")[0];
-                          return (
-                            <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4 mt-4 text-left">
-                              <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
-                                <Calendar className="w-3.5 h-3.5 text-accent-lux" /> Select New Reschedule Date & Time
+                        <div key={b.id} className="glass-panel p-6 space-y-4">
+                          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                            <div>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{b.dateCreated}</span>
+                              <h4 className="text-xs sm:text-sm font-bold text-foreground mt-0.5 flex items-center gap-2">
+                                Booking #{b.id}
+                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${b.status === "Completed" && "bg-success-lux/10 text-success-lux"
+                                  } ${b.status === "Cancelled" && "bg-red-500/10 text-red-500"
+                                  } ${b.status !== "Completed" && b.status !== "Cancelled" && "bg-accent-lux/10 text-accent-lux"
+                                  }`}>
+                                  {b.status}
+                                </span>
                               </h4>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                  <label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Pick Date (Calendar)</label>
-                                  <input
-                                    type="date"
-                                    min={todayISO}
-                                    value={rescheduleDate}
-                                    onChange={(e) => setRescheduleDate(e.target.value)}
-                                    onClick={(e) => {
-                                      try {
-                                        (e.currentTarget as HTMLInputElement).showPicker?.();
-                                      } catch (err) {}
-                                    }}
-                                    className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-accent-lux cursor-pointer"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Pick Arrival Time</label>
-                                  <div className="flex gap-2">
-                                    <select
-                                      value={["08:00 AM", "10:00 AM", "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"].includes(rescheduleSlot) ? rescheduleSlot : "custom"}
-                                      onChange={(e) => {
-                                        if (e.target.value !== "custom") {
-                                          setRescheduleSlot(e.target.value);
-                                        }
-                                      }}
-                                      className="w-1/2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-foreground font-semibold cursor-pointer"
-                                    >
-                                      <option value="">Preset Slot</option>
-                                      <option value="08:00 AM">08:00 AM</option>
-                                      <option value="10:00 AM">10:00 AM</option>
-                                      <option value="12:00 PM">12:00 PM</option>
-                                      <option value="02:00 PM">02:00 PM</option>
-                                      <option value="04:00 PM">04:00 PM</option>
-                                      <option value="06:00 PM">06:00 PM</option>
-                                      <option value="custom">Custom...</option>
-                                    </select>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs sm:text-sm font-extrabold text-foreground">₹{b.finalAmount}</span>
+                            </div>
+                          </div>
+
+                          {/* Invoice & Actions Row */}
+                          <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
+                            <div className="text-[10px] text-slate-400">
+                              <strong>Service Variant:</strong> {b.items[0]?.name}
+                            </div>
+
+                            <div className="flex gap-2">
+                              {/* Reschedule option */}
+                              {b.status !== "Completed" && b.status !== "Cancelled" && (
+                                <>
+                                  <button
+                                    onClick={() => setReschedulingId(b.id)}
+                                    className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 text-[10px] font-bold rounded-xl cursor-pointer"
+                                  >
+                                    Reschedule
+                                  </button>
+                                  <button
+                                    onClick={() => handleCancelBooking(b.id)}
+                                    className="px-3.5 py-2 border border-red-200 text-red-500 hover:bg-red-500/10 text-[10px] font-bold rounded-xl cursor-pointer"
+                                  >
+                                    Cancel Booking
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Completed rating option */}
+                              {b.status === "Completed" && (
+                                <button
+                                  onClick={() => setReviewingBooking(b)}
+                                  className="px-3.5 py-2 bg-accent-lux hover:bg-accent-lux/95 text-white text-[10px] font-bold rounded-xl cursor-pointer flex items-center gap-1"
+                                >
+                                  <Smile className="w-3.5 h-3.5" /> Leave Review
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Rescheduling Form Panel */}
+                          {reschedulingId === b.id && (() => {
+                            const todayISO = new Date().toISOString().split("T")[0];
+                            return (
+                              <div className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-4 mt-4 text-left">
+                                <h4 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                                  <Calendar className="w-3.5 h-3.5 text-accent-lux" /> Select New Reschedule Date & Time
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div>
+                                    <label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Pick Date (Calendar)</label>
                                     <input
-                                      type="time"
-                                      onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val) {
-                                          const [hStr, mStr] = val.split(":");
-                                          let hour = parseInt(hStr, 10);
-                                          const ampm = hour >= 12 ? "PM" : "AM";
-                                          hour = hour % 12;
-                                          if (hour === 0) hour = 12;
-                                          const hourStr = hour < 10 ? `0${hour}` : `${hour}`;
-                                          setRescheduleSlot(`${hourStr}:${mStr || '00'} ${ampm}`);
-                                        }
-                                      }}
+                                      type="date"
+                                      min={todayISO}
+                                      value={rescheduleDate}
+                                      onChange={(e) => setRescheduleDate(e.target.value)}
                                       onClick={(e) => {
                                         try {
                                           (e.currentTarget as HTMLInputElement).showPicker?.();
-                                        } catch (err) {}
+                                        } catch (err) { }
                                       }}
-                                      className="w-1/2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-foreground font-semibold cursor-pointer"
-                                      title="Open Time Picker"
+                                      className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3.5 py-2 rounded-xl text-xs font-semibold text-foreground focus:outline-none focus:border-accent-lux cursor-pointer"
                                     />
                                   </div>
-                                  {rescheduleSlot && (
-                                    <p className="text-[10px] text-accent-lux font-semibold mt-1">
-                                      Selected Slot: {rescheduleSlot}
-                                    </p>
-                                  )}
+                                  <div>
+                                    <label className="text-[10px] font-bold uppercase text-slate-400 mb-1 block">Pick Arrival Time</label>
+                                    <div className="flex gap-2">
+                                      <select
+                                        value={["08:00 AM", "10:00 AM", "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"].includes(rescheduleSlot) ? rescheduleSlot : "custom"}
+                                        onChange={(e) => {
+                                          if (e.target.value !== "custom") {
+                                            setRescheduleSlot(e.target.value);
+                                          }
+                                        }}
+                                        className="w-1/2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-foreground font-semibold cursor-pointer"
+                                      >
+                                        <option value="">Preset Slot</option>
+                                        <option value="08:00 AM">08:00 AM</option>
+                                        <option value="10:00 AM">10:00 AM</option>
+                                        <option value="12:00 PM">12:00 PM</option>
+                                        <option value="02:00 PM">02:00 PM</option>
+                                        <option value="04:00 PM">04:00 PM</option>
+                                        <option value="06:00 PM">06:00 PM</option>
+                                        <option value="custom">Custom...</option>
+                                      </select>
+                                      <input
+                                        type="time"
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          if (val) {
+                                            const [hStr, mStr] = val.split(":");
+                                            let hour = parseInt(hStr, 10);
+                                            const ampm = hour >= 12 ? "PM" : "AM";
+                                            hour = hour % 12;
+                                            if (hour === 0) hour = 12;
+                                            const hourStr = hour < 10 ? `0${hour}` : `${hour}`;
+                                            setRescheduleSlot(`${hourStr}:${mStr || '00'} ${ampm}`);
+                                          }
+                                        }}
+                                        onClick={(e) => {
+                                          try {
+                                            (e.currentTarget as HTMLInputElement).showPicker?.();
+                                          } catch (err) { }
+                                        }}
+                                        className="w-1/2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-xs text-foreground font-semibold cursor-pointer"
+                                        title="Open Time Picker"
+                                      />
+                                    </div>
+                                    {rescheduleSlot && (
+                                      <p className="text-[10px] text-accent-lux font-semibold mt-1">
+                                        Selected Slot: {rescheduleSlot}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex justify-end gap-2 pt-1">
+                                  <button
+                                    onClick={() => setReschedulingId(null)}
+                                    className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={() => handleRescheduleSubmit(b.id)}
+                                    className="px-4 py-2 rounded-xl bg-accent-lux hover:bg-accent-lux/95 text-white text-[10px] font-bold cursor-pointer shadow-md"
+                                  >
+                                    Save Changes
+                                  </button>
                                 </div>
                               </div>
-                              <div className="flex justify-end gap-2 pt-1">
-                                <button
-                                  onClick={() => setReschedulingId(null)}
-                                  className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-[10px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer"
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  onClick={() => handleRescheduleSubmit(b.id)}
-                                  className="px-4 py-2 rounded-xl bg-accent-lux hover:bg-accent-lux/95 text-white text-[10px] font-bold cursor-pointer shadow-md"
-                                >
-                                  Save Changes
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    ))}
+                            );
+                          })()}
+                        </div>
+                      ))}
                   </div>
                 )}
               </div>
@@ -531,10 +585,18 @@ function ProfilePageContent() {
                     <MapPin className="w-4.5 h-4.5 text-accent-lux" /> Vetted Service Locations
                   </h3>
                   <button
-                    onClick={() => setShowAddressForm(!showAddressForm)}
+                    onClick={() => {
+                      if (showAddressForm) {
+                        setShowAddressForm(false);
+                        setEditingAddress(null);
+                      } else {
+                        setEditingAddress(null);
+                        setShowAddressForm(true);
+                      }
+                    }}
                     className="text-xs text-accent-lux font-bold hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    Add Address
+                    {showAddressForm ? "Cancel" : "Add Address"}
                   </button>
                 </div>
 
@@ -547,78 +609,242 @@ function ProfilePageContent() {
                       transition={{ duration: 0.2 }}
                     >
                       <AddAddressForm
-                        onSave={(newAddr) => {
-                          addAddress(newAddr);
+                        initialData={editingAddress || undefined}
+                        onSave={async (savedAddr) => {
+                          if (editingAddress) {
+                            await updateAddressAsync(editingAddress.id, savedAddr);
+                            addNotification("Address Updated", "Your service location was updated successfully.", "success");
+                          } else {
+                            await addAddress(savedAddr);
+                            addNotification("Address Added", "New location saved to profile.", "success");
+                          }
+                          setEditingAddress(null);
                           setShowAddressForm(false);
                         }}
-                        onCancel={() => setShowAddressForm(false)}
+                        onCancel={() => {
+                          setEditingAddress(null);
+                          setShowAddressForm(false);
+                        }}
                       />
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                <div className="space-y-3">
-                  {addresses.map((addr) => {
-                    const TagIcon = addr.tag.toLowerCase().includes("work") || addr.tag.toLowerCase().includes("office") ? Briefcase : addr.tag.toLowerCase().includes("home") ? User : Building;
-                    const RecipientIcon = addr.recipientType === "Family Member" ? Users : addr.recipientType === "Friend / Neighbor" ? HeartHandshake : addr.recipientType === "Office / Work" ? Briefcase : User;
+                {isLoadingAddresses ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((n) => (
+                      <div key={n} className="glass-panel p-5 space-y-3 animate-pulse border border-slate-200/60 dark:border-slate-800 rounded-3xl">
+                        <div className="flex items-center gap-2">
+                          <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded-full w-20" />
+                          <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded-full w-24" />
+                        </div>
+                        <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                        <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
+                      </div>
+                    ))}
+                  </div>
+                ) : addresses.length === 0 ? (
+                  <div className="glass-panel p-12 text-center text-slate-500 text-xs rounded-3xl">
+                    No saved service locations found. Add your primary home or office address above.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {addresses.map((addr) => {
+                      const TagIcon = addr.tag.toLowerCase().includes("work") || addr.tag.toLowerCase().includes("office") ? Briefcase : addr.tag.toLowerCase().includes("home") ? User : Building;
+                      const RecipientIcon = addr.recipientType === "Family Member" ? Users : addr.recipientType === "Friend / Neighbor" ? HeartHandshake : addr.recipientType === "Office / Work" ? Briefcase : User;
 
-                    return (
-                      <div
-                        key={addr.id}
-                        className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-slate-200/60 dark:border-slate-800 rounded-3xl text-left"
-                      >
-                        <div className="space-y-1.5">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black px-3 py-0.5 rounded-full bg-[#782860] text-white uppercase tracking-wider">
-                              <TagIcon className="w-3 h-3" />
-                              {addr.tag}
-                            </span>
-
-                            {addr.recipientType && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
-                                <RecipientIcon className="w-3 h-3" />
-                                {addr.recipientType}
+                      return (
+                        <div
+                          key={addr.id}
+                          className="glass-panel p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-slate-200/60 dark:border-slate-800 rounded-3xl text-left"
+                        >
+                          <div className="space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black px-3 py-0.5 rounded-full bg-[#782860] text-white uppercase tracking-wider">
+                                <TagIcon className="w-3 h-3" />
+                                {addr.tag}
                               </span>
-                            )}
 
-                            {addr.locality && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 font-mono">
-                                <MapPin className="w-3 h-3" />
-                                {addr.locality} ({addr.pincode || "Varanasi"})
-                              </span>
-                            )}
+                              {addr.recipientType && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
+                                  <RecipientIcon className="w-3 h-3" />
+                                  {addr.recipientType}
+                                </span>
+                              )}
 
-                            {addr.isDefault && (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                Primary Default
-                              </span>
+                              {addr.locality && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 font-mono">
+                                  <MapPin className="w-3 h-3" />
+                                  {addr.locality} ({addr.pincode || "Varanasi"})
+                                </span>
+                              )}
+
+                              {addr.isDefault && (
+                                <span className="inline-flex items-center gap-1 text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                  Primary Default
+                                </span>
+                              )}
+                            </div>
+
+                            <p className="text-xs font-extrabold text-foreground pt-0.5 leading-snug">{addr.addressLine}</p>
+
+                            {(addr.recipientName || addr.recipientPhone) && (
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
+                                {addr.recipientName && <span>Recipient: {addr.recipientName}</span>}
+                                {addr.recipientPhone && <span className="text-slate-400">| {addr.recipientPhone}</span>}
+                              </p>
                             )}
                           </div>
 
-                          <p className="text-xs font-extrabold text-foreground pt-0.5 leading-snug">{addr.addressLine}</p>
+                          <div className="flex items-center gap-2 shrink-0 self-start md:self-center">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingAddress(addr);
+                                setShowAddressForm(true);
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" /> Edit
+                            </button>
 
-                          {(addr.recipientName || addr.recipientPhone) && (
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
-                              {addr.recipientName && <span>Recipient: {addr.recipientName}</span>}
-                              {addr.recipientPhone && <span className="text-slate-400">| {addr.recipientPhone}</span>}
-                            </p>
-                          )}
+                            <button
+                              type="button"
+                              onClick={() => removeAddress(addr.id)}
+                              className="px-3 py-1.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" /> Delete
+                            </button>
+                          </div>
                         </div>
-
-                        <button
-                          onClick={() => removeAddress(addr.id)}
-                          className="px-3 py-1.5 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 self-start md:self-center"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Delete
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
-                {/* TAB: WALLET & LOYALTY */}
+            {/* TAB: SAVED BOOKMARKS */}
+            {activeTab === "bookmarks" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-bold text-sm text-foreground flex items-center gap-1.5">
+                      <Bookmark className="w-4.5 h-4.5 text-accent-lux fill-accent-lux" /> Saved Bookmarked Packages
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">Your saved service packages for fast one-click booking.</p>
+                  </div>
+                  <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
+                    {bookmarkedPackages.length} Saved
+                  </span>
+                </div>
+
+                {isLoadingBookmarks ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2].map((n) => (
+                      <div key={n} className="glass-panel p-5 space-y-4 animate-pulse border border-slate-200/60 dark:border-slate-800 rounded-3xl">
+                        <div className="flex gap-4 items-start">
+                          <div className="w-20 h-20 bg-slate-200 dark:bg-slate-800 rounded-2xl shrink-0" />
+                          <div className="space-y-2 flex-1">
+                            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24" />
+                            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                            <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                            <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-16 mt-2" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : bookmarkedPackages.length === 0 ? (
+                  <div className="glass-panel p-12 rounded-3xl text-center flex flex-col items-center justify-center space-y-3">
+                    <Bookmark className="w-12 h-12 text-slate-300 dark:text-slate-700" />
+                    <p className="text-sm font-bold text-foreground">No Bookmarked Packages Yet</p>
+                    <p className="text-xs text-slate-400 max-w-sm">
+                      Click the bookmark icon on any service package to save it here for fast access and booking.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {bookmarkedPackages.map((item) => {
+                      const pkg = item.package;
+                      if (!pkg) return null;
+
+                      return (
+                        <div
+                          key={item.bookmarkId || pkg._id}
+                          className="glass-panel p-5 border border-slate-200/60 dark:border-slate-800 rounded-3xl text-left flex flex-col justify-between space-y-4 hover:shadow-lg transition-all"
+                        >
+                          <div className="flex gap-4 items-start">
+                            {pkg.imageUrl || pkg.thumbnailUrl ? (
+                              <img
+                                src={formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl)}
+                                alt={pkg.packageName}
+                                referrerPolicy="no-referrer"
+                                className="w-20 h-20 rounded-2xl object-cover shrink-0 border border-slate-100 dark:border-slate-800"
+                              />
+                            ) : (
+                              <div className="w-20 h-20 rounded-2xl bg-accent-lux/10 text-accent-lux flex items-center justify-center shrink-0">
+                                <Bookmark className="w-8 h-8 fill-accent-lux" />
+                              </div>
+                            )}
+
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <span className="text-[9px] font-black uppercase tracking-wider text-accent-lux px-2 py-0.5 rounded-md bg-accent-lux/10 inline-block">
+                                {pkg.serviceAction?.name || "Service Package"}
+                              </span>
+                              <h4 className="font-extrabold text-sm text-foreground truncate">{pkg.packageName}</h4>
+                              <p className="text-[11px] text-slate-400 line-clamp-2">{pkg.description || pkg.subtitle || ""}</p>
+                              <div className="flex items-center gap-2 pt-1">
+                                <span className="text-sm font-black text-accent-lux">₹{pkg.price}</span>
+                                {pkg.originalPrice && pkg.originalPrice > pkg.price && (
+                                  <span className="text-xs text-slate-400 line-through">₹{pkg.originalPrice}</span>
+                                )}
+                                {pkg.duration && (
+                                  <span className="text-[10px] text-slate-400 font-medium ml-auto">• {pkg.duration} mins</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800/80">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                addToCart({
+                                  id: pkg._id,
+                                  name: pkg.packageName,
+                                  price: pkg.price,
+                                  category: pkg.serviceAction?.name || "Service",
+                                  duration: pkg.duration || 30,
+                                });
+                                addNotification("Added to Cart", `${pkg.packageName} added to your cart.`, "success");
+                              }}
+                              className="flex-1 py-2 px-3 rounded-xl bg-accent-lux text-white text-xs font-bold hover:bg-accent-lux/90 transition-all text-center cursor-pointer"
+                            >
+                              Add to Cart
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                toggleBookmark(pkg._id);
+                                addNotification("Bookmark Removed", `${pkg.packageName} removed from saved list.`, "info");
+                              }}
+                              className="p-2 rounded-xl bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all cursor-pointer"
+                              title="Remove Bookmark"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: WALLET & LOYALTY */}
             {activeTab === "wallet" && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -641,7 +867,7 @@ function ProfilePageContent() {
                           <span className="text-[8px] text-slate-500 dark:text-slate-300 uppercase block font-semibold">Purse Holder</span>
                           <span className="text-xs font-bold text-slate-900 dark:text-white mt-0.5 block">{userName}</span>
                         </div>
-                        <button 
+                        <button
                           onClick={() => setShowAddFundsModal(true)}
                           className="bg-accent-lux hover:bg-accent-lux/90 text-white font-extrabold text-[10px] uppercase tracking-wider px-4 py-2 rounded-full cursor-pointer flex items-center gap-1 shadow-md hover:scale-[1.03] transition-all"
                         >
@@ -671,8 +897,8 @@ function ProfilePageContent() {
                         <span className="text-foreground">{loyaltyPoints} / 500</span>
                       </div>
                       <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                        <div 
-                          className="bg-gradient-to-r from-accent-lux to-secondary-lux h-full rounded-full transition-all duration-500" 
+                        <div
+                          className="bg-gradient-to-r from-accent-lux to-secondary-lux h-full rounded-full transition-all duration-500"
                           style={{ width: `${Math.min(100, (loyaltyPoints / 500) * 100)}%` }}
                         />
                       </div>
@@ -688,7 +914,7 @@ function ProfilePageContent() {
                   <div className="glass-panel p-5 border border-accent-lux/20 bg-accent-lux/[0.02] rounded-[24px] space-y-4 text-left animate-fadeIn">
                     <div className="flex justify-between items-center">
                       <h4 className="font-extrabold text-xs uppercase tracking-wider text-accent-lux">Simulated Payment Center</h4>
-                      <button 
+                      <button
                         onClick={() => {
                           setShowAddFundsModal(false);
                           setAddFundsAmount("");
@@ -1010,7 +1236,7 @@ function ProfilePageContent() {
                   <p className="text-xs text-slate-550 leading-relaxed">
                     Select communication channels to receive real-time updates regarding service simulation alerts, ETAs, and coupons.
                   </p>
-                  
+
                   <div className="space-y-3">
                     {/* WhatsApp Toggle */}
                     <div className="flex justify-between items-center p-3 bg-slate-50 dark:bg-slate-950/20 border border-slate-200 dark:border-slate-800 rounded-2xl">

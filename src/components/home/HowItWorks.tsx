@@ -43,7 +43,7 @@ export default function HowItWorks() {
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-16">
           <span className="text-[10px] uppercase font-bold text-accent-lux bg-accent-lux/10 px-3 py-1 rounded-full tracking-widest inline-block mb-3.5">
-            Step 5: Booking Process
+            Booking Process
           </span>
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white mt-1">
             How to Book in 30 Seconds

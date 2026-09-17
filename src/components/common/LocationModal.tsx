@@ -16,6 +16,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "@/store/useStore";
 import { citiesServed } from "@/utils/mockData";
+import { fetchCustomerNeighborhoodZonesApi, NeighborhoodZoneItem } from "@/services/neighborhoodApi";
 
 interface LocationModalProps {
   isOpen: boolean;
@@ -36,6 +37,17 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
   const [mode, setMode] = useState<"prompt" | "detecting" | "manual" | "success">("prompt");
   const [manualInput, setManualInput] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [zones, setZones] = useState<NeighborhoodZoneItem[]>([]);
+
+  useEffect(() => {
+    async function loadZones() {
+      const res = await fetchCustomerNeighborhoodZonesApi();
+      if (res.success && res.data && res.data.length > 0) {
+        setZones(res.data);
+      }
+    }
+    loadZones();
+  }, []);
 
   const handleCloseModal = () => {
     setIsLocationSet(true);
@@ -294,20 +306,35 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
                 </span>
 
                 <div className="grid grid-cols-2 gap-2">
-                  {citiesServed.map((city) => (
-                    <button
-                      key={city.name}
-                      onClick={() => handleSelectQuickCity(city.name)}
-                      className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center justify-between group ${
-                        selectedLocation === city.name
-                          ? "bg-accent-lux/10 border-accent-lux text-accent-lux"
-                          : "bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800 hover:border-accent-lux/50 text-slate-700 dark:text-slate-200"
-                      }`}
-                    >
-                      <span className="text-xs font-bold truncate">{city.name}</span>
-                      <Check className={`w-3.5 h-3.5 shrink-0 ${selectedLocation === city.name ? "opacity-100" : "opacity-0 group-hover:opacity-50"}`} />
-                    </button>
-                  ))}
+                  {zones.length > 0
+                    ? zones.map((zone) => (
+                        <button
+                          key={zone._id}
+                          onClick={() => handleSelectQuickCity(zone.zoneName)}
+                          className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center justify-between group ${
+                            selectedLocation === zone.zoneName
+                              ? "bg-accent-lux/10 border-accent-lux text-accent-lux"
+                              : "bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800 hover:border-accent-lux/50 text-slate-700 dark:text-slate-200"
+                          }`}
+                        >
+                          <span className="text-xs font-bold truncate">{zone.zoneName}</span>
+                          <Check className={`w-3.5 h-3.5 shrink-0 ${selectedLocation === zone.zoneName ? "opacity-100" : "opacity-0 group-hover:opacity-50"}`} />
+                        </button>
+                      ))
+                    : citiesServed.map((city) => (
+                        <button
+                          key={city.name}
+                          onClick={() => handleSelectQuickCity(city.name)}
+                          className={`p-3 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center justify-between group ${
+                            selectedLocation === city.name
+                              ? "bg-accent-lux/10 border-accent-lux text-accent-lux"
+                              : "bg-slate-50 dark:bg-slate-800/60 border-slate-100 dark:border-slate-800 hover:border-accent-lux/50 text-slate-700 dark:text-slate-200"
+                          }`}
+                        >
+                          <span className="text-xs font-bold truncate">{city.name}</span>
+                          <Check className={`w-3.5 h-3.5 shrink-0 ${selectedLocation === city.name ? "opacity-100" : "opacity-0 group-hover:opacity-50"}`} />
+                        </button>
+                      ))}
                 </div>
               </div>
 

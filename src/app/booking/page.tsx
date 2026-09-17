@@ -25,10 +25,12 @@ import {
   Tag,
   Users,
   User,
-  HeartHandshake
+  HeartHandshake,
+  Edit3,
+  X
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useStore, Address } from "@/store/useStore";
+import { useStore, Address, getItemAddonTotal } from "@/store/useStore";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import confetti from "canvas-confetti";
@@ -37,6 +39,8 @@ import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/boo
 import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
 import MembershipBanner from "@/components/membership/MembershipBanner";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
+import { fetchScheduleAvailabilityApi } from "@/services/scheduleApi";
+import { fetchCustomerPackagesApi } from "@/services/packageApi";
 
 export default function BookingPage() {
   const router = useRouter();
@@ -44,8 +48,11 @@ export default function BookingPage() {
     cart,
     addToCart,
     removeFromCart,
+    cartPricing,
     addresses,
     addAddress,
+    updateAddressAsync,
+    fetchAddresses,
     selectedAddressId,
     setSelectedAddressId,
     selectedDate,
@@ -56,17 +63,125 @@ export default function BookingPage() {
     applyCoupon,
     removeCoupon,
     createBooking,
+    createBookingAsync,
     addNotification,
+    toggleAddonInCart,
     bookings,
     isMember,
-    membershipTier
+    membershipTier,
+    token
   } = useStore();
+
+  useEffect(() => {
+    if (token) {
+      fetchAddresses();
+    }
+  }, [token, fetchAddresses]);
 
   const [step, setStep] = useState(0); // 0: Cart/Add-ons, 1: Schedule, 2: Address, 3: Payment, 4: Success
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
   const [showAddAddress, setShowAddAddress] = useState(false);
+  const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [showCouponsSlider, setShowCouponsSlider] = useState(false);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [cartPackageAddons, setCartPackageAddons] = useState<any[]>([]);
+
+  // Load available package addons for items currently in cart
+  useEffect(() => {
+    let isMounted = true;
+    async function loadCartAddons() {
+      if (!cart || cart.length === 0) {
+        if (isMounted) setCartPackageAddons([]);
+        return;
+      }
+
+      try {
+        const res = await fetchCustomerPackagesApi({ limit: 50 });
+        if (isMounted && res.success && res.data) {
+          const cartItemIds = cart.map((c) => String(c.id || c.itemId));
+          const matchedAddons: any[] = [];
+          const seenAddonIds = new Set<string>();
+
+          res.data.forEach((pkgItem: any) => {
+            const pkgId = String(pkgItem.package?.id || pkgItem.package?._id);
+            const pkgName = pkgItem.package?.name || pkgItem.package?.packageName;
+            const isCartMatch = cartItemIds.some((cid) => cid === pkgId || cart.some((c) => c.name === pkgName));
+
+            if (isCartMatch && pkgItem.addons && Array.isArray(pkgItem.addons)) {
+              pkgItem.addons.forEach((addon: any) => {
+                const aId = String(addon._id || addon.id);
+                if (!seenAddonIds.has(aId)) {
+                  seenAddonIds.add(aId);
+                  matchedAddons.push({
+                    id: aId,
+                    name: addon.addonName || addon.title || addon.name || "Service Add-on",
+                    price: addon.price || 0,
+                    description: addon.description || "",
+                    imageUrl: addon.imageUrl || "",
+                  });
+                }
+              });
+            }
+          });
+
+          setCartPackageAddons(matchedAddons);
+        }
+      } catch (err) {
+        console.error("Error fetching cart package addons:", err);
+      }
+    }
+
+    loadCartAddons();
+    return () => {
+      isMounted = false;
+    };
+  }, [cart]);
+
+  // Dynamic schedule availability from backend API
+  const [availableDates, setAvailableDates] = useState<{ label: string; dayNum: number; fullDate: string; iso: string; available?: boolean }[]>([]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+  const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadScheduleAvailability() {
+      setIsLoadingSchedule(true);
+      try {
+        const res = await fetchScheduleAvailabilityApi(token);
+        if (isMounted && res.success && res.data) {
+          if (res.data.dates && res.data.dates.length > 0) {
+            const mappedDates = res.data.dates.map((d) => {
+              const dateObj = new Date(d.date + "T00:00:00");
+              return {
+                label: d.day || dateObj.toLocaleDateString("en-US", { weekday: "short" }),
+                dayNum: dateObj.getDate(),
+                fullDate: dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                iso: d.date,
+                available: d.available !== false
+              };
+            });
+            setAvailableDates(mappedDates);
+          }
+          if (res.data.timeSlots && res.data.timeSlots.length > 0) {
+            const mappedSlots = res.data.timeSlots.map((s: any) => {
+              if (typeof s === "string") return s;
+              return s.startTime || s.value || "";
+            }).filter(Boolean);
+            setAvailableTimeSlots(mappedSlots);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching schedule availability:", err);
+      } finally {
+        if (isMounted) setIsLoadingSchedule(false);
+      }
+    }
+    loadScheduleAvailability();
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
 
   // Custom Date and Time expand state & refs
   const [showCustomDate, setShowCustomDate] = useState(false);
@@ -103,9 +218,10 @@ export default function BookingPage() {
   const [createdBookingId, setCreatedBookingId] = useState<string | null>(null);
 
   // Available Time Slots
-  const timeSlots = ["08:00 AM", "10:00 AM", "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
+  const defaultTimeSlots = ["08:00 AM", "10:00 AM", "12:00 PM", "02:00 PM", "04:00 PM", "06:00 PM"];
+  const timeSlots = availableTimeSlots.length > 0 ? availableTimeSlots : defaultTimeSlots;
 
-  // Generate next 6 dates starting today
+  // Generate next 6 dates starting today (Fallback)
   const getDates = () => {
     const dates = [];
     for (let i = 0; i < 6; i++) {
@@ -115,13 +231,14 @@ export default function BookingPage() {
         label: d.toLocaleDateString("en-US", { weekday: "short" }),
         dayNum: d.getDate(),
         fullDate: d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-        iso: d.toISOString().split("T")[0]
+        iso: d.toISOString().split("T")[0],
+        available: true
       });
     }
     return dates;
   };
 
-  const dates = getDates();
+  const dates = availableDates.length > 0 ? availableDates : getDates();
 
   const format24To12 = (time24: string): string => {
     if (!time24) return "";
@@ -187,19 +304,27 @@ export default function BookingPage() {
       setStep(step + 1);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
-      // Create final booking
-      const newBk = createBooking();
-      if (newBk) {
-        setCreatedBookingId(newBk.id);
-        setStep(4);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        // Blast Confetti
-        confetti({
-          particleCount: 150,
-          spread: 80,
-          origin: { y: 0.5 }
+      // Create final booking via API
+      setIsSubmittingBooking(true);
+      const methodToPass = (paymentMethod === "pay_after" || paymentMethod === "cod") ? "pay_after_service" : paymentMethod;
+      createBookingAsync(methodToPass)
+        .then((res) => {
+          if (res.success && res.booking) {
+            setCreatedBookingId(res.booking.id);
+            setStep(4);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            confetti({
+              particleCount: 150,
+              spread: 80,
+              origin: { y: 0.5 }
+            });
+          } else {
+            alert(res.message || "Failed to create booking. Please try again.");
+          }
+        })
+        .finally(() => {
+          setIsSubmittingBooking(false);
         });
-      }
     }
   };
 
@@ -215,9 +340,17 @@ export default function BookingPage() {
     ? bookings.find(b => b.id === createdBookingId)
     : null;
 
+  const itemsSubtotal = matchedBooking
+    ? matchedBooking.totalAmount
+    : (cartPricing?.itemsSubtotal ?? cart.reduce((sum, item) => sum + item.price * item.quantity, 0));
+
+  const addonSubtotal = matchedBooking
+    ? 0
+    : (cartPricing?.addonSubtotal ?? cart.reduce((sum, item) => sum + getItemAddonTotal(item), 0));
+
   const subtotal = matchedBooking
     ? matchedBooking.totalAmount
-    : cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    : (cartPricing?.subtotal ?? (itemsSubtotal + addonSubtotal));
 
   let couponDiscount = 0;
   if (matchedBooking) {
@@ -234,9 +367,22 @@ export default function BookingPage() {
   const memberDiscount = (!matchedBooking && isMember) ? Math.round(subtotal * 0.15) : 0;
   const discount = couponDiscount + memberDiscount;
 
-  const total = matchedBooking
+  const gstRate = cartPricing?.gstRate ?? 18;
+  const gst = matchedBooking
+    ? 0
+    : (cartPricing?.gst ?? (subtotal > 0 ? Math.round((subtotal - discount) * 0.18 * 100) / 100 : 0));
+
+  const convenienceFee = matchedBooking
+    ? 0
+    : (cartPricing?.convenienceFee ?? (subtotal > 0 ? 49 : 0));
+
+  const grandTotal = matchedBooking
     ? matchedBooking.finalAmount
-    : Math.max(0, subtotal - discount);
+    : (cartPricing && discount === 0 
+        ? cartPricing.grandTotal 
+        : Math.max(0, Math.round((subtotal - discount + gst + convenienceFee) * 100) / 100));
+
+  const total = grandTotal;
 
   return (
     <>
@@ -336,83 +482,125 @@ export default function BookingPage() {
                             <p className="text-xs font-bold uppercase tracking-wider">Your selection is empty</p>
                           </div>
                         ) : (
-                          cart.map((item) => (
-                            <div
-                              key={item.id}
-                              className="flex justify-between items-center p-4 sm:p-5 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800"
-                            >
-                              <div>
-                                <span className="text-xs sm:text-sm font-bold text-foreground">{item.name}</span>
-                                <p className="text-[10px] text-slate-450 mt-1.5 capitalize">{item.category} • {item.duration} mins</p>
+                          cart.map((item) => {
+                            const addonTotal = (item.selectedAddons || []).reduce(
+                              (sum, a) => sum + (a.totalPrice || ((a.price || 0) * (a.quantity || 1))),
+                              0
+                            );
+                            const itemTotal = (item.price * item.quantity) + addonTotal;
+
+                            return (
+                              <div
+                                key={item.id}
+                                className="p-4 sm:p-5 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-3"
+                              >
+                                <div className="flex justify-between items-center">
+                                  <div>
+                                    <span className="text-xs sm:text-sm font-bold text-foreground">{item.name}</span>
+                                    <p className="text-[10px] text-slate-450 mt-1 capitalize">{item.category} • {item.duration} mins • Qty: {item.quantity}</p>
+                                  </div>
+                                  <div className="flex items-center gap-4">
+                                    <span className="text-sm font-bold text-foreground font-sans">₹{itemTotal}</span>
+                                    <button
+                                      onClick={() => removeFromCart(item.id)}
+                                      className="text-slate-400 hover:text-red-500 cursor-pointer p-1 rounded-full hover:bg-red-500/5 transition-colors"
+                                      title="Remove service"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {item.selectedAddons && item.selectedAddons.length > 0 && (
+                                  <div className="pt-2.5 border-t border-slate-200/60 dark:border-slate-800 space-y-2">
+                                    <span className="text-[10px] uppercase font-bold text-accent-lux flex items-center gap-1">
+                                      <Sparkles className="w-3 h-3 animate-pulse" /> Included Add-ons ({item.selectedAddons.length})
+                                    </span>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {item.selectedAddons.map((addon) => (
+                                        <div key={addon.addonId} className="flex justify-between items-center text-xs bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-800 px-3 py-2 rounded-xl">
+                                          <span className="font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 truncate pr-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-accent-lux shrink-0" />
+                                            <span className="truncate">{addon.addonName} {addon.quantity > 1 ? `(x${addon.quantity})` : ""}</span>
+                                          </span>
+                                          <div className="flex items-center gap-2 shrink-0">
+                                            <span className="font-bold text-foreground font-sans">+₹{addon.totalPrice || ((addon.price || 0) * (addon.quantity || 1))}</span>
+                                            <button
+                                              onClick={() => toggleAddonInCart(item.itemId || item.id, addon.addonId, "remove")}
+                                              className="text-slate-400 hover:text-rose-500 cursor-pointer p-0.5"
+                                              title="Remove add-on"
+                                            >
+                                              <X className="w-3.5 h-3.5" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                               </div>
-                              <div className="flex items-center gap-4">
-                                <span className="text-sm font-bold text-foreground">₹{item.price * item.quantity}</span>
-                                <button
-                                  onClick={() => removeFromCart(item.id)}
-                                  className="text-slate-400 hover:text-red-500 cursor-pointer p-1 rounded-full hover:bg-red-500/5 transition-colors"
-                                  title="Remove service"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          ))
+                            );
+                          })
                         )}
                       </div>
 
-                      {/* Add-on Recommendation Cards */}
-                      {cart.length > 0 && (
+                      {/* Add-on Recommendation Cards (Package Addons) */}
+                      {cart.length > 0 && cartPackageAddons.length > 0 && (
                         <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80">
-                          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5 mb-3">
                             <Sparkles className="w-3.5 h-3.5 text-accent-lux animate-pulse" /> Popular Pairing Recommendations
                           </span>
-                          
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                            <button
-                              onClick={() => {
-                                addToCart({
-                                  id: "addon-disinfect",
-                                  name: "Full Shield Bio-Disinfection Treatment",
-                                  price: 399,
-                                  category: "cleaning",
-                                  duration: 30
-                                });
-                                addNotification("Added to Cart", "Bio-Disinfection Treatment added.", "success");
-                              }}
-                              className="p-4 bg-white dark:bg-slate-950/20 shadow-md hover:shadow-lg rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between h-28 group"
-                            >
-                              <div>
-                                <span className="text-xs font-bold text-foreground group-hover:text-accent-lux transition-colors">Bio-Disinfection Cover</span>
-                                <p className="text-[9px] text-slate-400 mt-1">Full-surface sanitizing mist.</p>
-                              </div>
-                              <div className="flex justify-between items-end w-full">
-                                <span className="text-xs font-black text-accent-lux">+₹399</span>
-                                <span className="text-[10px] text-accent-lux font-semibold flex items-center gap-0.5">Add <Plus className="w-3 h-3" /></span>
-                              </div>
-                            </button>
 
-                            <button
-                              onClick={() => {
-                                addToCart({
-                                  id: "addon-warranty",
-                                  name: "Extended 90-Day Satisfaction Warranty",
-                                  price: 199,
-                                  category: "cleaning",
-                                  duration: 0
-                                });
-                                addNotification("Added to Cart", "Satisfaction Warranty added.", "success");
-                              }}
-                              className="p-4 bg-white dark:bg-slate-950/20 shadow-md hover:shadow-lg rounded-2xl text-left transition-all cursor-pointer flex flex-col justify-between h-28 group"
-                            >
-                              <div>
-                                <span className="text-xs font-bold text-foreground group-hover:text-accent-lux transition-colors">90-Day Extension warranty</span>
-                                <p className="text-[9px] text-slate-400 mt-1">Premium coverage for absolute peace of mind.</p>
-                              </div>
-                              <div className="flex justify-between items-end w-full">
-                                <span className="text-xs font-black text-accent-lux">+₹199</span>
-                                <span className="text-[10px] text-accent-lux font-semibold flex items-center gap-0.5">Add <Plus className="w-3 h-3" /></span>
-                              </div>
-                            </button>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {cartPackageAddons.map((addon) => {
+                              const parentCartItem = cart.find((c) => c.id !== addon.id);
+                              const targetCartItemId = parentCartItem?.itemId || parentCartItem?.id || addon.id;
+                              const isAdded = (parentCartItem?.selectedAddons || []).some((a) => a.addonId === addon.id) || cart.some((c) => c.id === addon.id);
+
+                              return (
+                                <div
+                                  key={addon.id}
+                                  className="p-4 bg-white dark:bg-slate-950/20 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md rounded-2xl text-left transition-all flex flex-col justify-between h-auto group"
+                                >
+                                  <div>
+                                    <div className="flex justify-between items-start">
+                                      <span className="text-xs font-bold text-foreground group-hover:text-accent-lux transition-colors">
+                                        {addon.name}
+                                      </span>
+                                      <span className="text-xs font-black text-accent-lux shrink-0">
+                                        +₹{addon.price}
+                                      </span>
+                                    </div>
+                                    {addon.description && (
+                                      <p className="text-[10px] text-slate-400 mt-1 line-clamp-2">
+                                        {addon.description}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  <div className="flex justify-end items-center mt-3 pt-2 border-t border-slate-100 dark:border-slate-800/60">
+                                    <button
+                                      onClick={async () => {
+                                        const action = isAdded ? "remove" : "add";
+                                        await toggleAddonInCart(targetCartItemId, addon.id, action);
+                                        addNotification(
+                                          action === "add" ? "Add-on Added" : "Add-on Removed",
+                                          action === "add" ? `"${addon.name}" added to your cart.` : `"${addon.name}" removed from your cart.`,
+                                          "info"
+                                        );
+                                      }}
+                                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                                        isAdded
+                                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500 opacity-90"
+                                          : "bg-accent-lux text-white hover:bg-accent-lux/90"
+                                      }`}
+                                    >
+                                      {isAdded ? "Added ✓" : <>Add <Plus className="w-3 h-3" /></>}
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -694,10 +882,18 @@ export default function BookingPage() {
 
                         <button
                           type="button"
-                          onClick={() => setShowAddAddress(!showAddAddress)}
+                          onClick={() => {
+                            if (showAddAddress) {
+                              setShowAddAddress(false);
+                              setEditingAddress(null);
+                            } else {
+                              setEditingAddress(null);
+                              setShowAddAddress(true);
+                            }
+                          }}
                           className="px-4 py-2 bg-[#782860]/10 text-[#782860] dark:bg-[#782860]/20 dark:text-purple-300 hover:bg-[#782860] hover:text-white font-extrabold text-xs rounded-2xl transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm"
                         >
-                          <Plus className="w-4 h-4" /> Add Address
+                          <Plus className="w-4 h-4" /> {showAddAddress ? "Cancel" : "Add Address"}
                         </button>
                       </div>
 
@@ -711,11 +907,22 @@ export default function BookingPage() {
                             transition={{ duration: 0.2 }}
                           >
                             <AddAddressForm
-                              onSave={(newAddr) => {
-                                addAddress(newAddr);
+                              initialData={editingAddress || undefined}
+                              onSave={async (savedAddr) => {
+                                if (editingAddress) {
+                                  await updateAddressAsync(editingAddress.id, savedAddr);
+                                  addNotification("Address Updated", "Location updated successfully.", "success");
+                                } else {
+                                  await addAddress(savedAddr);
+                                  addNotification("Address Added", "New address added to your list.", "success");
+                                }
+                                setEditingAddress(null);
                                 setShowAddAddress(false);
                               }}
-                              onCancel={() => setShowAddAddress(false)}
+                              onCancel={() => {
+                                setEditingAddress(null);
+                                setShowAddAddress(false);
+                              }}
                             />
                           </motion.div>
                         )}
@@ -781,11 +988,25 @@ export default function BookingPage() {
                                 </div>
                               </div>
 
-                              {isSelected && (
-                                <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-[10px] rounded-xl flex items-center gap-1 shrink-0 border border-emerald-500/20">
-                                  <CheckCircle className="w-3 h-3" /> Selected
-                                </span>
-                              )}
+                              <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingAddress(addr);
+                                    setShowAddAddress(true);
+                                  }}
+                                  className="px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                                >
+                                  <Edit3 className="w-3 h-3" /> Edit
+                                </button>
+
+                                {isSelected && (
+                                  <span className="px-3 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-[10px] rounded-xl flex items-center gap-1 border border-emerald-500/20">
+                                    <CheckCircle className="w-3 h-3" /> Selected
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -988,96 +1209,110 @@ export default function BookingPage() {
                    <div>
                      <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Booking Invoice</h3>
                    </div>
- 
+
                    <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-800 pt-4 text-xs">
                      <div className="flex justify-between items-center text-slate-500">
                        <span>Services Base Subtotal</span>
-                       <span className="font-bold text-foreground">₹{subtotal}</span>
+                       <span className="font-bold text-foreground">₹{itemsSubtotal}</span>
                      </div>
- 
+
+                     {addonSubtotal > 0 && (
+                       <div className="flex justify-between items-center text-accent-lux font-bold">
+                         <span className="flex items-center gap-1">
+                           <Sparkles className="w-3.5 h-3.5 text-accent-lux" /> Selected Add-ons Subtotal
+                         </span>
+                         <span>+₹{addonSubtotal}</span>
+                       </div>
+                     )}
+
+                     <div className="flex justify-between items-center text-slate-700 dark:text-slate-300 font-extrabold border-t border-slate-100/60 dark:border-slate-800/60 pt-2">
+                       <span>Subtotal</span>
+                       <span>₹{subtotal}</span>
+                     </div>
+
                      {couponDiscount > 0 && (
-                        <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
-                          <span>Promo Coupon ({appliedCoupon})</span>
-                          <span>-₹{couponDiscount}</span>
-                        </div>
-                      )}
-
-                      {memberDiscount > 0 && (
-                        <div className="flex justify-between items-center text-amber-600 dark:text-amber-400 font-bold">
-                          <span className="flex items-center gap-1">👑 VIP Member Discount (15%)</span>
-                          <span>-₹{memberDiscount}</span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-center text-slate-500">
-                        <span>Varanasi Regional Tax (18%)</span>
-                        <span className="font-bold text-foreground">₹0</span>
-                      </div>
-
-                      <div className="flex justify-between items-center text-slate-500">
-                        <span>Luxury Partner Dispatch Fee</span>
-                        <span className="text-emerald-600 dark:text-emerald-400 font-extrabold">FREE</span>
-                      </div>
-
-                      <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-4 text-sm">
-                        <span className="font-bold text-foreground">Total Due Now</span>
-                        <span className="font-black text-accent-lux text-base">₹{total}</span>
-                      </div>
-
-                     {/* Promo Coupon Section inside Summary Card */}
-                     <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
-                       <div className="flex items-center justify-between">
-                         <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
-                         <button
-                           type="button"
-                           onClick={() => setShowCouponsSlider(true)}
-                           className="text-[11px] font-extrabold text-[#782860] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
-                         >
-                           <Tag className="w-3 h-3" /> View Offers (5)
-                         </button>
+                       <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                         <span>Promo Coupon ({appliedCoupon})</span>
+                         <span>-₹{couponDiscount}</span>
                        </div>
+                     )}
 
-                       <div className="flex gap-2">
-                         <input
-                           type="text"
-                           placeholder="Enter coupon code"
-                           value={couponInput}
-                           onChange={(e) => setCouponInput(e.target.value)}
-                           className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-xs text-foreground focus:outline-none focus:border-accent-lux animate-fadeIn"
-                         />
-                         <button
-                           onClick={handleApplyCoupon}
-                           className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-750 text-xs font-bold text-white cursor-pointer transition-colors"
-                         >
-                           Apply
-                         </button>
+                     {memberDiscount > 0 && (
+                       <div className="flex justify-between items-center text-amber-600 dark:text-amber-400 font-bold">
+                         <span className="flex items-center gap-1">👑 VIP Member Discount (15%)</span>
+                         <span>-₹{memberDiscount}</span>
                        </div>
-                       {couponError && <p className="text-[10px] text-red-500 pl-2 animate-shake">{couponError}</p>}
-                       {appliedCoupon && (
-                         <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl text-[11px] font-bold animate-fadeIn">
-                           <span className="flex items-center gap-1.5"><Percent className="w-3.5 h-3.5 text-emerald-500" /> Code {appliedCoupon} Active</span>
-                           <button onClick={removeCoupon} className="hover:underline text-[10px] text-rose-500 cursor-pointer">Remove</button>
-                         </div>
-                       )}
+                     )}
+
+                     <div className="flex justify-between items-center text-slate-500">
+                       <span>Varanasi Regional Tax (GST {gstRate}%)</span>
+                       <span className="font-bold text-foreground">₹{gst}</span>
                      </div>
- 
-                     <div className="space-y-3 text-[10px] text-slate-400 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
-                       <div className="flex items-center gap-2">
-                         <ShieldCheck className="w-4 h-4 text-emerald-500" /> Flat-rate guaranteed pricing
-                       </div>
-                       <div className="flex items-center gap-2">
-                         <Clock className="w-4 h-4 text-[#782860]" /> Arrives within the scheduling window
-                       </div>
+
+                     <div className="flex justify-between items-center text-slate-500">
+                       <span>Convenience & Dispatch Fee</span>
+                       <span className="font-bold text-foreground">{convenienceFee > 0 ? `₹${convenienceFee}` : "FREE"}</span>
+                     </div>
+
+                     <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-4 text-sm">
+                       <span className="font-extrabold text-foreground">Total Due Now</span>
+                       <span className="font-black text-accent-lux text-base">₹{grandTotal}</span>
                      </div>
                    </div>
 
-                   {/* MEMBERSHIP PROMOTIONAL CARD */}
-                   <MembershipBanner variant="checkout" />
+                   {/* Promo Coupon Section inside Summary Card */}
+                   <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
+                     <div className="flex items-center justify-between">
+                       <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
+                       <button
+                         type="button"
+                         onClick={() => setShowCouponsSlider(true)}
+                         className="text-[11px] font-extrabold text-[#782860] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
+                       >
+                         <Tag className="w-3 h-3" /> View Offers (5)
+                       </button>
+                     </div>
+
+                     <div className="flex gap-2">
+                       <input
+                         type="text"
+                         placeholder="Enter coupon code"
+                         value={couponInput}
+                         onChange={(e) => setCouponInput(e.target.value)}
+                         className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-xs text-foreground focus:outline-none focus:border-accent-lux animate-fadeIn"
+                       />
+                       <button
+                         onClick={handleApplyCoupon}
+                         className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-750 text-xs font-bold text-white cursor-pointer transition-colors"
+                       >
+                         Apply
+                       </button>
+                     </div>
+                     {couponError && <p className="text-[10px] text-red-500 pl-2 animate-shake">{couponError}</p>}
+                     {appliedCoupon && (
+                       <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl text-[11px] font-bold animate-fadeIn">
+                         <span className="flex items-center gap-1.5"><Percent className="w-3.5 h-3.5 text-emerald-500" /> Code {appliedCoupon} Active</span>
+                         <button onClick={removeCoupon} className="hover:underline text-[10px] text-rose-500 cursor-pointer">Remove</button>
+                       </div>
+                     )}
+                   </div>
+ 
+                   <div className="space-y-3 text-[10px] text-slate-400 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
+                     <div className="flex items-center gap-2">
+                       <ShieldCheck className="w-4 h-4 text-emerald-500" /> Flat-rate guaranteed pricing
+                     </div>
+                     <div className="flex items-center gap-2">
+                       <Clock className="w-4 h-4 text-[#782860]" /> Arrives within the scheduling window
+                     </div>
+                   </div>
                  </div>
-                </div>
-              )}
-            </div>
+
+                 {/* MEMBERSHIP PROMOTIONAL CARD */}
+                 <MembershipBanner variant="checkout" />
+               </div>
+            )}
           </div>
+        </div>
       </main>
 
       {/* Available Admin Coupons Slider / Drawer */}

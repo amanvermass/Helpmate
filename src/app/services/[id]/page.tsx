@@ -15,13 +15,24 @@ import {
   ShoppingBag,
   Search,
   Bookmark,
-  Users
+  Users,
+  Sparkles,
+  X
 } from "lucide-react";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { services, reviews as mockReviews } from "@/utils/mockData";
-import { useStore } from "@/store/useStore";
+import { useStore, getItemAddonTotal } from "@/store/useStore";
 import confetti from "canvas-confetti";
+import { formatImageUrl } from "@/utils/image";
+import { fetchCustomerCategoriesApi, fetchCustomerSubCategoriesApi, SubCategoryItem } from "@/services/categoryApi";
+import {
+  fetchCustomerServiceActionsApi,
+  fetchCustomerPackagesApi as fetchCustomerPackagesByActionApi,
+  ServiceActionItem,
+  PackageItem,
+} from "@/services/serviceActionApi";
+import { fetchCustomerPackagesApi as fetchGlobalPackagesApi } from "@/services/packageApi";
 
 // Stepper Interface Config for CRM manageability
 export interface ServiceWizardItem {
@@ -315,19 +326,88 @@ function ServiceDetailPageContent({ params }: PageProps) {
   const resolvedParams = React.use(params);
   const serviceId = resolvedParams.id;
 
-  const { addToRecentlyViewed, addToCart, clearCart, addNotification, cart, removeFromCart } = useStore();
+  const {
+    addToRecentlyViewed,
+    addToCart,
+    clearCart,
+    addNotification,
+    cart,
+    removeFromCart,
+    cartPricing,
+    bookmarkedPackageIds,
+    toggleBookmark,
+    fetchBookmarks,
+    toggleAddonInCart,
+    token
+  } = useStore();
 
-  const service = services.find((s) => s.id === serviceId || s.category === serviceId);
+  const normalizedSlug = serviceId.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  const foundService = services.find(
+    (s) =>
+      s.id === serviceId ||
+      s.category === serviceId ||
+      s.name.toLowerCase().replace(/[^a-z0-9]+/g, "-") === normalizedSlug ||
+      s.category.toLowerCase().replace(/[^a-z0-9]+/g, "-") === normalizedSlug
+  );
+
+  const formattedName = serviceId
+    .split("-")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+
+  const service = React.useMemo(() => {
+    return foundService || {
+      id: serviceId,
+      name: formattedName,
+      category: serviceId,
+      price: 499,
+      rating: 4.9,
+      duration: 60,
+      reviewsCount: 98,
+      description: `Certified background-verified ${formattedName} service experts in Varanasi.`,
+      image: "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=600&q=80",
+      inclusions: [
+        "Complete professional diagnostics & inspection",
+        "Background verified local experts in Varanasi",
+        "Helpmate post-service quality assurance checklist"
+      ],
+      exclusions: [
+        "Spare parts and replacement hardware costs",
+        "Major masonry or unlisted structural modifications"
+      ],
+      faqs: [
+        { question: "How fast can a professional reach?", answer: "Usually within 45 to 60 minutes after booking." },
+        { question: "Is service warranty provided?", answer: "Yes, 30 days Helpmate warranty included." }
+      ]
+    };
+  }, [foundService, serviceId, formattedName]);
 
   const subParam = searchParams.get("sub");
   const actParam = searchParams.get("act");
   const itemParam = searchParams.get("item");
 
+  const categoryIdParam = searchParams.get("categoryId");
+  const [resolvedCategoryId, setResolvedCategoryId] = useState<string | null>(categoryIdParam);
+  const [apiSubCategories, setApiSubCategories] = useState<SubCategoryItem[]>([]);
+  const [apiServiceActions, setApiServiceActions] = useState<ServiceActionItem[]>([]);
+  const [apiPackages, setApiPackages] = useState<PackageItem[]>([]);
+  const [fetchedItemPackage, setFetchedItemPackage] = useState<any | null>(null);
+  const [loadingItemPackage, setLoadingItemPackage] = useState<boolean>(!!itemParam);
+
+  const [loadingSubCategories, setLoadingSubCategories] = useState<boolean>(true);
+  const [loadingServiceActions, setLoadingServiceActions] = useState<boolean>(false);
+  const [loadingPackages, setLoadingPackages] = useState<boolean>(false);
+
   const [selectedSub, setSelectedSub] = useState<string | null>(subParam);
   const [selectedAct, setSelectedAct] = useState<string | null>(actParam);
-  const [savedPackages, setSavedPackages] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      fetchBookmarks();
+    }
+  }, [token, fetchBookmarks]);
 
   // Sync state values with query parameters on load
   useEffect(() => {
@@ -335,14 +415,227 @@ function ServiceDetailPageContent({ params }: PageProps) {
     if (actParam) setSelectedAct(actParam);
   }, [subParam, actParam]);
 
-  // Clean redirection from specific ID to clean category URL for wizard
+  // Fetch individual package detail when itemParam query is present
   useEffect(() => {
-    const categoryKeys = ["ac", "cleaning", "beauty", "electrician", "plumbing"];
-    if (service && !categoryKeys.includes(serviceId)) {
-      const urlParams = searchParams.toString();
-      router.replace(`/services/${service.category}${urlParams ? `?${urlParams}` : ""}`);
+    let isCancelled = false;
+    async function loadItemPackage() {
+      if (!itemParam) {
+        setFetchedItemPackage(null);
+        setLoadingItemPackage(false);
+        return;
+      }
+
+      setLoadingItemPackage(true);
+
+      // Check mock services first
+      const foundMock = services.find((s) => s.id === itemParam);
+      if (foundMock) {
+        if (!isCancelled) {
+          setFetchedItemPackage({
+            id: foundMock.id,
+            name: foundMock.name,
+            price: foundMock.price,
+            originalPrice: foundMock.originalPrice,
+            duration: foundMock.duration,
+            subtitle: "",
+            description: foundMock.description,
+            image: foundMock.image,
+            addons: [],
+          });
+          setLoadingItemPackage(false);
+        }
+        return;
+      }
+
+      // Fetch from backend customer packages API
+      try {
+        const res = await fetchGlobalPackagesApi({ limit: 50 });
+        if (res.success && res.data && !isCancelled) {
+          const matched = res.data.find(
+            (p: any) => String(p.package?.id) === String(itemParam) || String(p.package?._id) === String(itemParam) || String(p.package?.name) === String(itemParam)
+          );
+          if (matched) {
+            const pkg = matched.package as any;
+            setFetchedItemPackage({
+              id: pkg.id || pkg._id,
+              name: pkg.name || pkg.packageName,
+              price: pkg.price,
+              originalPrice: pkg.originalPrice,
+              duration: pkg.duration || 60,
+              subtitle: pkg.subtitle || "",
+              description: pkg.description || pkg.subtitle || `${pkg.name || pkg.packageName} execution by certified Helpmate specialists.`,
+              image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || ""),
+              addons: matched.addons || [],
+            });
+            if (matched.category?.id) {
+              setResolvedCategoryId(matched.category.id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching package item detail:", err);
+      } finally {
+        if (!isCancelled) {
+          setLoadingItemPackage(false);
+        }
+      }
     }
-  }, [service, serviceId, searchParams, router]);
+
+    loadItemPackage();
+    return () => {
+      isCancelled = true;
+    };
+  }, [itemParam]);
+
+  // Fetch live subcategories from API if categoryIdParam exists or lookup category by slug
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadSubCategories() {
+      setLoadingSubCategories(true);
+      let targetCatId = categoryIdParam;
+
+      if (!targetCatId) {
+        const catRes = await fetchCustomerCategoriesApi();
+        if (catRes.success && catRes.data && !isCancelled) {
+          const matched = catRes.data.find(
+            (c) =>
+              c._id === serviceId ||
+              c.categoryName.toLowerCase().replace(/[^a-z0-9]+/g, "-") === normalizedSlug ||
+              normalizedSlug.includes(c.categoryName.toLowerCase().slice(0, 4))
+          );
+          if (matched) {
+            targetCatId = matched._id;
+          }
+        }
+      }
+
+      if (targetCatId && !isCancelled) {
+        setResolvedCategoryId(targetCatId);
+        const res = await fetchCustomerSubCategoriesApi(targetCatId);
+        if (res.success && res.data && !isCancelled) {
+          setApiSubCategories(res.data);
+        } else if (!isCancelled) {
+          setApiSubCategories([]);
+        }
+      } else if (!isCancelled) {
+        setApiSubCategories([]);
+      }
+
+      if (!isCancelled) {
+        setLoadingSubCategories(false);
+      }
+    }
+
+    loadSubCategories();
+    return () => {
+      isCancelled = true;
+    };
+  }, [categoryIdParam, serviceId, normalizedSlug]);
+
+  // Fetch live service actions when subcategory is selected (or immediately if category has no subcategories)
+  const hasSubCategories = apiSubCategories.length > 0;
+
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadServiceActions() {
+      if (hasSubCategories && !selectedSub) {
+        setApiServiceActions([]);
+        setLoadingServiceActions(false);
+        return;
+      }
+
+      setLoadingServiceActions(true);
+
+      let subCatId = "";
+      if (hasSubCategories && selectedSub) {
+        subCatId = selectedSub;
+        const foundSub = apiSubCategories.find((s) => s._id === selectedSub || s.name === selectedSub);
+        if (foundSub) {
+          subCatId = foundSub._id;
+        }
+      }
+
+      let catId = resolvedCategoryId;
+      if (!catId) {
+        const catRes = await fetchCustomerCategoriesApi();
+        if (catRes.success && catRes.data && catRes.data.length > 0) {
+          const matched = catRes.data.find(
+            (c) =>
+              c._id === serviceId ||
+              c.categoryName.toLowerCase().replace(/[^a-z0-9]+/g, "-") === normalizedSlug ||
+              normalizedSlug.includes(c.categoryName.toLowerCase().slice(0, 4))
+          );
+          if (matched) {
+            catId = matched._id;
+          } else {
+            catId = catRes.data[0]._id;
+          }
+        }
+      }
+
+      if (catId) {
+        const res = await fetchCustomerServiceActionsApi(catId, subCatId);
+        if (res.success && res.data && !isCancelled) {
+          setApiServiceActions(res.data);
+        } else if (!isCancelled) {
+          setApiServiceActions([]);
+        }
+      } else if (!isCancelled) {
+        setApiServiceActions([]);
+      }
+
+      if (!isCancelled) {
+        setLoadingServiceActions(false);
+      }
+    }
+
+    if (!loadingSubCategories) {
+      loadServiceActions();
+    }
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedSub, resolvedCategoryId, apiSubCategories, loadingSubCategories, hasSubCategories, serviceId, normalizedSlug]);
+
+  // Fetch live packages when service action is selected
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadPackages() {
+      if (!selectedAct) {
+        setApiPackages([]);
+        setLoadingPackages(false);
+        return;
+      }
+
+      setLoadingPackages(true);
+
+      let actId = selectedAct;
+      const foundAct = apiServiceActions.find((a) => a._id === selectedAct || a.serviceAction === selectedAct);
+      if (foundAct) {
+        actId = foundAct._id;
+      }
+
+      if (actId) {
+        const res = await fetchCustomerPackagesByActionApi(actId);
+        if (res.success && res.data && !isCancelled) {
+          setApiPackages(res.data);
+        } else if (!isCancelled) {
+          setApiPackages([]);
+        }
+      } else if (!isCancelled) {
+        setApiPackages([]);
+      }
+
+      if (!isCancelled) {
+        setLoadingPackages(false);
+      }
+    }
+
+    loadPackages();
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedAct, apiServiceActions]);
 
   const relatedServices = service
     ? services
@@ -351,11 +644,12 @@ function ServiceDetailPageContent({ params }: PageProps) {
       .slice(0, 8)
     : [];
 
+  const serviceIdStr = service?.id;
   useEffect(() => {
-    if (service) {
-      addToRecentlyViewed(service.id);
+    if (serviceIdStr) {
+      addToRecentlyViewed(serviceIdStr);
     }
-  }, [service, addToRecentlyViewed]);
+  }, [serviceIdStr, addToRecentlyViewed]);
 
   if (!service) {
     return (
@@ -375,21 +669,50 @@ function ServiceDetailPageContent({ params }: PageProps) {
     );
   }
 
-  // Find the exact item configuration if specified in search query parameters
-  const wizardConfig = getWizardConfig(service);
-  const currentSub = wizardConfig.subcategories.find((s) => s.id === selectedSub);
-  const currentAct = currentSub?.actions.find((a) => a.id === selectedAct);
-  const selectedItem = currentAct?.items.find((i) => i.id === itemParam);
+  // API-based Subcategory and Service Action matching
+  const matchedApiSub = apiSubCategories.find((s) => s._id === selectedSub || s.name === selectedSub);
+  const currentSub = {
+    id: selectedSub,
+    name: matchedApiSub ? matchedApiSub.name : (selectedSub || ""),
+  };
+
+  const matchedApiAct = apiServiceActions.find((a) => a._id === selectedAct || a.serviceAction === selectedAct);
+  const currentAct = {
+    id: selectedAct,
+    name: matchedApiAct ? matchedApiAct.serviceAction : (selectedAct || ""),
+  };
+
+  const availablePackagesList = apiPackages.map((item: any) => {
+    const pkg = item.package || item;
+    const pkgId = pkg.id || pkg._id || item._id || item.id;
+    const pkgName = pkg.name || pkg.packageName || item.name || "Package Service";
+    return {
+      id: pkgId,
+      name: pkgName,
+      price: pkg.price ?? item.price ?? 0,
+      originalPrice: pkg.originalPrice ?? item.originalPrice,
+      duration: pkg.duration || item.duration || 60,
+      subtitle: pkg.subtitle || item.subtitle || "",
+      description: pkg.description || pkg.subtitle || item.description || `${pkgName} execution by certified Helpmate specialists.`,
+      image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || item.imageUrl || item.thumbnailUrl || ""),
+      addons: item.addons || pkg.addons || [],
+    };
+  });
+
+  const selectedItem =
+    availablePackagesList.find((i) => i.id === itemParam || (i as any)._id === itemParam) ||
+    fetchedItemPackage ||
+    (availablePackagesList.length > 0 ? availablePackagesList[0] : null);
 
   // Set active details based on query parameters or fall back to main service
-  const activeName = selectedItem 
-    ? `${currentSub?.name} ${currentAct?.name} - ${selectedItem.name}`
+  const activeName = selectedItem
+    ? selectedItem.name
     : service.name;
   const activePrice = selectedItem ? selectedItem.price : service.price;
   const activeDuration = selectedItem ? selectedItem.duration : service.duration;
-  
-  const itemDetails = selectedItem 
-    ? getItemDetails(selectedItem.id, selectedItem.name, service.image)
+
+  const itemDetails = selectedItem
+    ? { description: selectedItem.description, image: selectedItem.image }
     : { description: service.description, image: service.image };
 
   const renderBreadcrumbs = (isDetailsView: boolean) => {
@@ -399,9 +722,9 @@ function ServiceDetailPageContent({ params }: PageProps) {
           Home
         </Link>
         <span className="text-slate-400">/</span>
-        
+
         {isDetailsView || selectedSub ? (
-          <Link 
+          <Link
             href={`/services/${service?.category}`}
             onClick={() => {
               setSelectedSub(null);
@@ -421,7 +744,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
           <>
             <span className="text-slate-400">/</span>
             {isDetailsView || selectedAct ? (
-              <Link 
+              <Link
                 href={`/services/${service?.category}?sub=${selectedSub}`}
                 onClick={() => {
                   setSelectedAct(null);
@@ -438,12 +761,12 @@ function ServiceDetailPageContent({ params }: PageProps) {
           </>
         )}
 
-        {selectedSub && selectedAct && (
+        {selectedAct && (
           <>
             <span className="text-slate-400">/</span>
             {isDetailsView ? (
-              <Link 
-                href={`/services/${service?.category}?sub=${selectedSub}&act=${selectedAct}`}
+              <Link
+                href={`/services/${service?.category}?${selectedSub ? `sub=${selectedSub}&` : ""}act=${selectedAct}`}
                 className="hover:text-accent-lux transition-colors font-semibold"
               >
                 {currentAct?.name}
@@ -486,12 +809,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   const handleAddToCart = (e: React.MouseEvent) => {
     triggerSmallConfetti(e);
-    const uniqueId = selectedItem 
-      ? `${service.id}-${selectedSub}-${selectedAct}-${selectedItem.id}`
-      : service.id;
+    const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
 
     addToCart({
-      id: uniqueId,
+      id: packageId,
       name: activeName,
       price: activePrice,
       category: service.category,
@@ -506,13 +827,11 @@ function ServiceDetailPageContent({ params }: PageProps) {
   };
 
   const handleBookNow = (e: React.MouseEvent) => {
-    const uniqueId = selectedItem 
-      ? `${service.id}-${selectedSub}-${selectedAct}-${selectedItem.id}`
-      : service.id;
+    const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
 
     clearCart();
     addToCart({
-      id: uniqueId,
+      id: packageId,
       name: activeName,
       price: activePrice,
       category: service.category,
@@ -524,31 +843,35 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   const handleItemAddToCart = (e: React.MouseEvent, item: any) => {
     triggerSmallConfetti(e);
-    const uniqueId = `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`;
+    const packageId = item._id || item.id;
+    const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
+
     addToCart({
-      id: uniqueId,
-      name: `${currentSub?.name} ${currentAct?.name} - ${item.name}`,
+      id: packageId,
+      name: pkgName,
       price: item.price,
-      category: service?.category || "",
-      duration: item.duration
+      category: service?.category || "Service",
+      duration: item.duration || 30
     });
 
     addNotification(
       "Added to Cart",
-      `"${currentSub?.name} ${currentAct?.name} - ${item.name}" has been added to your cart.`,
+      `"${pkgName}" has been added to your cart.`,
       "success"
     );
   };
 
   const handleItemBookNow = (e: React.MouseEvent, item: any) => {
-    const uniqueId = `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`;
+    const packageId = item._id || item.id;
+    const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
+
     clearCart();
     addToCart({
-      id: uniqueId,
-      name: `${currentSub?.name} ${currentAct?.name} - ${item.name}`,
+      id: packageId,
+      name: pkgName,
       price: item.price,
-      category: service?.category || "",
-      duration: item.duration
+      category: service?.category || "Service",
+      duration: item.duration || 30
     });
 
     router.push("/booking");
@@ -633,323 +956,435 @@ function ServiceDetailPageContent({ params }: PageProps) {
       `}} />
       <Header />
 
-      {itemParam && selectedItem ? (
-        /* ================= DETAILS VIEW ================= */
-        <main className="flex-1 pt-24 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative">
-          {/* Background glows */}
-          <div className="absolute top-24 left-1/4 -translate-x-1/2 w-96 h-96 bg-accent-lux/5 rounded-full blur-[140px] pointer-events-none" />
-          <div className="absolute bottom-48 right-1/4 translate-x-1/2 w-96 h-96 bg-accent-lux/[0.03] rounded-full blur-[140px] pointer-events-none" />
+      {itemParam ? (
+        loadingItemPackage || !selectedItem ? (
+          /* ================= DETAILS VIEW SHIMMER SKELETON ================= */
+          <main className="flex-1 pt-24 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative">
+            <div className="max-w-7xl mx-auto px-6 py-6 relative z-10">
+              <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-48 mb-6 animate-pulse" />
 
-          {/* Banner Section */}
-          <section className="max-w-7xl mx-auto px-6 py-6 relative z-10">
-            {renderBreadcrumbs(true)}
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-
-              {/* Left Content column */}
-              <div className="lg:col-span-8 space-y-8">
-                {/* Image Frame */}
-                <div className="relative h-96 sm:h-[450px] rounded-[32px] overflow-hidden shadow-xl border border-slate-200/10">
-                  <img
-                    src={itemDetails.image}
-                    alt={activeName}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                  <span className="absolute bottom-6 left-6 bg-black/65 backdrop-blur-md text-white text-[10px] uppercase font-bold tracking-widest px-4 py-2 border border-white/10 shadow-lg select-none">
-                    Premium Vetted Service
-                  </span>
-                </div>
-
-                {/* Title & Metadata */}
-                <div className="space-y-4">
-                  <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight leading-tight">
-                    {activeName}
-                  </h1>
-
-                  <div className="flex flex-wrap gap-4 items-center text-xs text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-6">
-                    <span className="flex items-center gap-1 text-amber-500 font-bold">
-                      <Star className="w-4 h-4 fill-amber-500 text-amber-500" /> {service.rating}
-                    </span>
-                    <span>({service.reviewsCount} reviews)</span>
-                    <span>•</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" /> {activeDuration} Mins Duration
-                    </span>
-                    <span>•</span>
-                    <span className="capitalize">{service.category}</span>
-                  </div>
-                </div>
-
-                {/* Description */}
-                <div className="space-y-3">
-                  <h3 className="font-bold text-base text-foreground">Service Overview</h3>
-                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                    {itemDetails.description}
-                  </p>
-                </div>
-
-                {/* Specialist Preview Card */}
-                <div className="bg-gradient-to-br from-slate-900/5 via-[#8D397E]/5 to-transparent dark:from-slate-900/60 dark:via-[#8D397E]/10 dark:to-slate-950/40 p-6 rounded-[28px] border border-accent-lux/15 flex flex-col sm:flex-row gap-5 items-center justify-between text-left shadow-sm">
-                  <div className="flex items-center gap-4 text-left w-full">
-                    <img src={matchedPro.avatar} alt={matchedPro.name} className="w-14 h-14 rounded-full object-cover border-2 border-accent-lux shrink-0" />
-                    <div>
-                      <span className="inline-block bg-accent-lux/10 text-accent-lux text-[8px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wider mb-1">
-                        Assigned Specialist Preview
-                      </span>
-                      <h4 className="font-bold text-sm text-foreground">{matchedPro.name}</h4>
-                      <p className="text-[10px] text-slate-400">{matchedPro.specialty} • {matchedPro.experience} exp</p>
-                      <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-500 font-bold">
-                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" /> {matchedPro.rating} ({matchedPro.completedJobs} jobs completed)
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-row sm:flex-col gap-x-4 sm:gap-x-0 gap-y-0.5 shrink-0 w-full sm:w-auto border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-3 sm:pt-0 sm:pl-5 text-left text-[10px] text-slate-500 dark:text-slate-400">
-                    <div className="flex items-center gap-1.5 font-semibold text-success-lux">
-                      <Check className="w-3.5 h-3.5" /> Aadhaar Verified
-                    </div>
-                    <div className="flex items-center gap-1.5 font-semibold text-success-lux">
-                      <Check className="w-3.5 h-3.5" /> Police Audited
-                    </div>
-                    <div className="flex items-center gap-1.5 font-semibold text-success-lux">
-                      <Check className="w-3.5 h-3.5" /> Varanasi Resident
-                    </div>
-                  </div>
-                </div>
-
-                {/* Inclusions / Exclusions */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  {/* Inclusions Card */}
-                  <div className="bg-emerald-500/[0.02] dark:bg-emerald-500/[0.04] border border-emerald-500/10 rounded-[28px] p-6 shadow-sm">
-                    <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-450 mb-4 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Included in Package
-                    </h4>
-                    <ul className="space-y-3">
-                      {service.inclusions.map((item, idx) => (
-                        <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-655 dark:text-slate-300">
-                          <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {/* Exclusions Card */}
-                  <div className="bg-red-500/[0.02] dark:bg-red-500/[0.04] border border-red-500/10 rounded-[28px] p-6 shadow-sm">
-                    <h4 className="font-extrabold text-xs uppercase tracking-wider text-red-655 dark:text-red-400 mb-4 flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Excluded from Package
-                    </h4>
-                    <ul className="space-y-3">
-                      {service.exclusions.map((item, idx) => (
-                        <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-655 dark:text-slate-300">
-                          <CloseIcon className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* FAQs */}
-                <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
-                  <h3 className="font-extrabold text-base text-foreground tracking-tight">Frequently Asked Questions</h3>
-                  <div className="divide-y divide-slate-200/60 dark:divide-slate-800 border-t border-b border-slate-200/60 dark:border-slate-800">
-                    {service.faqs.map((faq, idx) => (
-                      <div key={idx} className="py-4">
-                        <h4 className="font-bold text-xs sm:text-sm text-foreground">{faq.question}</h4>
-                        <p className="text-[11px] sm:text-xs text-slate-550 dark:text-slate-455 mt-1.5 leading-relaxed">{faq.answer}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Related Services */}
-                <div className="space-y-5 pt-8 border-t border-slate-100 dark:border-slate-800/80 relative">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-extrabold text-base text-foreground tracking-tight">Frequently Booked Together</h3>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Varanasi residents often pair this package with these verified services.</p>
-                    </div>
-
-                    <div className="flex gap-2 shrink-0">
-                      <button
-                        onClick={() => {
-                          const container = document.getElementById("suggestion-scroll-track");
-                          if (container) container.scrollBy({ left: -260, behavior: "smooth" });
-                        }}
-                        className="w-8 h-8 rounded-full border border-slate-200/60 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-accent-lux transition-colors cursor-pointer text-xs font-black"
-                        aria-label="Scroll left"
-                      >
-                        ←
-                      </button>
-                      <button
-                        onClick={() => {
-                          const container = document.getElementById("suggestion-scroll-track");
-                          if (container) container.scrollBy({ left: 260, behavior: "smooth" });
-                        }}
-                        className="w-8 h-8 rounded-full border border-slate-200/60 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-accent-lux transition-colors cursor-pointer text-xs font-black"
-                        aria-label="Scroll right"
-                      >
-                        →
-                      </button>
-                    </div>
-                  </div>
-
-                  <div
-                    id="suggestion-scroll-track"
-                    className="flex gap-5 overflow-x-auto no-scrollbar scroll-smooth pb-2 snap-x snap-mandatory"
-                    style={{ scrollbarWidth: "none" }}
-                  >
-                    {relatedServices.map((rel) => (
-                      <Link
-                        key={rel.id}
-                        href={`/services/${rel.id}`}
-                        className="glass-panel overflow-hidden group flex flex-col justify-between border border-slate-200/10 hover:shadow-lg transition-all duration-300 cursor-pointer p-4 h-full text-left w-[240px] sm:w-[260px] shrink-0 snap-start"
-                      >
-                        <div className="space-y-2.5">
-                          <div className="h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
-                            <img src={rel.image} alt={rel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                          </div>
-                          <div>
-                            <span className="text-[8px] uppercase font-black text-accent-lux tracking-wider capitalize">{rel.category}</span>
-                            <h4 className="font-bold text-xs text-foreground group-hover:text-accent-lux transition-colors truncate mt-0.5">{rel.name}</h4>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-2.5 mt-2.5 border-t border-slate-100 dark:border-slate-800/60 text-[10px] font-bold text-slate-500">
-                          <span className="text-xs font-black text-foreground font-sans">₹{rel.price}</span>
-                          <span className="flex items-center gap-0.5 text-amber-500">
-                            ★ {rel.rating}
-                          </span>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Reviews */}
-                <div className="space-y-4">
-                  <h3 className="font-bold text-base text-foreground">Recent Reviews</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Left Column Skeleton */}
+                <div className="lg:col-span-8 space-y-8">
+                  <div className="h-96 sm:h-[450px] rounded-[32px] bg-slate-200 dark:bg-slate-800 animate-pulse overflow-hidden shadow-xl" />
                   <div className="space-y-4">
-                    {mockReviews.map((rev) => (
-                      <div key={rev.id} className="bg-white dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-800/60 p-6 rounded-[24px] space-y-3 shadow-sm hover:border-accent-lux/30 transition-colors">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-3">
-                            <img src={rev.avatar} alt={rev.name} className="w-10 h-10 rounded-full object-cover" />
-                            <div>
-                              <span className="font-bold text-xs block text-foreground">{rev.name}</span>
-                              <span className="text-[9px] text-slate-400 block mt-0.5">{rev.date}</span>
-                            </div>
-                          </div>
-                          <div className="flex gap-0.5 text-amber-500">
-                            {[...Array(5)].map((_, i) => (
-                              <Star key={i} className="w-3 h-3 fill-amber-500" />
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-555 dark:text-slate-455 leading-relaxed italic">
-                          "{rev.comment}"
-                        </p>
+                    <div className="h-8 sm:h-10 bg-slate-200 dark:bg-slate-800 rounded-xl w-3/4 animate-pulse" />
+                    <div className="flex gap-4 items-center border-b border-slate-100 dark:border-slate-800 pb-6">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-20 animate-pulse" />
+                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-24 animate-pulse" />
+                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-28 animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-32 animate-pulse" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full animate-pulse" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-5/6 animate-pulse" />
+                  </div>
+                  <div className="p-6 rounded-[28px] bg-slate-200/60 dark:bg-slate-800/60 animate-pulse flex flex-col sm:flex-row gap-5 items-center justify-between">
+                    <div className="flex items-center gap-4 w-full">
+                      <div className="w-14 h-14 rounded-full bg-slate-300 dark:bg-slate-700 shrink-0" />
+                      <div className="space-y-2 flex-1">
+                        <div className="h-4 bg-slate-300 dark:bg-slate-700 rounded w-1/3" />
+                        <div className="h-3 bg-slate-300 dark:bg-slate-700 rounded w-1/2" />
                       </div>
-                    ))}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="h-48 rounded-[28px] bg-slate-200/60 dark:bg-slate-800/60 animate-pulse" />
+                    <div className="h-48 rounded-[28px] bg-slate-200/60 dark:bg-slate-800/60 animate-pulse" />
+                  </div>
+                </div>
+
+                {/* Right Sticky Card Column Skeleton */}
+                <div className="lg:col-span-4 space-y-6">
+                  <div className="glass-panel p-6 border border-slate-200/10 space-y-6 text-left animate-pulse">
+                    <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-28" />
+                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                    <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                      <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                      <div className="h-6 bg-slate-200 dark:bg-slate-800 rounded w-full mt-2" />
+                    </div>
+                    <div className="h-12 rounded-full bg-slate-300 dark:bg-slate-700 w-full" />
+                    <div className="h-12 rounded-full bg-slate-300 dark:bg-slate-700 w-full" />
                   </div>
                 </div>
               </div>
+            </div>
+          </main>
+        ) : (
+          /* ================= DETAILS VIEW ================= */
+          <main className="flex-1 pt-24 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative">
+            {/* Background glows */}
+            <div className="absolute top-24 left-1/4 -translate-x-1/2 w-96 h-96 bg-accent-lux/5 rounded-full blur-[140px] pointer-events-none" />
+            <div className="absolute bottom-48 right-1/4 translate-x-1/2 w-96 h-96 bg-accent-lux/[0.03] rounded-full blur-[140px] pointer-events-none" />
 
-              {/* Right Sticky Card column - Service Summary & Action */}
-              <div id="booking-wizard-card" className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
-                <div className="glass-panel p-6 border border-slate-200/10 space-y-6 text-left">
-                  <span className="text-[10px] uppercase font-bold text-accent-lux bg-accent-lux/10 px-2.5 py-0.5 rounded tracking-wider">
-                    ⚡ Quick Booking
-                  </span>
+            {/* Banner Section */}
+            <section className="max-w-7xl mx-auto px-6 py-6 relative z-10">
+              {renderBreadcrumbs(true)}
 
-                  <div>
-                    <h3 className="font-extrabold text-sm text-foreground">Luxury Package Inclusions</h3>
-                    <p className="text-[10px] text-slate-550 dark:text-slate-455 mt-1 leading-relaxed">
-                      All inclusive price: equipment, transport, premium cleaning solvents &amp; expert labor. No hidden charges.
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+
+                {/* Left Content column */}
+                <div className="lg:col-span-8 space-y-8">
+                  {/* Image Frame */}
+                  <div className="relative h-96 sm:h-[450px] rounded-[32px] overflow-hidden shadow-xl border border-slate-200/10">
+                    <img
+                      src={formatImageUrl(itemDetails.image)}
+                      alt={activeName}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                    <span className="absolute bottom-6 left-6 bg-black/65 backdrop-blur-md text-white text-[10px] uppercase font-bold tracking-widest px-4 py-2 border border-white/10 shadow-lg select-none">
+                      Premium Vetted Service
+                    </span>
+                  </div>
+
+                  {/* Title & Metadata */}
+                  <div className="space-y-4">
+                    <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight leading-tight">
+                      {activeName}
+                    </h1>
+
+                    <div className="flex flex-wrap gap-4 items-center text-xs text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-6">
+                      <span className="flex items-center gap-1 text-amber-500 font-bold">
+                        <Star className="w-4 h-4 fill-amber-500 text-amber-500" /> {service.rating}
+                      </span>
+                      <span>({service.reviewsCount} reviews)</span>
+                      <span>•</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" /> {activeDuration} Mins Duration
+                      </span>
+                      <span>•</span>
+                      <span className="capitalize">{service.category}</span>
+                    </div>
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-3">
+                    <h3 className="font-bold text-base text-foreground">Service Overview</h3>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                      {itemDetails.description}
                     </p>
                   </div>
 
-                  <div className="border-t border-slate-100 dark:border-slate-850 pt-4 space-y-3">
-                    <div className="flex justify-between text-xs font-semibold text-slate-500 font-sans">
-                      <span>Rate</span>
-                      <span className="text-foreground font-bold">₹{activePrice}</span>
-                    </div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-500 font-sans">
-                      <span>Taxes &amp; GST (18%)</span>
-                      <span className="text-foreground font-bold">₹{taxAmount}</span>
-                    </div>
-                    <div className="flex justify-between text-xs font-semibold text-slate-500 font-sans border-b border-slate-100 dark:border-slate-850 pb-3">
-                      <span>Convenience Fee</span>
-                      <span className="text-foreground font-bold">₹{convenienceFee}</span>
-                    </div>
-                    <div className="flex justify-between text-sm font-extrabold text-foreground pt-1">
-                      <span>Grand Total</span>
-                      <span className="text-lg font-black text-accent-lux font-sans">₹{grandTotal}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col gap-2.5 pt-2">
-                    {(() => {
-                      const mainId = selectedItem 
-                        ? `${service.id}-${selectedSub}-${selectedAct}-${selectedItem.id}`
-                        : service.id;
-                      const isMainAdded = cart.some(c => c.id === mainId);
-                      return (
-                        <button
-                          disabled={isMainAdded}
-                          onClick={(e) => {
-                            if (isMainAdded) return;
-                            handleAddToCart(e);
-                          }}
-                          className={`w-full font-extrabold text-xs py-3.5 rounded-full shadow-sm flex items-center justify-center gap-1.5 transition-colors ${
-                            isMainAdded 
-                              ? "bg-emerald-500/10 border border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-80 cursor-not-allowed" 
-                              : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-350 text-slate-850 dark:text-slate-200 cursor-pointer"
-                          }`}
-                        >
-                          {isMainAdded ? "Added to Cart ✓" : "Add to Cart"}
-                        </button>
-                      );
-                    })()}
-                    <button
-                      onClick={handleBookNow}
-                      className="w-full bg-accent-lux hover:bg-accent-lux/95 text-white font-extrabold text-xs py-3.5 rounded-full shadow-md flex items-center justify-center gap-1.5 transition-all hover:scale-[1.01] cursor-pointer relative overflow-hidden"
-                    >
-                      <div className="arrows-bg-track opacity-25 dark:opacity-20">
-                        <ChevronRight className="w-4 h-4 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
-                        <ChevronRight className="w-4 h-4 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+                  {/* Specialist Preview Card */}
+                  <div className="bg-gradient-to-br from-slate-900/5 via-[#8D397E]/5 to-transparent dark:from-slate-900/60 dark:via-[#8D397E]/10 dark:to-slate-950/40 p-6 rounded-[28px] border border-accent-lux/15 flex flex-col sm:flex-row gap-5 items-center justify-between text-left shadow-sm">
+                    <div className="flex items-center gap-4 text-left w-full">
+                      <img src={matchedPro.avatar} alt={matchedPro.name} className="w-14 h-14 rounded-full object-cover border-2 border-accent-lux shrink-0" />
+                      <div>
+                        <span className="inline-block bg-accent-lux/10 text-accent-lux text-[8px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wider mb-1">
+                          Assigned Specialist Preview
+                        </span>
+                        <h4 className="font-bold text-sm text-foreground">{matchedPro.name}</h4>
+                        <p className="text-[10px] text-slate-400">{matchedPro.specialty} • {matchedPro.experience} exp</p>
+                        <div className="flex items-center gap-1 mt-1 text-[10px] text-amber-500 font-bold">
+                          <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" /> {matchedPro.rating} ({matchedPro.completedJobs} jobs completed)
+                        </div>
                       </div>
-                      <div className="shimmer-button-glow pointer-events-none" />
-                      <span className="relative z-10 flex items-center justify-center gap-1.5 font-sans">
-                        Book Now <ChevronRight className="w-4 h-4" />
-                      </span>
-                    </button>
+                    </div>
+
+                    <div className="flex flex-row sm:flex-col gap-x-4 sm:gap-x-0 gap-y-0.5 shrink-0 w-full sm:w-auto border-t sm:border-t-0 sm:border-l border-slate-100 dark:border-slate-800 pt-3 sm:pt-0 sm:pl-5 text-left text-[10px] text-slate-500 dark:text-slate-400">
+                      <div className="flex items-center gap-1.5 font-semibold text-success-lux">
+                        <Check className="w-3.5 h-3.5" /> Aadhaar Verified
+                      </div>
+                      <div className="flex items-center gap-1.5 font-semibold text-success-lux">
+                        <Check className="w-3.5 h-3.5" /> Police Audited
+                      </div>
+                      <div className="flex items-center gap-1.5 font-semibold text-success-lux">
+                        <Check className="w-3.5 h-3.5" /> Varanasi Resident
+                      </div>
+                    </div>
                   </div>
 
-                   <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
-                    <div className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-4 h-4 text-success-lux" /> Vetted 5-Star Specialist
+                  {/* Inclusions / Exclusions */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    {/* Inclusions Card */}
+                    <div className="bg-emerald-500/[0.02] dark:bg-emerald-500/[0.04] border border-emerald-500/10 rounded-[28px] p-6 shadow-sm">
+                      <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-450 mb-4 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Included in Package
+                      </h4>
+                      <ul className="space-y-3">
+                        {service.inclusions.map((item, idx) => (
+                          <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-655 dark:text-slate-300">
+                            <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-accent-lux" /> On-time Insourence
+
+                    {/* Exclusions Card */}
+                    <div className="bg-red-500/[0.02] dark:bg-red-500/[0.04] border border-red-500/10 rounded-[28px] p-6 shadow-sm">
+                      <h4 className="font-extrabold text-xs uppercase tracking-wider text-red-655 dark:text-red-400 mb-4 flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Excluded from Package
+                      </h4>
+                      <ul className="space-y-3">
+                        {service.exclusions.map((item, idx) => (
+                          <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-655 dark:text-slate-300">
+                            <CloseIcon className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* FAQs */}
+                  <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+                    <h3 className="font-extrabold text-base text-foreground tracking-tight">Frequently Asked Questions</h3>
+                    <div className="divide-y divide-slate-200/60 dark:divide-slate-800 border-t border-b border-slate-200/60 dark:border-slate-800">
+                      {service.faqs.map((faq, idx) => (
+                        <div key={idx} className="py-4">
+                          <h4 className="font-bold text-xs sm:text-sm text-foreground">{faq.question}</h4>
+                          <p className="text-[11px] sm:text-xs text-slate-550 dark:text-slate-455 mt-1.5 leading-relaxed">{faq.answer}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Popular Pairing Recommendations (Package Addons) */}
+                  {selectedItem?.addons && selectedItem.addons.length > 0 && (
+                    <div className="space-y-5 pt-8 border-t border-slate-100 dark:border-slate-800/80 relative">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-extrabold text-base text-foreground tracking-tight">Popular Pairing Recommendations</h3>
+                          <p className="text-[11px] text-slate-400 mt-0.5">Enhance your service with these verified package add-ons.</p>
+                        </div>
+
+                        {selectedItem.addons.length > 3 && (
+                          <div className="flex gap-2 shrink-0">
+                            <button
+                              onClick={() => {
+                                const container = document.getElementById("addon-scroll-track");
+                                if (container) container.scrollBy({ left: -260, behavior: "smooth" });
+                              }}
+                              className="w-8 h-8 rounded-full border border-slate-200/60 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-accent-lux transition-colors cursor-pointer text-xs font-black"
+                              aria-label="Scroll left"
+                            >
+                              ←
+                            </button>
+                            <button
+                              onClick={() => {
+                                const container = document.getElementById("addon-scroll-track");
+                                if (container) container.scrollBy({ left: 260, behavior: "smooth" });
+                              }}
+                              className="w-8 h-8 rounded-full border border-slate-200/60 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-accent-lux transition-colors cursor-pointer text-xs font-black"
+                              aria-label="Scroll right"
+                            >
+                              →
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div
+                        id="addon-scroll-track"
+                        className="flex gap-5 overflow-x-auto no-scrollbar scroll-smooth pb-2 snap-x snap-mandatory"
+                        style={{ scrollbarWidth: "none" }}
+                      >
+                        {selectedItem.addons.map((addon: any) => {
+                          const addonId = addon._id || addon.id;
+                          const addonName = addon.addonName || addon.title || addon.name || "Service Addon";
+                          const addonPrice = addon.price || 0;
+                          const addonImg = addon.imageUrl || "https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=400&q=80";
+                          const mainPkgId = (selectedItem as any)?._id || selectedItem?.id || service.id;
+                          const cartItem = cart.find((c) => c.id === mainPkgId || c.itemId === mainPkgId);
+                          const isAddonAdded = (cartItem?.selectedAddons || []).some((a) => a.addonId === addonId) || cart.some((c) => c.id === addonId);
+
+                          return (
+                            <div
+                              key={addonId}
+                              className="glass-panel overflow-hidden group flex flex-col justify-between border border-slate-200/10 hover:shadow-lg transition-all duration-300 p-4 h-full text-left w-[240px] sm:w-[260px] shrink-0 snap-start rounded-2xl bg-white dark:bg-slate-900/60"
+                            >
+                              <div className="space-y-2.5">
+                                <div className="h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
+                                  <img
+                                    src={addonImg}
+                                    alt={addonName}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                  <span className="absolute top-2 left-2 text-[8px] uppercase font-bold text-accent-lux bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2 py-0.5 rounded-full shadow-sm">
+                                    Add-on
+                                  </span>
+                                </div>
+                                <div>
+                                  <h4 className="font-bold text-xs text-foreground group-hover:text-accent-lux transition-colors truncate">
+                                    {addonName}
+                                  </h4>
+                                  {addon.description && (
+                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
+                                      {addon.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 dark:border-slate-800/60">
+                                <span className="text-xs font-black text-accent-lux font-sans">
+                                  ₹{addonPrice}
+                                </span>
+                                <button
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    const action = isAddonAdded ? "remove" : "add";
+
+                                    if (action === "add") {
+                                      triggerSmallConfetti(e, ['#801C6E', '#48073d', '#A21CAF']);
+                                      if (!cartItem) {
+                                        await addToCart({
+                                          id: mainPkgId,
+                                          name: activeName,
+                                          price: activePrice,
+                                          category: service.category,
+                                          duration: activeDuration,
+                                        });
+                                      }
+                                    }
+
+                                    await toggleAddonInCart(mainPkgId, addonId, action);
+                                    addNotification(
+                                      action === "add" ? "Add-on Added" : "Add-on Removed",
+                                      action === "add" ? `"${addonName}" added to your cart.` : `"${addonName}" removed from your cart.`,
+                                      "info"
+                                    );
+                                  }}
+                                  className={`px-3 py-1.5 rounded-full font-bold text-[10px] shadow-sm transition-all cursor-pointer ${isAddonAdded
+                                    ? "bg-emerald-500/10 border border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-90"
+                                    : "bg-accent-lux hover:bg-accent-lux/90 text-white"
+                                    }`}
+                                >
+                                  {isAddonAdded ? "Added ✓" : "+ Add"}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Reviews */}
+                  <div className="space-y-4">
+                    <h3 className="font-bold text-base text-foreground">Recent Reviews</h3>
+                    <div className="space-y-4">
+                      {mockReviews.map((rev) => (
+                        <div key={rev.id} className="bg-white dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-800/60 p-6 rounded-[24px] space-y-3 shadow-sm hover:border-accent-lux/30 transition-colors">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                              <img src={rev.avatar} alt={rev.name} className="w-10 h-10 rounded-full object-cover" />
+                              <div>
+                                <span className="font-bold text-xs block text-foreground">{rev.name}</span>
+                                <span className="text-[9px] text-slate-400 block mt-0.5">{rev.date}</span>
+                              </div>
+                            </div>
+                            <div className="flex gap-0.5 text-amber-500">
+                              {[...Array(5)].map((_, i) => (
+                                <Star key={i} className="w-3 h-3 fill-amber-500" />
+                              ))}
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-555 dark:text-slate-455 leading-relaxed italic">
+                            "{rev.comment}"
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                <div className="glass-panel p-5 border border-slate-205/60 dark:border-slate-800/80 bg-gradient-to-br from-[#8D397E]/[0.02] to-transparent rounded-[24px] space-y-3 text-left">
-                  <span className="text-[9px] uppercase font-bold text-accent-lux tracking-wider block">HelpMate Service Promise</span>
-                  <h4 className="text-xs font-bold text-foreground">Verified Luxury Quality</h4>
-                  <p className="text-[10px] text-slate-400 dark:text-slate-455 leading-relaxed">
-                    Every professional undergoes background screening, police verification, and Aadhaar checks. Varanasi's elite households trust HelpMate.
-                  </p>
+                {/* Right Sticky Card column - Service Summary & Action */}
+                <div id="booking-wizard-card" className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
+                  <div className="glass-panel p-6 border border-slate-200/10 space-y-6 text-left">
+                    <span className="text-[10px] uppercase font-bold text-accent-lux bg-accent-lux/10 px-2.5 py-0.5 rounded tracking-wider">
+                      ⚡ Quick Booking
+                    </span>
+
+                    <div>
+                      <h3 className="font-extrabold text-sm text-foreground">Luxury Package Inclusions</h3>
+                      <p className="text-[10px] text-slate-550 dark:text-slate-455 mt-1 leading-relaxed">
+                        All inclusive price: equipment, transport, premium cleaning solvents &amp; expert labor. No hidden charges.
+                      </p>
+                    </div>
+
+                    <div className="border-t border-slate-100 dark:border-slate-850 pt-4 space-y-3">
+                      <div className="flex justify-between text-xs font-semibold text-slate-500 font-sans">
+                        <span>Rate</span>
+                        <span className="text-foreground font-bold">₹{activePrice}</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-semibold text-slate-500 font-sans">
+                        <span>Taxes &amp; GST (18%)</span>
+                        <span className="text-foreground font-bold">₹{taxAmount}</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-semibold text-slate-500 font-sans border-b border-slate-100 dark:border-slate-850 pb-3">
+                        <span>Convenience Fee</span>
+                        <span className="text-foreground font-bold">₹{convenienceFee}</span>
+                      </div>
+                      <div className="flex justify-between text-sm font-extrabold text-foreground pt-1">
+                        <span>Grand Total</span>
+                        <span className="text-lg font-black text-accent-lux font-sans">₹{grandTotal}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2.5 pt-2">
+                      {(() => {
+                        const mainId = (selectedItem as any)?._id || selectedItem?.id || service.id;
+                        const isMainAdded = cart.some(c => c.id === mainId || c.itemId === mainId || c.id === `${service.id}-${selectedSub}-${selectedAct}-${selectedItem?.id}`);
+                        return (
+                          <button
+                            disabled={isMainAdded}
+                            onClick={(e) => {
+                              if (isMainAdded) return;
+                              handleAddToCart(e);
+                            }}
+                            className={`w-full font-extrabold text-xs py-3.5 rounded-full shadow-sm flex items-center justify-center gap-1.5 transition-colors ${isMainAdded
+                              ? "bg-emerald-500/10 border border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-80 cursor-not-allowed"
+                              : "bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-350 text-slate-850 dark:text-slate-200 cursor-pointer"
+                              }`}
+                          >
+                            {isMainAdded ? "Added to Cart ✓" : "Add to Cart"}
+                          </button>
+                        );
+                      })()}
+                      <button
+                        onClick={handleBookNow}
+                        className="w-full bg-accent-lux hover:bg-accent-lux/95 text-white font-extrabold text-xs py-3.5 rounded-full shadow-md flex items-center justify-center gap-1.5 transition-all hover:scale-[1.01] cursor-pointer relative overflow-hidden"
+                      >
+                        <div className="arrows-bg-track opacity-25 dark:opacity-20">
+                          <ChevronRight className="w-4 h-4 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+                          <ChevronRight className="w-4 h-4 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
+                        </div>
+                        <div className="shimmer-button-glow pointer-events-none" />
+                        <span className="relative z-10 flex items-center justify-center gap-1.5 font-sans">
+                          Book Now <ChevronRight className="w-4 h-4" />
+                        </span>
+                      </button>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-500 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
+                      <div className="flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-success-lux" /> Vetted 5-Star Specialist
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-accent-lux" /> On-time Insourence
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="glass-panel p-5 border border-slate-205/60 dark:border-slate-800/80 bg-gradient-to-br from-[#8D397E]/[0.02] to-transparent rounded-[24px] space-y-3 text-left">
+                    <span className="text-[9px] uppercase font-bold text-accent-lux tracking-wider block">HelpMate Service Promise</span>
+                    <h4 className="text-xs font-bold text-foreground">Verified Luxury Quality</h4>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-455 leading-relaxed">
+                      Every professional undergoes background screening, police verification, and Aadhaar checks. Varanasi's elite households trust HelpMate.
+                    </p>
+                  </div>
                 </div>
+
               </div>
-
-            </div>
-          </section>
-        </main>
+            </section>
+          </main>
+        )
       ) : (
         /* ================= CATEGORY WIZARD VIEW ================= */
         <main className="flex-1 pt-24 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative">
@@ -979,93 +1414,127 @@ function ServiceDetailPageContent({ params }: PageProps) {
               {/* Left Column - Stepper Wizard */}
               <div className="lg:col-span-8 space-y-6">
                 <div className="glass-panel p-6 sm:p-8 border border-slate-200/10 space-y-6 text-left">
-               
+
 
                   {/* Progress Tracker Stepper circles */}
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-                    <div className="flex items-center gap-1.5 w-full font-sans">
-                      <div className="w-6 h-6 rounded-full bg-accent-lux text-white flex items-center justify-center text-[10px] font-bold transition-colors">
-                        {selectedSub !== null ? "✓" : "1"}
+                    {hasSubCategories ? (
+                      <div className="flex items-center gap-1.5 w-full font-sans">
+                        <div className="w-6 h-6 rounded-full bg-accent-lux text-white flex items-center justify-center text-[10px] font-bold transition-colors">
+                          {selectedSub !== null ? "✓" : "1"}
+                        </div>
+                        <div className={`h-0.5 flex-1 transition-colors ${selectedSub !== null ? "bg-accent-lux" : "bg-slate-100 dark:bg-slate-850"}`} />
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${selectedSub !== null ? "bg-accent-lux text-white" : "bg-slate-100 dark:bg-slate-850 text-slate-400"
+                          }`}>
+                          {selectedAct !== null ? "✓" : "2"}
+                        </div>
+                        <div className={`h-0.5 flex-1 transition-colors ${selectedAct !== null ? "bg-accent-lux" : "bg-slate-100 dark:bg-slate-850"}`} />
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${selectedSub !== null && selectedAct !== null ? "bg-accent-lux text-white" : "bg-slate-100 dark:bg-slate-850 text-slate-400"
+                          }`}>
+                          3
+                        </div>
                       </div>
-                      <div className={`h-0.5 flex-1 transition-colors ${selectedSub !== null ? "bg-accent-lux" : "bg-slate-100 dark:bg-slate-850"}`} />
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${selectedSub !== null ? "bg-accent-lux text-white" : "bg-slate-100 dark:bg-slate-850 text-slate-400"
-                        }`}>
-                        {selectedAct !== null ? "✓" : "2"}
+                    ) : (
+                      <div className="flex items-center gap-1.5 w-full font-sans">
+                        <div className="w-6 h-6 rounded-full bg-accent-lux text-white flex items-center justify-center text-[10px] font-bold transition-colors">
+                          {selectedAct !== null ? "✓" : "1"}
+                        </div>
+                        <div className={`h-0.5 flex-1 transition-colors ${selectedAct !== null ? "bg-accent-lux" : "bg-slate-100 dark:bg-slate-850"}`} />
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${selectedAct !== null ? "bg-accent-lux text-white" : "bg-slate-100 dark:bg-slate-850 text-slate-400"
+                          }`}>
+                          2
+                        </div>
                       </div>
-                      <div className={`h-0.5 flex-1 transition-colors ${selectedAct !== null ? "bg-accent-lux" : "bg-slate-100 dark:bg-slate-850"}`} />
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${selectedSub !== null && selectedAct !== null ? "bg-accent-lux text-white" : "bg-slate-100 dark:bg-slate-850 text-slate-400"
-                        }`}>
-                        3
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Inline Stepper Workflow Layout */}
                   <div className="space-y-6">
-                    {/* Step 1: System / Category Selector */}
-                    <div className="space-y-3">
-                      <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
-                        {wizardConfig.subcategoriesTitle}
-                      </span>
-                      <div className="grid grid-cols-2 gap-3">
-                        {wizardConfig.subcategories.map((sub) => {
-                          const isActive = selectedSub === sub.id;
-                          return (
-                            <button
-                              key={sub.id}
-                              onClick={() => {
-                                setSelectedSub(sub.id);
-                                setSelectedAct(null);
-                              }}
-                              className={`py-3 px-4 rounded-xl text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${
-                                isActive
-                                  ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/10"
-                                  : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md"
-                              }`}
-                            >
-                              {sub.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Step 2: Action Type Selector */}
-                    {selectedSub && (
-                      <div className="space-y-3 border-t border-slate-100 dark:border-slate-850 pt-5 animate-fadeIn">
+                    {/* Step 1: SubCategory / Service Type Selector (only shown if category has subcategories) */}
+                    {hasSubCategories && (
+                      <div className="space-y-3">
                         <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
-                          {wizardConfig.actionsTitle}
+                          SELECT SERVICE TYPE
                         </span>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                          {currentSub?.actions.map((act, index) => {
-                            const isActive = selectedAct === act.id;
-                            return (
-                              <button
-                                key={act.id}
-                                onClick={() => setSelectedAct(act.id)}
-                                className={`py-3.5 px-2 rounded-xl text-[11px] sm:text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${
-                                  isActive
+                        {loadingSubCategories ? (
+                          <div className="grid grid-cols-2 gap-3">
+                            {[1, 2, 3, 4].map((n) => (
+                              <div key={n} className="h-12 rounded-xl bg-slate-200/70 dark:bg-slate-800/70 relative overflow-hidden animate-pulse" />
+                            ))}
+                          </div>
+                        ) : apiSubCategories.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-3">
+                            {apiSubCategories.map((sub) => {
+                              const isActive = selectedSub === sub._id || selectedSub === sub.name;
+                              return (
+                                <button
+                                  key={sub._id}
+                                  onClick={() => {
+                                    setSelectedSub(sub._id);
+                                    setSelectedAct(null);
+                                    setApiPackages([]);
+                                  }}
+                                  className={`py-3 px-4 rounded-xl text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${isActive
                                     ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/10"
                                     : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md"
-                                }`}
-                              >
-                                {act.name}
-                              </button>
-                            );
-                          })}
-                        </div>
+                                    }`}
+                                >
+                                  {sub.name}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : null}
                       </div>
                     )}
 
-                    {/* Step 3: Available Services & Rates (Dynamic Service items list at bottom) */}
-                    {selectedSub && selectedAct && (
+                    {/* Step 2 (or Step 1 if no subcategories): Action Type Selector */}
+                    {(!hasSubCategories || selectedSub) && (
+                      <div className={`space-y-3 ${hasSubCategories ? "border-t border-slate-100 dark:border-slate-850 pt-5" : ""} animate-fadeIn`}>
+                        <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
+                          SELECT SERVICE ACTION
+                        </span>
+                        {loadingServiceActions ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {[1, 2, 3, 4].map((n) => (
+                              <div key={n} className="h-12 rounded-xl bg-slate-200/70 dark:bg-slate-800/70 relative overflow-hidden animate-pulse" />
+                            ))}
+                          </div>
+                        ) : apiServiceActions.length > 0 ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {apiServiceActions.map((act) => {
+                              const isActive = selectedAct === act._id || selectedAct === act.serviceAction;
+                              return (
+                                <button
+                                  key={act._id}
+                                  onClick={() => setSelectedAct(act._id)}
+                                  className={`py-3.5 px-2 rounded-xl text-[11px] sm:text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${isActive
+                                    ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/10"
+                                    : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md"
+                                    }`}
+                                >
+                                  {act.serviceAction}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-900/50 text-slate-400 text-xs text-center font-medium">
+                            No service actions available.
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Step 3 (or Step 2 if no subcategories): Available Services & Rates */}
+                    {selectedAct && (
                       <div className="space-y-4 border-t border-slate-100 dark:border-slate-850 pt-5 animate-fadeIn">
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
-                            Available Service Packages
+                            AVAILABLE SERVICE PACKAGES
                           </span>
                           <div className="flex items-center gap-1.5">
-                            <div className="relative ">
+                            <div className="relative">
                               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                               <input
                                 type="text"
@@ -1075,146 +1544,205 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                 className="pl-8 pr-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-[10px] sm:text-[11px] text-slate-700 dark:text-slate-300 w-56 sm:w-100 focus:outline-none focus:ring-1 focus:ring-accent-lux/30 transition-all placeholder:text-slate-400"
                               />
                             </div>
-                            <button 
+                            <button
                               onClick={() => setShowSavedOnly(!showSavedOnly)}
-                              className={`flex items-center gap-1.5 p-1.5 px-2.5 rounded-full transition-colors ${
-                                showSavedOnly 
-                                  ? "bg-accent-lux text-white" 
-                                  : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
-                              }`}
+                              className={`flex items-center gap-1.5 p-1.5 px-2.5 rounded-full transition-colors ${showSavedOnly
+                                ? "bg-accent-lux text-white"
+                                : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400"
+                                }`}
                             >
                               <Bookmark className={`w-3.5 h-3.5 ${showSavedOnly ? "fill-white" : ""}`} />
                               <span className="text-[10px] font-bold uppercase tracking-wider">
-                                Saved {savedPackages.length > 0 && `(${savedPackages.length})`}
+                                Saved {bookmarkedPackageIds.length > 0 && `(${bookmarkedPackageIds.length})`}
                               </span>
                             </button>
                           </div>
                         </div>
-                        <div className="space-y-3">
-                          {currentAct?.items
-                            .filter((item) => {
-                              const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-                              const matchesSaved = showSavedOnly ? savedPackages.includes(item.id) : true;
-                              return matchesSearch && matchesSaved;
-                            })
-                            .map((item) => {
-                            const itemDetails = getItemDetails(item.id, item.name, service?.image || "");
-                            const isAdded = cart.some((c) => c.id === `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`);
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => {
-                                  router.push(`/services/${service?.category}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
-                                }}
-                                className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl flex gap-4 cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:shadow-md group text-left shadow-sm relative overflow-hidden"
-                              >
-                                {/* Left Side: Only Image (Larger and rounded) */}
-                                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative group/image">
-                                  <img src={itemDetails.image} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const isSaved = savedPackages.includes(item.id);
-                                      if (!isSaved) triggerSmallConfetti(e, ['#801C6E', '#48073d', '#A21CAF']);
-                                      setSavedPackages(prev => 
-                                        isSaved
-                                          ? prev.filter(id => id !== item.id)
-                                          : [...prev, item.id]
-                                      );
-                                    }}
-                                    className={`absolute top-2 right-2 p-1.5 backdrop-blur-md cursor-pointer rounded-full transition-colors shadow-sm z-10 ${
-                                      savedPackages.includes(item.id)
-                                        ? "bg-accent-lux/10 text-accent-lux dark:bg-accent-lux/20"
-                                        : "bg-white/90 dark:bg-slate-900/90 text-slate-500 hover:text-accent-lux hover:bg-white dark:hover:bg-slate-800"
-                                    }`}
-                                  >
-                                    <Bookmark className={`w-3.5 h-3.5 ${savedPackages.includes(item.id) ? "fill-accent-lux" : ""}`} />
-                                  </button>
-                                </div>
 
-                                {/* Right Side: Title, Details, Price, and Actions */}
-                                <div className="flex-1 min-w-0 flex flex-col justify-between">
-                                  <div>
-                                    <div className="flex justify-between items-start gap-2">
-                                      <h4 className="font-extrabold text-[13px] sm:text-[14px] text-foreground leading-snug group-hover:text-accent-lux transition-colors truncate">
-                                        {item.name}
-                                      </h4>
-                                      <span className="text-[13px] sm:text-[14px] font-black text-accent-lux font-sans shrink-0">
-                                        ₹{item.price}
-                                      </span>
-                                    </div>
-                                    {/* Experts Available UI Overlay Inspired */}
-                                    <div className="flex items-center gap-2 mt-1 mb-1">
-                                      <div className="flex -space-x-1.5">
-                                        {[1, 2, 3, 4].map((i) => (
-                                          <div key={i} className="w-4 h-4 rounded-full border-[1.5px] border-white dark:border-slate-900 bg-slate-200 dark:bg-slate-700 overflow-hidden relative z-10 hover:z-20 transition-all hover:scale-110">
-                                             <img src={`https://i.pravatar.cc/100?img=${(i * 3 + item.name.length) % 70}`} alt="Expert" className="w-full h-full object-cover" />
-                                          </div>
-                                        ))}
-                                      </div>
-                                      <div className="flex items-center gap-0.5">
-                                        <Star className="w-2.5 h-2.5 text-yellow-400 fill-yellow-400" />
-                                        <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium">from 15+ experts</span>
-                                      </div>
-                                    </div>
-                                    
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5 line-clamp-2">
-                                      {itemDetails.description}
-                                    </p>
-                                    
-                                    {/* Added More Data: badges & service parameters */}
-                                    <div className="flex flex-wrap gap-2 mt-2">
-                                      <span className="text-[8px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded font-sans shrink-0">
-                                        ⏱ {item.duration} mins
-                                      </span>
-                                      <span className="text-[8px] font-bold text-success-lux bg-success-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
-                                        ✓ Vetted Pro
-                                      </span>
-                                      <span className="text-[8px] font-bold text-accent-lux bg-accent-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
-                                        ★ 4.95 Rated
-                                      </span>
-                                    </div>
+                        {loadingPackages ? (
+                          <div className="space-y-3">
+                            {[1, 2, 3].map((n) => (
+                              <div key={n} className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl flex flex-col sm:flex-row gap-4 border border-slate-100 dark:border-slate-800 animate-pulse">
+                                <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-slate-200 dark:bg-slate-800 shrink-0" />
+                                <div className="flex-1 space-y-3 py-1">
+                                  <div className="flex justify-between items-start">
+                                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-2/5" />
+                                    <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/6" />
                                   </div>
-
-                                  {/* CTA buttons */}
-                                  <div className="flex justify-end gap-2 mt-4 pt-2">
-                                    <button
-                                      disabled={isAdded}
-                                      onClick={(e) => {
-                                        if (isAdded) return;
-                                        e.stopPropagation();
-                                        handleItemAddToCart(e, item);
-                                      }}
-                                      className={`px-3 py-1.5 rounded-full font-bold text-[10px] transition-all border shadow-sm ${
-                                        isAdded 
-                                          ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-80 cursor-not-allowed" 
-                                          : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 hover:border-slate-350 cursor-pointer"
-                                      }`}
-                                    >
-                                      {isAdded ? "Added ✓" : "Add to Cart"}
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleItemBookNow(e, item);
-                                      }}
-                                      className="px-3.5 py-1.5 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-[10px] shadow-md transition-colors cursor-pointer relative overflow-hidden"
-                                    >
-                                      <div className="arrows-bg-track opacity-25 dark:opacity-20">
-                                        <ChevronRight className="w-3 h-3 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
-                                        <ChevronRight className="w-3 h-3 text-white/90 filter drop-shadow-[0_0_4px_rgba(255,255,255,0.6)]" />
-                                      </div>
-                                      <div className="shimmer-button-glow pointer-events-none" />
-                                      <span className="relative z-10 flex items-center justify-center gap-1 font-sans">
-                                        Book Now <ChevronRight className="w-3 h-3" />
-                                      </span>
-                                    </button>
+                                  <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-3/5" />
+                                  <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-4/5" />
+                                  <div className="flex gap-2 pt-2">
+                                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-16" />
+                                    <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-20" />
                                   </div>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
+                            ))}
+                          </div>
+                        ) : apiPackages.length > 0 ? (
+                          <div className="space-y-3">
+                            {apiPackages
+                              .map((pkgItem: any) => {
+                                const pkg = pkgItem.package || pkgItem;
+                                const pkgId = pkg.id || pkg._id || pkgItem._id || pkgItem.id;
+                                const pkgName = pkg.name || pkg.packageName || pkgItem.name || "Package Service";
+                                return {
+                                  id: pkgId,
+                                  name: pkgName,
+                                  price: pkg.price || pkgItem.price || 0,
+                                  originalPrice: pkg.originalPrice || pkgItem.originalPrice,
+                                  duration: pkg.duration || pkgItem.duration || 60,
+                                  subtitle: pkg.subtitle || pkgItem.subtitle || "",
+                                  description: pkg.description || pkg.subtitle || pkgItem.description || `${pkgName} execution by certified Helpmate specialists.`,
+                                  image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || pkgItem.imageUrl || pkgItem.thumbnailUrl || ""),
+                                  addons: pkgItem.addons || pkg.addons || [],
+                                };
+                              })
+                              .filter((item) => {
+                                if (!item || !item.name) return false;
+                                const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+                                const matchesSaved = showSavedOnly ? bookmarkedPackageIds.includes(item.id) : true;
+                                return matchesSearch && matchesSaved;
+                              })
+                              .map((item) => {
+                                const pkgId = (item as any)?._id || item.id;
+                                const isAdded = cart.some((c) => c.id === pkgId || c.itemId === pkgId || c.id === `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`);
+                                const isItemSaved = bookmarkedPackageIds.includes(pkgId);
+                                return (
+                                  <div
+                                    key={item.id}
+                                    onClick={() => {
+                                      router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
+                                    }}
+                                    className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl flex flex-col sm:flex-row gap-4 transition-all duration-300 hover:scale-[1.01] hover:shadow-md group text-left shadow-sm relative overflow-hidden cursor-pointer hover:border hover:border-accent-lux/30"
+                                  >
+                                    {/* Left Side: Image */}
+                                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative group/image">
+                                      <img src={formatImageUrl(item.image)} alt={item.name} referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!isItemSaved) triggerSmallConfetti(e, ['#801C6E', '#48073d', '#A21CAF']);
+                                          toggleBookmark(pkgId);
+                                          addNotification(
+                                            isItemSaved ? "Bookmark Removed" : "Bookmarked Package",
+                                            isItemSaved ? `${item.name} removed from your saved list.` : `${item.name} saved for fast booking.`,
+                                            "info"
+                                          );
+                                        }}
+                                        className={`absolute top-2 right-2 p-1.5 backdrop-blur-md cursor-pointer rounded-full transition-colors shadow-sm z-10 ${isItemSaved
+                                          ? "bg-accent-lux/10 text-accent-lux dark:bg-accent-lux/20"
+                                          : "bg-white/90 dark:bg-slate-900/90 text-slate-500 hover:text-accent-lux hover:bg-white dark:hover:bg-slate-800"
+                                          }`}
+                                      >
+                                        <Bookmark className={`w-3.5 h-3.5 ${isItemSaved ? "fill-accent-lux text-accent-lux" : ""}`} />
+                                      </button>
+                                    </div>
+
+                                    {/* Right Side: Title, Real Data, Prices, Badges, Addons & Actions */}
+                                    <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                      <div>
+                                        <div className="flex justify-between items-start gap-2">
+                                          <h4 className="font-extrabold text-[13px] sm:text-[14px] text-foreground leading-snug group-hover:text-accent-lux transition-colors truncate">
+                                            {item.name}
+                                          </h4>
+                                          <div className="text-right shrink-0">
+                                            <span className="text-[13px] sm:text-[14px] font-black text-accent-lux font-sans">
+                                              ₹{item.price}
+                                            </span>
+                                            {item.originalPrice && item.originalPrice > item.price && (
+                                              <span className="text-[10px] sm:text-[11px] font-normal text-slate-400 line-through ml-1.5 font-sans">
+                                                ₹{item.originalPrice}
+                                              </span>
+                                            )}
+                                          </div>
+                                        </div>
+
+                                        {/* Subtitle & Real Description */}
+                                        {item.subtitle && (
+                                          <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
+                                            {item.subtitle}
+                                          </p>
+                                        )}
+                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5 line-clamp-2">
+                                          {item.description}
+                                        </p>
+
+                                        {/* Duration & Badges */}
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                          <span className="text-[8px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded font-sans shrink-0">
+                                            ⏱ {item.duration} mins
+                                          </span>
+                                          <span className="text-[8px] font-bold text-success-lux bg-success-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
+                                            ✓ Vetted Pro
+                                          </span>
+                                          <span className="text-[8px] font-bold text-accent-lux bg-accent-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
+                                            ★ 4.95 Rated
+                                          </span>
+                                        </div>
+
+                                        {/* Addons List */}
+                                        {item.addons && item.addons.length > 0 && (
+                                          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                            <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider block mb-1">Addons Included:</span>
+                                            <div className="flex flex-wrap gap-1.5">
+                                              {item.addons.map((addon: any) => (
+                                                <span key={addon._id || addon.id} className="text-[9px] font-bold bg-accent-lux/10 text-accent-lux px-2 py-0.5 rounded-full">
+                                                  +{addon.addonName || addon.title || addon.name} (₹{addon.price})
+                                                </span>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                      {/* Action Buttons */}
+                                      <div className="flex justify-end items-center gap-2 mt-4 pt-2">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
+                                          }}
+                                          className="px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[9px] sm:text-[10px] transition-colors cursor-pointer"
+                                        >
+                                          View Details ↗
+                                        </button>
+                                        <button
+                                          disabled={isAdded}
+                                          onClick={(e) => {
+                                            if (isAdded) return;
+                                            e.stopPropagation();
+                                            handleItemAddToCart(e, item);
+                                          }}
+                                          className={`px-3 py-1.5 rounded-full font-bold text-[10px] transition-all border shadow-sm ${isAdded
+                                            ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-80 cursor-not-allowed"
+                                            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 hover:border-slate-350 cursor-pointer"
+                                            }`}
+                                        >
+                                          {isAdded ? "Added ✓" : "Add to Cart"}
+                                        </button>
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleItemBookNow(e, item);
+                                          }}
+                                          className="px-3.5 py-1.5 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-[10px] shadow-md transition-colors cursor-pointer relative overflow-hidden"
+                                        >
+                                          <span className="relative z-10 flex items-center justify-center gap-1 font-sans">
+                                            Book Now <ChevronRight className="w-3 h-3" />
+                                          </span>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        ) : (
+                          <div className="p-6 rounded-2xl bg-slate-100 dark:bg-slate-900/50 text-slate-400 text-xs text-center font-medium">
+                            No packages available for this service action.
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1248,49 +1776,102 @@ function ServiceDetailPageContent({ params }: PageProps) {
                   {cart.length > 0 ? (
                     <div className="space-y-4">
                       <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
-                        {cart.map((item) => (
-                          <div key={item.id} className="flex justify-between items-start gap-3 text-xs py-2 border-b border-slate-50 dark:border-slate-855/30 last:border-b-0">
-                            <div className="text-left w-full pr-1">
-                              <span className="font-bold text-foreground block leading-tight">{item.name}</span>
-                              <span className="text-[9px] text-slate-400 font-semibold font-sans mt-0.5 block">⏱ {item.duration} mins</span>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <div className="flex flex-col items-end mr-1">
-                                <span className="font-extrabold text-accent-lux font-sans leading-none">₹{item.price}</span>
-                                <span className="text-[9px] text-slate-400 line-through font-sans mt-0.5">₹{Math.round(item.price * 1.25)}</span>
+                        {cart.map((item) => {
+                          const addonTotal = (item.selectedAddons || []).reduce(
+                            (sum, a) => sum + (a.totalPrice || ((a.price || 0) * (a.quantity || 1))),
+                            0
+                          );
+                          const itemTotal = (item.price * (item.quantity || 1)) + addonTotal;
+
+                          return (
+                            <div key={item.id} className="space-y-1.5 py-2 border-b border-slate-50 dark:border-slate-855/30 last:border-b-0">
+                              <div className="flex justify-between items-start gap-3 text-xs">
+                                <div className="text-left w-full pr-1">
+                                  <span className="font-bold text-foreground block leading-tight">{item.name}</span>
+                                  <span className="text-[9px] text-slate-400 font-semibold font-sans mt-0.5 block">⏱ {item.duration} mins • Qty: {item.quantity || 1}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <div className="flex flex-col items-end mr-1">
+                                    <span className="font-extrabold text-accent-lux font-sans leading-none">₹{itemTotal}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => removeFromCart(item.id)}
+                                    className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer p-1"
+                                    aria-label="Remove item"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
-                              <button
-                                onClick={() => removeFromCart(item.id)}
-                                className="text-slate-400 hover:text-red-500 transition-colors cursor-pointer p-1"
-                                aria-label="Remove item"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+
+                              {item.selectedAddons && item.selectedAddons.length > 0 && (
+                                <div className="space-y-1 pt-1 border-t border-slate-100 dark:border-slate-800/60">
+                                  {item.selectedAddons.map((addon) => (
+                                    <div key={addon.addonId} className="flex items-center justify-between text-[9px] text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 px-2 py-1 rounded-md">
+                                      <span className="truncate pr-1">+ {addon.addonName} {addon.quantity > 1 ? `(x${addon.quantity})` : ""}</span>
+                                      <div className="flex items-center gap-1 shrink-0">
+                                        <span className="font-bold text-foreground font-sans">+₹{addon.totalPrice || ((addon.price || 0) * (addon.quantity || 1))}</span>
+                                        <button
+                                          onClick={() => toggleAddonInCart(item.itemId || item.id, addon.addonId, "remove")}
+                                          className="text-slate-400 hover:text-rose-500 ml-0.5 cursor-pointer"
+                                          title="Remove add-on"
+                                        >
+                                          <X className="w-2.5 h-2.5" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
-                      <div className="border-t border-slate-100 dark:border-slate-850 pt-4 space-y-2 text-xs text-slate-555 dark:text-slate-455 font-semibold font-sans">
-                        <div className="flex justify-between">
-                          <span>Items Subtotal</span>
-                          <span className="text-foreground font-bold">₹{cart.reduce((sum, item) => sum + item.price, 0)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Taxes &amp; GST (18%)</span>
-                          <span className="text-foreground font-bold">₹{Math.round(cart.reduce((sum, item) => sum + item.price, 0) * 0.18)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Convenience Fee</span>
-                          <span className="text-foreground font-bold">₹49</span>
-                        </div>
-                        <div className="flex justify-between border-t border-slate-100 dark:border-slate-850 pt-3 text-sm font-extrabold text-foreground">
-                          <span>Grand Total</span>
-                          <span className="text-lg font-black text-accent-lux font-sans">
-                            ₹{cart.reduce((sum, item) => sum + item.price, 0) + Math.round(cart.reduce((sum, item) => sum + item.price, 0) * 0.18) + 49}
-                          </span>
-                        </div>
-                      </div>
+                      {(() => {
+                        const itemsSubtotalVal = cartPricing ? cartPricing.itemsSubtotal : cart.reduce((sum, item) => sum + item.price * (item.quantity || 1), 0);
+                        const addonSubtotalVal = cartPricing ? cartPricing.addonSubtotal : cart.reduce((sum, item) => sum + getItemAddonTotal(item), 0);
+                        const subtotalVal = cartPricing ? cartPricing.subtotal : (itemsSubtotalVal + addonSubtotalVal);
+                        const gstRate = cartPricing?.gstRate ?? 18;
+                        const gstVal = cartPricing ? cartPricing.gst : Math.round(subtotalVal * 0.18 * 100) / 100;
+                        const feeVal = cartPricing ? cartPricing.convenienceFee : (subtotalVal > 0 ? 49 : 0);
+                        const grandVal = cartPricing ? cartPricing.grandTotal : Math.round((subtotalVal + gstVal + feeVal) * 100) / 100;
+
+                        return (
+                          <div className="border-t border-slate-100 dark:border-slate-850 pt-4 space-y-2 text-xs text-slate-555 dark:text-slate-455 font-semibold font-sans">
+                            <div className="flex justify-between">
+                              <span>Services Base Subtotal</span>
+                              <span className="text-foreground font-bold">₹{itemsSubtotalVal}</span>
+                            </div>
+                            {addonSubtotalVal > 0 && (
+                              <div className="flex justify-between text-accent-lux font-bold">
+                                <span className="flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-accent-lux" /> Add-ons Subtotal
+                                </span>
+                                <span>+₹{addonSubtotalVal}</span>
+                              </div>
+                            )}
+                            <div className="flex justify-between border-t border-slate-100/60 dark:border-slate-800/60 pt-1 text-slate-700 dark:text-slate-300 font-extrabold">
+                              <span>Subtotal</span>
+                              <span>₹{subtotalVal}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Taxes &amp; GST ({gstRate}%)</span>
+                              <span className="text-foreground font-bold">₹{gstVal}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Convenience Fee</span>
+                              <span className="text-foreground font-bold">{feeVal > 0 ? `₹${feeVal}` : "FREE"}</span>
+                            </div>
+                            <div className="flex justify-between border-t border-slate-100 dark:border-slate-850 pt-3 text-sm font-extrabold text-foreground">
+                              <span>Grand Total</span>
+                              <span className="text-lg font-black text-accent-lux font-sans">
+                                ₹{grandVal}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       <button
                         onClick={() => {
@@ -1376,9 +1957,18 @@ function ServiceDetailPageContent({ params }: PageProps) {
           <div className="flex flex-col text-left">
             <span className="text-[9px] uppercase font-bold text-slate-455 tracking-wider">Booking Customizer</span>
             <span className="text-xs font-extrabold text-foreground truncate max-w-[200px]">
-              {!selectedSub && "Choose System/Type"}
-              {selectedSub && !selectedAct && `${currentSub?.name} > Action`}
-              {selectedSub && selectedAct && `${currentSub?.name} > ${currentAct?.name}`}
+              {hasSubCategories ? (
+                <>
+                  {!selectedSub && "Choose System/Type"}
+                  {selectedSub && !selectedAct && `${currentSub?.name} > Action`}
+                  {selectedSub && selectedAct && `${currentSub?.name} > ${currentAct?.name}`}
+                </>
+              ) : (
+                <>
+                  {!selectedAct && "Choose Service Action"}
+                  {selectedAct && `${currentAct?.name}`}
+                </>
+              )}
             </span>
           </div>
 
