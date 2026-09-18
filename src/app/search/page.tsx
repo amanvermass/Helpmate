@@ -739,7 +739,7 @@ function SearchPageContent() {
                                 {/* Book Now Button -> opens 4-step booking flow at /booking */}
                                 <button
                                   onClick={(e) => handleBookNow(e, item)}
-                                  className="px-3.5 py-1.5 rounded-xl text-[11px] font-bold bg-[#48073d] text-white dark:bg-accent-lux hover:brightness-110 active:scale-95 transition-all shadow-md flex items-center gap-1 cursor-pointer"
+                                  className="px-3.5 py-1.5 rounded-xl text-[11px] font-bold bg-accent-lux hover:bg-accent-lux/90 text-white active:scale-95 transition-all shadow-md flex items-center gap-1 cursor-pointer"
                                 >
                                   <span>Book Now</span> <ChevronRight className="w-3 h-3" />
                                 </button>
