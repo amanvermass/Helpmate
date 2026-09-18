@@ -80,3 +80,48 @@ export async function loginCustomerApi(payload: LoginPayload): Promise<AuthRespo
     };
   }
 }
+
+export interface CurrentCustomerResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    id: string;
+    customerCode: string;
+    fullName: string;
+    mobile: string;
+    email?: string;
+    customerCategory?: string;
+    propertyHouseholdType?: string;
+  };
+}
+
+/**
+ * Fetch authenticated customer profile using JWT Bearer token
+ * GET /api/customer/auth/me
+ */
+export async function getCurrentCustomerApi(token: string): Promise<CurrentCustomerResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/customer/auth/me`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        message: data.message || "Failed to fetch customer profile.",
+      };
+    }
+
+    return data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Network error while fetching profile.",
+    };
+  }
+}

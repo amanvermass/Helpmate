@@ -74,16 +74,18 @@ function ProfilePageContent() {
     updateProfile,
     addWalletFunds,
     redeemLoyaltyPoints,
+    fetchCustomerProfile,
     token
   } = useStore();
 
   useEffect(() => {
     if (token) {
+      fetchCustomerProfile();
       fetchAddresses();
       fetchBookmarks();
       fetchBookings();
     }
-  }, [token, fetchAddresses, fetchBookmarks, fetchBookings]);
+  }, [token, fetchCustomerProfile, fetchAddresses, fetchBookmarks, fetchBookings]);
 
   const [activeTab, setActiveTab] = useState(
     searchParams.get("tab") === "saved" ? "bookmarks" : (searchParams.get("tab") || "dashboard")

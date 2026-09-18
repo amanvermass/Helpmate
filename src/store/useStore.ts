@@ -27,6 +27,7 @@ import {
   BookmarkItem,
 } from "@/services/bookmarkApi";
 import { createBookingApi, fetchCustomerBookingsApi, CreateBookingPayload } from "@/services/bookingApi";
+import { getCurrentCustomerApi } from "@/services/authApi";
 
 export interface CartItem {
   id: string;
@@ -148,6 +149,7 @@ interface AppState {
 
   login: (phone: string, token?: string, customer?: any) => void;
   setAuth: (data: { token: string; customer: { id: string; customerCode: string; fullName: string; mobile: string } }) => void;
+  fetchCustomerProfile: () => Promise<void>;
   logout: () => void;
 
   // Membership Benefits
@@ -458,6 +460,7 @@ export const useStore = create<AppState>()(
           get().fetchAddresses();
           get().fetchServerCart();
           get().fetchBookmarks();
+          get().fetchCustomerProfile();
         }
       },
       setAuth: ({ token, customer }) => {
@@ -473,6 +476,26 @@ export const useStore = create<AppState>()(
         get().fetchServerCart();
         get().fetchAddresses();
         get().fetchBookmarks();
+        get().fetchCustomerProfile();
+      },
+      fetchCustomerProfile: async () => {
+        const token = get().token;
+        if (!token) return;
+        try {
+          const res = await getCurrentCustomerApi(token);
+          if (res.success && res.data) {
+            set({
+              isLoggedIn: true,
+              guestMode: false,
+              customerId: res.data.id,
+              customerCode: res.data.customerCode,
+              userName: res.data.fullName || get().userName,
+              userPhone: res.data.mobile || get().userPhone,
+            });
+          }
+        } catch (err) {
+          console.error("Error fetching customer profile:", err);
+        }
       },
       logout: () => set({ isLoggedIn: false, guestMode: true, token: null, customerId: null, customerCode: null, userPhone: "", userName: "", bookings: [], cart: [], cartId: null, cartPricing: null, bookmarkedPackageIds: [], bookmarkedPackages: [] }),
       updateProfile: (name, phone) => set({ userName: name, userPhone: phone }),
