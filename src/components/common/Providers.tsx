@@ -13,7 +13,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       },
     },
   }));
-  
+
   const theme = useStore((state) => state.theme);
   const token = useStore((state) => state.token);
   const fetchServerCart = useStore((state) => state.fetchServerCart);

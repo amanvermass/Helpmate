@@ -616,7 +616,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
       }
 
       if (actId) {
-        const res = await fetchCustomerPackagesByActionApi(actId);
+        const res = await fetchCustomerPackagesByActionApi(actId, token);
         if (res.success && res.data && !isCancelled) {
           setApiPackages(res.data);
         } else if (!isCancelled) {
@@ -635,7 +635,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
     return () => {
       isCancelled = true;
     };
-  }, [selectedAct, apiServiceActions]);
+  }, [selectedAct, apiServiceActions, token]);
 
   const relatedServices = service
     ? services
@@ -829,7 +829,6 @@ function ServiceDetailPageContent({ params }: PageProps) {
   const handleBookNow = (e: React.MouseEvent) => {
     const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
 
-    clearCart();
     addToCart({
       id: packageId,
       name: activeName,
@@ -865,7 +864,6 @@ function ServiceDetailPageContent({ params }: PageProps) {
     const packageId = item._id || item.id;
     const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
 
-    clearCart();
     addToCart({
       id: packageId,
       name: pkgName,

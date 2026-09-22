@@ -106,7 +106,6 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
       const customServiceName = `${baseSelection.name} ${selectedAddonLabels.length > 0 ? `(+ ${selectedAddonLabels.join(", ")})` : ""
         }`;
 
-      clearCart();
       addToCart({
         id: `custom-deep-${homeSize}`,
         name: customServiceName,
@@ -134,7 +133,6 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
 
       const customServiceName = `Daily Chores Bundle: ${selectedChoreLabels.join(", ")}`;
 
-      clearCart();
       addToCart({
         id: "custom-chores-bundle",
         name: customServiceName,

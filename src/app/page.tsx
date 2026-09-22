@@ -28,7 +28,6 @@ export default function Home() {
     category: string;
     duration: number;
   }) => {
-    clearCart();
     addToCart(data);
     router.push("/booking");
   };

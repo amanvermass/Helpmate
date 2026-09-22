@@ -107,14 +107,14 @@ function SearchPageContent() {
       try {
         const foundCat = selectedCat
           ? dynamicCategories.find(
-              (c) => c._id === selectedCat || c.categoryName.toLowerCase().includes(selectedCat.toLowerCase())
-            )
+            (c) => c._id === selectedCat || c.categoryName.toLowerCase().includes(selectedCat.toLowerCase())
+          )
           : undefined;
 
         const foundSubCat = selectedSubCat
           ? activeSubCategories.find(
-              (sc) => sc._id === selectedSubCat || sc.name.toLowerCase() === selectedSubCat.toLowerCase()
-            )
+            (sc) => sc._id === selectedSubCat || sc.name.toLowerCase() === selectedSubCat.toLowerCase()
+          )
           : undefined;
 
         const categoryIdParam = selectedCat ? (foundCat?._id || (selectedCat.length === 24 ? selectedCat : undefined)) : undefined;
@@ -383,11 +383,10 @@ function SearchPageContent() {
                       }
                       setCurrentPage(1);
                     }}
-                    className={`text-[11px] font-semibold px-3.5 py-1.5 rounded-full border transition-all cursor-pointer shadow-sm ${
-                      isActive
+                    className={`text-[11px] font-semibold px-3.5 py-1.5 rounded-full border transition-all cursor-pointer shadow-sm ${isActive
                         ? "bg-[#48073d] text-white dark:bg-accent-lux border-[#48073d] dark:border-accent-lux"
                         : "bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent-lux"
-                    }`}
+                      }`}
                   >
                     {cat.categoryName}
                   </button>
@@ -429,11 +428,10 @@ function SearchPageContent() {
                       setSelectedSubCat("");
                       setCurrentPage(1);
                     }}
-                    className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer ${
-                      selectedCat === ""
+                    className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer ${selectedCat === ""
                         ? "bg-accent-lux/10 text-accent-lux"
                         : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                    }`}
+                      }`}
                   >
                     All Categories
                   </button>
@@ -448,11 +446,10 @@ function SearchPageContent() {
                           setSelectedSubCat("");
                           setCurrentPage(1);
                         }}
-                        className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all capitalize cursor-pointer ${
-                          isSelected
+                        className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all capitalize cursor-pointer ${isSelected
                             ? "bg-accent-lux/10 text-accent-lux"
                             : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        }`}
+                          }`}
                       >
                         {cat.categoryName}
                       </button>
@@ -479,11 +476,10 @@ function SearchPageContent() {
                             }
                             setCurrentPage(1);
                           }}
-                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
-                            isActive
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${isActive
                               ? "bg-accent-lux text-white border-accent-lux"
                               : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-accent-lux"
-                          }`}
+                            }`}
                         >
                           {subCat.name}
                         </button>
@@ -634,11 +630,10 @@ function SearchPageContent() {
                             {/* Wishlist / Bookmark Toggle */}
                             <button
                               onClick={(e) => handleWishlistToggle(e, pkg.id, pkg.name)}
-                              className={`absolute top-3 right-3 w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all shadow-sm z-10 ${
-                                isFavorited || pkg.isBookmarked
+                              className={`absolute top-3 right-3 w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all shadow-sm z-10 ${isFavorited || pkg.isBookmarked
                                   ? "bg-rose-500 text-white"
                                   : "bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 hover:text-rose-500 hover:bg-white"
-                              }`}
+                                }`}
                             >
                               <Heart className={`w-3.5 h-3.5 ${isFavorited || pkg.isBookmarked ? "fill-white" : ""}`} />
                             </button>
@@ -727,11 +722,10 @@ function SearchPageContent() {
                                 <button
                                   onClick={(e) => handleAddToCart(e, item)}
                                   disabled={isCartAdded}
-                                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer ${
-                                    isCartAdded
+                                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer ${isCartAdded
                                       ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 cursor-not-allowed opacity-90"
                                       : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
-                                  }`}
+                                    }`}
                                 >
                                   {isCartAdded ? "Added ✓" : "+ Cart"}
                                 </button>

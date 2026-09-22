@@ -91,18 +91,25 @@ export async function fetchCustomerServiceActionsApi(
 }
 
 export async function fetchCustomerPackagesApi(
-  serviceActionId: string
+  serviceActionId: string,
+  token?: string | null
 ): Promise<PackagesResponse> {
   try {
-    const res = await fetch(
-      `${API_BASE_URL}/api/customer/packages?serviceActionId=${encodeURIComponent(serviceActionId)}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    let url = `${API_BASE_URL}/api/customer/packages/byAction?serviceActionId=${encodeURIComponent(serviceActionId)}`;
+    let res = await fetch(url, { method: "GET", headers });
+
+    // Fallback to query param if byAction endpoint is not found
+    if (res.status === 404) {
+      url = `${API_BASE_URL}/api/customer/packages?serviceActionId=${encodeURIComponent(serviceActionId)}`;
+      res = await fetch(url, { method: "GET", headers });
+    }
 
     const data = await res.json();
     if (!res.ok) {
@@ -120,3 +127,4 @@ export async function fetchCustomerPackagesApi(
     };
   }
 }
+

@@ -99,7 +99,7 @@ export default function CheckoutModal({
   const [couponError, setCouponError] = useState("");
   const [showAddAddress, setShowAddAddress] = useState(false);
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
-  
+
   // New address form state
   const [newTag, setNewTag] = useState<Address["tag"]>("Home");
   const [newAddressLine, setNewAddressLine] = useState("");
@@ -386,20 +386,18 @@ export default function CheckoutModal({
                 return (
                   <div key={idx} className="flex flex-col items-center relative z-10">
                     <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
-                        isCurrent
+                      className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${isCurrent
                           ? "bg-accent-lux border-accent-lux text-white scale-110 shadow-lg shadow-accent-lux/20"
                           : isActive
-                          ? "bg-background border-accent-lux text-accent-lux"
-                          : "bg-background border-slate-200 dark:border-slate-800 text-slate-400"
-                      }`}
+                            ? "bg-background border-accent-lux text-accent-lux"
+                            : "bg-background border-slate-200 dark:border-slate-800 text-slate-400"
+                        }`}
                     >
                       <Icon className="w-4 h-4" />
                     </div>
                     <span
-                      className={`text-[9px] font-black uppercase tracking-wider mt-2 transition-colors duration-500 ${
-                        isActive ? "text-accent-lux" : "text-slate-400"
-                      }`}
+                      className={`text-[9px] font-black uppercase tracking-wider mt-2 transition-colors duration-500 ${isActive ? "text-accent-lux" : "text-slate-400"
+                        }`}
                     >
                       {s.label}
                     </span>
@@ -488,7 +486,7 @@ export default function CheckoutModal({
             </div>
           )}
 
-                    {/* STEP 1: Quick Cards with Active Highlight State */}
+          {/* STEP 1: Quick Cards with Active Highlight State */}
           {step === 1 && (() => {
             const todayISO = new Date().toISOString().split("T")[0];
             const isPresetDate = dates.slice(0, 5).some((d) => d.iso === selectedDate);
@@ -503,7 +501,7 @@ export default function CheckoutModal({
                     <Calendar className="w-4 h-4 text-[#782860]" /> Select Booking Date
                   </h4>
                   <p className="text-xs text-slate-400 mt-1">Choose a preset day or pick any custom calendar date</p>
-                  
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
                     {dates.slice(0, 5).map((d) => {
                       const isSelected = selectedDate === d.iso && !showCustomDate && !isCustomDateActive;
@@ -515,11 +513,10 @@ export default function CheckoutModal({
                             setSelectedDate(d.iso);
                             setShowCustomDate(false);
                           }}
-                          className={`relative p-3 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
-                            isSelected
+                          className={`relative p-3 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${isSelected
                               ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
                               : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
-                          }`}
+                            }`}
                         >
                           {isSelected && (
                             <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
@@ -546,11 +543,10 @@ export default function CheckoutModal({
                             setSelectedDate(todayISO);
                           }
                         }}
-                        className={`w-full h-full p-3 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
-                          isCustomDateActive || showCustomDate
+                        className={`w-full h-full p-3 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${isCustomDateActive || showCustomDate
                             ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
                             : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
-                        }`}
+                          }`}
                       >
                         {(isCustomDateActive || showCustomDate) && (
                           <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
@@ -605,11 +601,10 @@ export default function CheckoutModal({
                             setSelectedTimeSlot(slot);
                             setShowCustomTime(false);
                           }}
-                          className={`relative p-3 rounded-2xl border text-center cursor-pointer text-xs font-black transition-all duration-300 ${
-                            isSelected
+                          className={`relative p-3 rounded-2xl border text-center cursor-pointer text-xs font-black transition-all duration-300 ${isSelected
                               ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
                               : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
-                          }`}
+                            }`}
                         >
                           {isSelected && (
                             <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
@@ -635,11 +630,10 @@ export default function CheckoutModal({
                             setSelectedTimeSlot("09:00 AM");
                           }
                         }}
-                        className={`w-full h-full p-3 rounded-2xl border text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-300 ${
-                          isCustomTimeActive || showCustomTime
+                        className={`w-full h-full p-3 rounded-2xl border text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-300 ${isCustomTimeActive || showCustomTime
                             ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
                             : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
-                        }`}
+                          }`}
                       >
                         {(isCustomTimeActive || showCustomTime) && (
                           <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
@@ -807,25 +801,22 @@ export default function CheckoutModal({
                         <div
                           key={addr.id}
                           onClick={() => setSelectedAddressId(addr.id)}
-                          className={`p-4.5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-start justify-between gap-3 select-none ${
-                            isSelected
+                          className={`p-4.5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-start justify-between gap-3 select-none ${isSelected
                               ? "border-[#782860] bg-gradient-to-r from-[#782860]/5 via-purple-500/5 to-transparent shadow-md ring-2 ring-[#782860]/30 scale-[1.01]"
                               : "border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 bg-slate-50/50 dark:bg-slate-950/20"
-                          }`}
+                            }`}
                         >
                           <div className="flex items-start gap-3">
-                            <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${
-                              isSelected ? "border-[#782860] bg-[#782860]" : "border-slate-300 dark:border-slate-700"
-                            }`}>
+                            <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${isSelected ? "border-[#782860] bg-[#782860]" : "border-slate-300 dark:border-slate-700"
+                              }`}>
                               {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
                             </div>
                             <div className="space-y-1 text-left">
                               <div className="flex flex-wrap items-center gap-1.5">
-                                <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                                  isSelected
+                                <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${isSelected
                                     ? "bg-[#782860] text-white"
                                     : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                                }`}>
+                                  }`}>
                                   <TagIcon className="w-2.5 h-2.5" />
                                   {addr.tag}
                                 </span>
@@ -935,11 +926,10 @@ export default function CheckoutModal({
                       key={method}
                       type="button"
                       onClick={() => setPaymentMethod(method)}
-                      className={`p-3 rounded-2xl text-xs font-extrabold capitalize text-center transition-all cursor-pointer border flex flex-col items-center justify-center gap-1 ${
-                        paymentMethod === method
+                      className={`p-3 rounded-2xl text-xs font-extrabold capitalize text-center transition-all cursor-pointer border flex flex-col items-center justify-center gap-1 ${paymentMethod === method
                           ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-md ring-2 ring-[#782860]/40 scale-105"
                           : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-[#782860]/40"
-                      }`}
+                        }`}
                     >
                       <span>
                         {method === "pay_after" && "Pay After Service"}
@@ -948,9 +938,8 @@ export default function CheckoutModal({
                         {method === "cod" && "Cash on Delivery"}
                       </span>
                       {method === "pay_after" && (
-                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full ${
-                          paymentMethod === "pay_after" ? "bg-white/20 text-white" : "bg-emerald-500/10 text-emerald-600"
-                        }`}>
+                        <span className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full ${paymentMethod === "pay_after" ? "bg-white/20 text-white" : "bg-emerald-500/10 text-emerald-600"
+                          }`}>
                           Popular
                         </span>
                       )}

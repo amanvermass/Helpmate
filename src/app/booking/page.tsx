@@ -348,7 +348,7 @@ export default function BookingPage() {
   };
 
   // Pricing math
-  const matchedBooking = step === 4 && createdBookingId 
+  const matchedBooking = step === 4 && createdBookingId
     ? bookings.find(b => b.id === createdBookingId)
     : null;
 
@@ -390,9 +390,9 @@ export default function BookingPage() {
 
   const grandTotal = matchedBooking
     ? matchedBooking.finalAmount
-    : (cartPricing && discount === 0 
-        ? cartPricing.grandTotal 
-        : Math.max(0, Math.round((subtotal - discount + gst + convenienceFee) * 100) / 100));
+    : (cartPricing && discount === 0
+      ? cartPricing.grandTotal
+      : Math.max(0, Math.round((subtotal - discount + gst + convenienceFee) * 100) / 100));
 
   const total = grandTotal;
 
@@ -422,7 +422,7 @@ export default function BookingPage() {
               <div className="flex items-center justify-between relative">
                 {/* Connector line */}
                 <div className="absolute left-[18px] right-[18px] top-[18px] h-0.5 bg-slate-200 dark:bg-slate-800 -translate-y-1/2 z-0" />
-                <div 
+                <div
                   className="absolute left-[18px] top-[18px] h-0.5 bg-accent-lux -translate-y-1/2 transition-all duration-500 z-0"
                   style={{ width: `calc(${(step / 3) * 100}% - ${(step / 3) * 36}px)` }}
                 />
@@ -439,20 +439,18 @@ export default function BookingPage() {
                   return (
                     <div key={idx} className="flex flex-col items-center relative z-10">
                       <div
-                        className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${
-                          isCurrent
+                        className={`w-9 h-9 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${isCurrent
                             ? "bg-accent-lux border-accent-lux text-white scale-110 shadow-lg shadow-accent-lux/20"
                             : isActive
-                            ? "bg-background border-accent-lux text-accent-lux"
-                            : "bg-background border-slate-200 dark:border-slate-800 text-slate-400"
-                        }`}
+                              ? "bg-background border-accent-lux text-accent-lux"
+                              : "bg-background border-slate-200 dark:border-slate-800 text-slate-400"
+                          }`}
                       >
                         <Icon className="w-4 h-4" />
                       </div>
                       <span
-                        className={`text-[9px] font-black uppercase tracking-wider mt-2 transition-colors duration-500 ${
-                          isActive ? "text-accent-lux" : "text-slate-400"
-                        }`}
+                        className={`text-[9px] font-black uppercase tracking-wider mt-2 transition-colors duration-500 ${isActive ? "text-accent-lux" : "text-slate-400"
+                          }`}
                       >
                         {s.label}
                       </span>
@@ -466,7 +464,7 @@ export default function BookingPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             {/* Left Panel Stepper Content */}
             <div className="lg:col-span-8 space-y-6">
-              
+
               <AnimatePresence mode="wait">
                 <motion.div
                   key={step}
@@ -476,7 +474,7 @@ export default function BookingPage() {
                   transition={{ duration: 0.3 }}
                   className="glass-panel p-6 sm:p-8 shadow-xl rounded-[32px] text-left"
                 >
-                  
+
                   {/* STEP 0: Cart Selection & Recommendations */}
                   {step === 0 && (
                     <div className="space-y-6">
@@ -601,11 +599,10 @@ export default function BookingPage() {
                                           "info"
                                         );
                                       }}
-                                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer ${
-                                        isAdded
+                                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 cursor-pointer ${isAdded
                                           ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border border-emerald-500 opacity-90"
                                           : "bg-accent-lux text-white hover:bg-accent-lux/90"
-                                      }`}
+                                        }`}
                                     >
                                       {isAdded ? "Added ✓" : <>Add <Plus className="w-3 h-3" /></>}
                                     </button>
@@ -678,11 +675,10 @@ export default function BookingPage() {
                                     setSelectedDate(d.iso);
                                     setShowCustomDate(false);
                                   }}
-                                  className={`relative p-4 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
-                                    isSelected
+                                  className={`relative p-4 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${isSelected
                                       ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
                                       : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80"
-                                  }`}
+                                    }`}
                                 >
                                   {isSelected && (
                                     <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
@@ -710,11 +706,10 @@ export default function BookingPage() {
                                     setSelectedDate(todayISO);
                                   }
                                 }}
-                                className={`w-full h-full p-4 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${
-                                  isCustomDateActive || showCustomDate
+                                className={`w-full h-full p-4 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${isCustomDateActive || showCustomDate
                                     ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
                                     : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80"
-                                }`}
+                                  }`}
                               >
                                 {(isCustomDateActive || showCustomDate) && (
                                   <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
@@ -774,11 +769,10 @@ export default function BookingPage() {
                                     setSelectedTimeSlot(slot);
                                     setShowCustomTime(false);
                                   }}
-                                  className={`relative p-3.5 rounded-2xl border text-center cursor-pointer text-xs font-black transition-all duration-300 ${
-                                    isSelected
+                                  className={`relative p-3.5 rounded-2xl border text-center cursor-pointer text-xs font-black transition-all duration-300 ${isSelected
                                       ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
                                       : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80"
-                                  }`}
+                                    }`}
                                 >
                                   {isSelected && (
                                     <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
@@ -804,11 +798,10 @@ export default function BookingPage() {
                                     setSelectedTimeSlot("09:00 AM");
                                   }
                                 }}
-                                className={`w-full h-full p-3.5 rounded-2xl border text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-300 ${
-                                  isCustomTimeActive || showCustomTime
+                                className={`w-full h-full p-3.5 rounded-2xl border text-center cursor-pointer flex flex-col items-center justify-center transition-all duration-300 ${isCustomTimeActive || showCustomTime
                                     ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
                                     : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80"
-                                }`}
+                                  }`}
                               >
                                 {(isCustomTimeActive || showCustomTime) && (
                                   <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5 shadow-md">
@@ -990,25 +983,22 @@ export default function BookingPage() {
                                 <div
                                   key={addr.id}
                                   onClick={() => setSelectedAddressId(addr.id)}
-                                  className={`p-5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-start justify-between gap-4 select-none ${
-                                    isSelected
+                                  className={`p-5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-start justify-between gap-4 select-none ${isSelected
                                       ? "border-[#782860] bg-gradient-to-r from-[#782860]/5 via-purple-500/5 to-transparent shadow-md ring-2 ring-[#782860]/30 scale-[1.01]"
                                       : "border-slate-200 dark:border-slate-800/80 hover:border-[#782860]/40 bg-slate-50/50 dark:bg-slate-950/40"
-                                  }`}
+                                    }`}
                                 >
                                   <div className="flex items-start gap-3.5">
-                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${
-                                      isSelected ? "border-[#782860] bg-[#782860]" : "border-slate-300 dark:border-slate-700"
-                                    }`}>
+                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${isSelected ? "border-[#782860] bg-[#782860]" : "border-slate-300 dark:border-slate-700"
+                                      }`}>
                                       {isSelected && <div className="w-2 h-2 bg-white rounded-full" />}
                                     </div>
                                     <div className="space-y-1.5 text-left">
                                       <div className="flex flex-wrap items-center gap-1.5">
-                                        <span className={`inline-flex items-center gap-1 text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider ${
-                                          isSelected
+                                        <span className={`inline-flex items-center gap-1 text-[10px] font-black px-3 py-0.5 rounded-full uppercase tracking-wider ${isSelected
                                             ? "bg-[#782860] text-white"
                                             : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                                        }`}>
+                                          }`}>
                                           <TagIcon className="w-3 h-3" />
                                           {addr.tag}
                                         </span>
@@ -1079,7 +1069,7 @@ export default function BookingPage() {
 
                       {/* Payment Options & Details Grid */}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-                        
+
                         {/* Payment Option Tabs (Left) */}
                         <div className="md:col-span-1 flex flex-col bg-slate-50/50 dark:bg-slate-900/30 border-r border-slate-200 dark:border-slate-800">
                           {(["pay_after", "upi", "card", "cod"] as const).map((method) => (
@@ -1087,11 +1077,10 @@ export default function BookingPage() {
                               key={method}
                               type="button"
                               onClick={() => setPaymentMethod(method)}
-                              className={`py-4 px-4 text-xs font-bold capitalize text-left transition-all cursor-pointer border-b border-slate-200 dark:border-slate-800 last:border-b-0 flex items-center justify-between ${
-                                paymentMethod === method
+                              className={`py-4 px-4 text-xs font-bold capitalize text-left transition-all cursor-pointer border-b border-slate-200 dark:border-slate-800 last:border-b-0 flex items-center justify-between ${paymentMethod === method
                                   ? "bg-white dark:bg-slate-900 border-l-4 border-l-[#782860] text-[#782860] dark:text-purple-300 font-extrabold"
                                   : "border-l-4 border-l-transparent text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                              }`}
+                                }`}
                             >
                               <span>
                                 {method === "pay_after" && "Pay After Service"}
@@ -1196,7 +1185,7 @@ export default function BookingPage() {
                       <div className="w-16 h-16 rounded-full bg-success-lux/10 border border-success-lux/20 flex items-center justify-center text-success-lux">
                         <CheckCircle className="w-10 h-10 animate-bounce" />
                       </div>
-                      
+
                       <div className="space-y-2">
                         <h2 className="text-2xl font-black text-foreground tracking-tight">Luxury Service Booked!</h2>
                         <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
@@ -1209,7 +1198,7 @@ export default function BookingPage() {
                           <span>Booking Summary</span>
                           <span>Invoice Ready</span>
                         </div>
-                        
+
                         <div className="space-y-2 text-xs text-slate-650 dark:text-slate-350">
                           <p><strong>Scheduled Date:</strong> {selectedDate}</p>
                           <p><strong>Arrival Window:</strong> {selectedTimeSlot}</p>
@@ -1239,7 +1228,7 @@ export default function BookingPage() {
                       ) : (
                         <div />
                       )}
-                      
+
                       <button
                         onClick={handleNextStep}
                         className="px-6 py-3 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-md transition-transform duration-300 hover:scale-103 active:scale-97"
@@ -1255,114 +1244,114 @@ export default function BookingPage() {
 
             {/* Right Sticky Summary Sidebar */}
             {step <= 4 && (
-               <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
-                 
-                 {/* Price Breakdown Invoice Card */}
-                 <div className="glass-panel p-6 space-y-5 text-left">
-                   <div>
-                     <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Booking Invoice</h3>
-                   </div>
+              <div className="lg:col-span-4 lg:sticky lg:top-24 space-y-6">
 
-                   <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-800 pt-4 text-xs">
-                     <div className="flex justify-between items-center text-slate-500">
-                       <span>Services Base Subtotal</span>
-                       <span className="font-bold text-foreground">₹{itemsSubtotal}</span>
-                     </div>
+                {/* Price Breakdown Invoice Card */}
+                <div className="glass-panel p-6 space-y-5 text-left">
+                  <div>
+                    <h3 className="text-xs uppercase font-extrabold text-slate-400 tracking-wider">Booking Invoice</h3>
+                  </div>
 
-                     {addonSubtotal > 0 && (
-                       <div className="flex justify-between items-center text-accent-lux font-bold">
-                         <span className="flex items-center gap-1">
-                           <Sparkles className="w-3.5 h-3.5 text-accent-lux" /> Selected Add-ons Subtotal
-                         </span>
-                         <span>+₹{addonSubtotal}</span>
-                       </div>
-                     )}
+                  <div className="space-y-3.5 border-t border-slate-100 dark:border-slate-800 pt-4 text-xs">
+                    <div className="flex justify-between items-center text-slate-500">
+                      <span>Services Base Subtotal</span>
+                      <span className="font-bold text-foreground">₹{itemsSubtotal}</span>
+                    </div>
 
-                     <div className="flex justify-between items-center text-slate-700 dark:text-slate-300 font-extrabold border-t border-slate-100/60 dark:border-slate-800/60 pt-2">
-                       <span>Subtotal</span>
-                       <span>₹{subtotal}</span>
-                     </div>
+                    {addonSubtotal > 0 && (
+                      <div className="flex justify-between items-center text-accent-lux font-bold">
+                        <span className="flex items-center gap-1">
+                          <Sparkles className="w-3.5 h-3.5 text-accent-lux" /> Selected Add-ons Subtotal
+                        </span>
+                        <span>+₹{addonSubtotal}</span>
+                      </div>
+                    )}
 
-                     {couponDiscount > 0 && (
-                       <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
-                         <span>Promo Coupon ({appliedCoupon})</span>
-                         <span>-₹{couponDiscount}</span>
-                       </div>
-                     )}
+                    <div className="flex justify-between items-center text-slate-700 dark:text-slate-300 font-extrabold border-t border-slate-100/60 dark:border-slate-800/60 pt-2">
+                      <span>Subtotal</span>
+                      <span>₹{subtotal}</span>
+                    </div>
 
-                     {memberDiscount > 0 && (
-                       <div className="flex justify-between items-center text-amber-600 dark:text-amber-400 font-bold">
-                         <span className="flex items-center gap-1">👑 VIP Member Discount (15%)</span>
-                         <span>-₹{memberDiscount}</span>
-                       </div>
-                     )}
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400 font-bold">
+                        <span>Promo Coupon ({appliedCoupon})</span>
+                        <span>-₹{couponDiscount}</span>
+                      </div>
+                    )}
 
-                     <div className="flex justify-between items-center text-slate-500">
-                       <span>Varanasi Regional Tax (GST {gstRate}%)</span>
-                       <span className="font-bold text-foreground">₹{gst}</span>
-                     </div>
+                    {memberDiscount > 0 && (
+                      <div className="flex justify-between items-center text-amber-600 dark:text-amber-400 font-bold">
+                        <span className="flex items-center gap-1">👑 VIP Member Discount (15%)</span>
+                        <span>-₹{memberDiscount}</span>
+                      </div>
+                    )}
 
-                     <div className="flex justify-between items-center text-slate-500">
-                       <span>Convenience & Dispatch Fee</span>
-                       <span className="font-bold text-foreground">{convenienceFee > 0 ? `₹${convenienceFee}` : "FREE"}</span>
-                     </div>
+                    <div className="flex justify-between items-center text-slate-500">
+                      <span>Varanasi Regional Tax (GST {gstRate}%)</span>
+                      <span className="font-bold text-foreground">₹{gst}</span>
+                    </div>
 
-                     <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-4 text-sm">
-                       <span className="font-extrabold text-foreground">Total Due Now</span>
-                       <span className="font-black text-accent-lux text-base">₹{grandTotal}</span>
-                     </div>
-                   </div>
+                    <div className="flex justify-between items-center text-slate-500">
+                      <span>Convenience & Dispatch Fee</span>
+                      <span className="font-bold text-foreground">{convenienceFee > 0 ? `₹${convenienceFee}` : "FREE"}</span>
+                    </div>
 
-                   {/* Promo Coupon Section inside Summary Card */}
-                   <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
-                     <div className="flex items-center justify-between">
-                       <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
-                       <button
-                         type="button"
-                         onClick={() => setShowCouponsSlider(true)}
-                         className="text-[11px] font-extrabold text-[#782860] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
-                       >
-                         <Tag className="w-3 h-3" /> View Offers (5)
-                       </button>
-                     </div>
+                    <div className="flex justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-4 text-sm">
+                      <span className="font-extrabold text-foreground">Total Due Now</span>
+                      <span className="font-black text-accent-lux text-base">₹{grandTotal}</span>
+                    </div>
+                  </div>
 
-                     <div className="flex gap-2">
-                       <input
-                         type="text"
-                         placeholder="Enter coupon code"
-                         value={couponInput}
-                         onChange={(e) => setCouponInput(e.target.value)}
-                         className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-xs text-foreground focus:outline-none focus:border-accent-lux animate-fadeIn"
-                       />
-                       <button
-                         onClick={handleApplyCoupon}
-                         className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-750 text-xs font-bold text-white cursor-pointer transition-colors"
-                       >
-                         Apply
-                       </button>
-                     </div>
-                     {couponError && <p className="text-[10px] text-red-500 pl-2 animate-shake">{couponError}</p>}
-                     {appliedCoupon && (
-                       <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl text-[11px] font-bold animate-fadeIn">
-                         <span className="flex items-center gap-1.5"><Percent className="w-3.5 h-3.5 text-emerald-500" /> Code {appliedCoupon} Active</span>
-                         <button onClick={removeCoupon} className="hover:underline text-[10px] text-rose-500 cursor-pointer">Remove</button>
-                       </div>
-                     )}
-                   </div>
- 
-                   <div className="space-y-3 text-[10px] text-slate-400 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
-                     <div className="flex items-center gap-2">
-                       <ShieldCheck className="w-4 h-4 text-emerald-500" /> Flat-rate guaranteed pricing
-                     </div>
-                     <div className="flex items-center gap-2">
-                       <Clock className="w-4 h-4 text-[#782860]" /> Arrives within the scheduling window
-                     </div>
-                   </div>
-                 </div>
+                  {/* Promo Coupon Section inside Summary Card */}
+                  <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowCouponsSlider(true)}
+                        className="text-[11px] font-extrabold text-[#782860] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Tag className="w-3 h-3" /> View Offers (5)
+                      </button>
+                    </div>
 
-                 {/* MEMBERSHIP PROMOTIONAL CARD */}
-                 <MembershipBanner variant="checkout" />
-               </div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        placeholder="Enter coupon code"
+                        value={couponInput}
+                        onChange={(e) => setCouponInput(e.target.value)}
+                        className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-4 py-2.5 rounded-xl text-xs text-foreground focus:outline-none focus:border-accent-lux animate-fadeIn"
+                      />
+                      <button
+                        onClick={handleApplyCoupon}
+                        className="px-4 py-2.5 rounded-xl bg-slate-900 dark:bg-slate-800 hover:bg-black dark:hover:bg-slate-750 text-xs font-bold text-white cursor-pointer transition-colors"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {couponError && <p className="text-[10px] text-red-500 pl-2 animate-shake">{couponError}</p>}
+                    {appliedCoupon && (
+                      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-3.5 py-2 rounded-xl text-[11px] font-bold animate-fadeIn">
+                        <span className="flex items-center gap-1.5"><Percent className="w-3.5 h-3.5 text-emerald-500" /> Code {appliedCoupon} Active</span>
+                        <button onClick={removeCoupon} className="hover:underline text-[10px] text-rose-500 cursor-pointer">Remove</button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 text-[10px] text-slate-400 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-500" /> Flat-rate guaranteed pricing
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-[#782860]" /> Arrives within the scheduling window
+                    </div>
+                  </div>
+                </div>
+
+                {/* MEMBERSHIP PROMOTIONAL CARD */}
+                <MembershipBanner variant="checkout" />
+              </div>
             )}
           </div>
         </div>
