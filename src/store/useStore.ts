@@ -969,79 +969,75 @@ export const useStore = create<AppState>()(
           return { success: false, message: "Please select a valid address, date, and time slot." };
         }
 
+        if (!state.token) {
+          return { success: false, message: "Authentication required. Please Sign In or Sign Up to book a service." };
+        }
+
         const address = state.addresses.find((a) => a.id === state.selectedAddressId) || state.addresses[0];
 
-        if (state.token) {
-          try {
-            const res = await createBookingApi({
-              addressId: state.selectedAddressId,
-              bookingDate: state.selectedDate,
+        try {
+          const res = await createBookingApi({
+            addressId: state.selectedAddressId,
+            bookingDate: state.selectedDate,
+            timeSlot: state.selectedTimeSlot,
+            paymentMethod: paymentMethod || "pay_after_service"
+          }, state.token);
+
+          if (res.success && res.data) {
+            const bData = res.data;
+            const itemsSubtotal = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const addonSubtotal = state.cartPricing?.addonSubtotal ?? state.cart.reduce((sum, item) => sum + getItemAddonTotal(item), 0);
+            const subtotal = itemsSubtotal + addonSubtotal;
+
+            const professionals = [
+              { name: "Arjun Mehta", rating: 4.9, completedJobs: 1240, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80", phone: "+91 98765 43210", eta: "15 mins" },
+              { name: "Rahul Ranade", rating: 4.85, completedJobs: 980, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80", phone: "+91 91234 56789", eta: "25 mins" },
+              { name: "Neha Patil", rating: 4.95, completedJobs: 1530, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80", phone: "+91 95432 10987", eta: "8 mins" }
+            ];
+            const chosenProf = professionals[Math.floor(Math.random() * professionals.length)];
+
+            const newBooking: Booking = {
+              id: bData.bookingNumber || bData.bookingId,
+              items: state.cart,
+              address,
+              date: state.selectedDate,
               timeSlot: state.selectedTimeSlot,
-              paymentMethod: paymentMethod || "pay_after_service"
-            }, state.token);
+              totalAmount: subtotal,
+              discount: 0,
+              finalAmount: bData.totalAmount || subtotal,
+              status: "Assigned",
+              professional: chosenProf,
+              otp: Math.floor(1000 + Math.random() * 9000).toString(),
+              dateCreated: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+              invoiceId: "INV-" + Math.floor(10000000 + Math.random() * 90000000).toString(),
+              timeline: [
+                { status: "Booking Confirmed", time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), done: true },
+                { status: "Professional Assigned", time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), done: true },
+                { status: "In-Transit to Location", time: "Pending", done: false },
+                { status: "Arrived at Address", time: "Pending", done: false },
+                { status: "Service Completed", time: "Pending", done: false },
+              ],
+            };
 
-            if (res.success && res.data) {
-              const bData = res.data;
-              const itemsSubtotal = state.cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-              const addonSubtotal = state.cartPricing?.addonSubtotal ?? state.cart.reduce((sum, item) => sum + getItemAddonTotal(item), 0);
-              const subtotal = itemsSubtotal + addonSubtotal;
+            set((s) => ({
+              bookings: [newBooking, ...s.bookings],
+              cart: []
+            }));
 
-              const professionals = [
-                { name: "Arjun Mehta", rating: 4.9, completedJobs: 1240, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80", phone: "+91 98765 43210", eta: "15 mins" },
-                { name: "Rahul Ranade", rating: 4.85, completedJobs: 980, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80", phone: "+91 91234 56789", eta: "25 mins" },
-                { name: "Neha Patil", rating: 4.95, completedJobs: 1530, avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80", phone: "+91 95432 10987", eta: "8 mins" }
-              ];
-              const chosenProf = professionals[Math.floor(Math.random() * professionals.length)];
+            get().addNotification(
+              "Booking Confirmed!",
+              `Your service booking ${newBooking.id} is confirmed. ${chosenProf.name} will arrive on ${newBooking.date} at ${newBooking.timeSlot}.`,
+              "success"
+            );
 
-              const newBooking: Booking = {
-                id: bData.bookingNumber || bData.bookingId,
-                items: state.cart,
-                address,
-                date: state.selectedDate,
-                timeSlot: state.selectedTimeSlot,
-                totalAmount: subtotal,
-                discount: 0,
-                finalAmount: bData.totalAmount || subtotal,
-                status: "Assigned",
-                professional: chosenProf,
-                otp: Math.floor(1000 + Math.random() * 9000).toString(),
-                dateCreated: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-                invoiceId: "INV-" + Math.floor(10000000 + Math.random() * 90000000).toString(),
-                timeline: [
-                  { status: "Booking Confirmed", time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), done: true },
-                  { status: "Professional Assigned", time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), done: true },
-                  { status: "In-Transit to Location", time: "Pending", done: false },
-                  { status: "Arrived at Address", time: "Pending", done: false },
-                  { status: "Service Completed", time: "Pending", done: false },
-                ],
-              };
-
-              set((s) => ({
-                bookings: [newBooking, ...s.bookings],
-                cart: []
-              }));
-
-              get().addNotification(
-                "Booking Confirmed!",
-                `Your service booking ${newBooking.id} is confirmed. ${chosenProf.name} will arrive on ${newBooking.date} at ${newBooking.timeSlot}.`,
-                "success"
-              );
-
-              return { success: true, message: res.message, booking: newBooking };
-            } else {
-              return { success: false, message: res.message || "Failed to create booking." };
-            }
-          } catch (err: any) {
-            console.error("Error creating booking via API:", err);
+            return { success: true, message: res.message, booking: newBooking };
+          } else {
+            return { success: false, message: res.message || "Failed to create booking." };
           }
+        } catch (err: any) {
+          console.error("Error creating booking via API:", err);
+          return { success: false, message: err.message || "Failed to create booking." };
         }
-
-        // Fallback for guest mode / local state
-        const fallbackBooking = get().createBooking();
-        if (fallbackBooking) {
-          return { success: true, message: "Booking created successfully.", booking: fallbackBooking };
-        }
-        return { success: false, message: "Failed to create booking." };
       },
       cancelBooking: (id) =>
         set((state) => {

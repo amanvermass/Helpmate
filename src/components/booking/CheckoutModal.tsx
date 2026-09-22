@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   X,
   MapPin,
@@ -25,6 +26,8 @@ import {
   Tag,
   Users,
   User,
+  UserPlus,
+  Lock,
   HeartHandshake,
   Phone,
   Edit3
@@ -80,6 +83,7 @@ export default function CheckoutModal({
     createBooking,
     createBookingAsync,
     isMember,
+    isLoggedIn,
     token
   } = useStore();
 
@@ -259,6 +263,10 @@ export default function CheckoutModal({
       alert("Please select a date and arrival time window.");
       return;
     }
+    if (step === 2 && (!token || !isLoggedIn)) {
+      alert("Without Sign In or Sign Up, you cannot select an address or book any service.");
+      return;
+    }
     if (step === 2 && !selectedAddressId) {
       alert("Please select or add a service address.");
       return;
@@ -266,6 +274,10 @@ export default function CheckoutModal({
     if (step < 3) {
       setStep(step + 1);
     } else {
+      if (!token || !isLoggedIn) {
+        alert("Authentication required. Please Sign In or Sign Up to book a service.");
+        return;
+      }
       // Create final booking via API
       setIsSubmittingBooking(true);
       const methodToPass = (paymentMethod === "pay_after" || paymentMethod === "cod") ? "pay_after_service" : paymentMethod;
@@ -690,142 +702,185 @@ export default function CheckoutModal({
           {/* STEP 2: Address configuration */}
           {step === 2 && (
             <div className="space-y-6 text-left">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
-                <div>
-                  <h4 className="font-extrabold text-sm text-foreground flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-[#782860]" /> Select Service Location
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Specify where our uniformed team will perform the work</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (showAddAddress) {
-                      setShowAddAddress(false);
-                      setEditingAddress(null);
-                    } else {
-                      setEditingAddress(null);
-                      setShowAddAddress(true);
-                    }
-                  }}
-                  className="px-3.5 py-1.5 bg-[#782860]/10 text-[#782860] dark:bg-[#782860]/20 dark:text-purple-300 hover:bg-[#782860] hover:text-white font-extrabold text-xs rounded-2xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
-                >
-                  <Plus className="w-3.5 h-3.5" /> {showAddAddress ? "Cancel" : "Add Address"}
-                </button>
-              </div>
+              {!token || !isLoggedIn ? (
+                <div className="p-6 sm:p-8 bg-gradient-to-br from-slate-900 via-[#48073d] to-slate-950 text-white rounded-3xl border border-purple-500/30 shadow-2xl text-center space-y-6">
+                  <div className="w-16 h-16 rounded-3xl bg-purple-500/20 border border-purple-400/30 flex items-center justify-center mx-auto text-purple-300 shadow-inner">
+                    <UserPlus className="w-8 h-8" />
+                  </div>
 
-              {/* Add Address Form Accordion */}
-              <AnimatePresence>
-                {showAddAddress && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <AddAddressForm
-                      initialData={editingAddress || undefined}
-                      onSave={async (savedAddr) => {
-                        if (editingAddress) {
-                          await updateAddressAsync(editingAddress.id, savedAddr);
-                        } else {
-                          await addAddress(savedAddr);
-                        }
-                        setEditingAddress(null);
-                        setShowAddAddress(false);
-                      }}
-                      onCancel={() => {
-                        setEditingAddress(null);
-                        setShowAddAddress(false);
-                      }}
-                    />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  <div className="max-w-md mx-auto space-y-2">
+                    <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                      Sign In or Sign Up to Continue
+                    </h3>
+                    <p className="text-xs text-purple-200/80 leading-relaxed">
+                      To select your service location and place a booking, please sign in to your HelpMate account or register a new account.
+                    </p>
+                  </div>
 
-              {/* Existing Address Grid */}
-              <div className="space-y-3">
-                {addresses.map((addr) => {
-                  const isSelected = selectedAddressId === addr.id;
-                  const TagIcon = addr.tag.toLowerCase().includes("work") || addr.tag.toLowerCase().includes("office") ? Briefcase : addr.tag.toLowerCase().includes("home") ? Home : Building;
-                  const RecipientIcon = addr.recipientType === "Family Member" ? Users : addr.recipientType === "Friend / Neighbor" ? HeartHandshake : addr.recipientType === "Office / Work" ? Briefcase : User;
-
-                  return (
-                    <div
-                      key={addr.id}
-                      onClick={() => setSelectedAddressId(addr.id)}
-                      className={`p-4.5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-start justify-between gap-3 select-none ${
-                        isSelected
-                          ? "border-[#782860] bg-gradient-to-r from-[#782860]/5 via-purple-500/5 to-transparent shadow-md ring-2 ring-[#782860]/30 scale-[1.01]"
-                          : "border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 bg-slate-50/50 dark:bg-slate-950/20"
-                      }`}
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-sm mx-auto">
+                    <Link
+                      href="/login"
+                      onClick={onClose}
+                      className="w-full sm:w-1/2 py-3 px-5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${
-                          isSelected ? "border-[#782860] bg-[#782860]" : "border-slate-300 dark:border-slate-700"
-                        }`}>
-                          {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                        </div>
-                        <div className="space-y-1 text-left">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
-                              isSelected
-                                ? "bg-[#782860] text-white"
-                                : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                      <User className="w-4 h-4" />
+                      <span>Sign In</span>
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={onClose}
+                      className="w-full sm:w-1/2 py-3 px-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs border border-white/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Sign Up</span>
+                    </Link>
+                  </div>
+
+                  <div className="pt-2 flex items-center justify-center gap-2 text-[11px] text-purple-300/70 font-medium">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <span>Without sign in, service booking cannot be placed</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                    <div>
+                      <h4 className="font-extrabold text-sm text-foreground flex items-center gap-2">
+                        <MapPin className="w-4 h-4 text-[#782860]" /> Select Service Location
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Specify where our uniformed team will perform the work</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (showAddAddress) {
+                          setShowAddAddress(false);
+                          setEditingAddress(null);
+                        } else {
+                          setEditingAddress(null);
+                          setShowAddAddress(true);
+                        }
+                      }}
+                      className="px-3.5 py-1.5 bg-[#782860]/10 text-[#782860] dark:bg-[#782860]/20 dark:text-purple-300 hover:bg-[#782860] hover:text-white font-extrabold text-xs rounded-2xl transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> {showAddAddress ? "Cancel" : "Add Address"}
+                    </button>
+                  </div>
+
+                  {/* Add Address Form Accordion */}
+                  <AnimatePresence>
+                    {showAddAddress && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <AddAddressForm
+                          initialData={editingAddress || undefined}
+                          onSave={async (savedAddr) => {
+                            if (editingAddress) {
+                              await updateAddressAsync(editingAddress.id, savedAddr);
+                            } else {
+                              await addAddress(savedAddr);
+                            }
+                            setEditingAddress(null);
+                            setShowAddAddress(false);
+                          }}
+                          onCancel={() => {
+                            setEditingAddress(null);
+                            setShowAddAddress(false);
+                          }}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Existing Address Grid */}
+                  <div className="space-y-3">
+                    {addresses.map((addr) => {
+                      const isSelected = selectedAddressId === addr.id;
+                      const TagIcon = addr.tag.toLowerCase().includes("work") || addr.tag.toLowerCase().includes("office") ? Briefcase : addr.tag.toLowerCase().includes("home") ? Home : Building;
+                      const RecipientIcon = addr.recipientType === "Family Member" ? Users : addr.recipientType === "Friend / Neighbor" ? HeartHandshake : addr.recipientType === "Office / Work" ? Briefcase : User;
+
+                      return (
+                        <div
+                          key={addr.id}
+                          onClick={() => setSelectedAddressId(addr.id)}
+                          className={`p-4.5 rounded-2xl border cursor-pointer transition-all duration-300 flex items-start justify-between gap-3 select-none ${
+                            isSelected
+                              ? "border-[#782860] bg-gradient-to-r from-[#782860]/5 via-purple-500/5 to-transparent shadow-md ring-2 ring-[#782860]/30 scale-[1.01]"
+                              : "border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 bg-slate-50/50 dark:bg-slate-950/20"
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center shrink-0 mt-1 transition-all ${
+                              isSelected ? "border-[#782860] bg-[#782860]" : "border-slate-300 dark:border-slate-700"
                             }`}>
-                              <TagIcon className="w-2.5 h-2.5" />
-                              {addr.tag}
-                            </span>
+                              {isSelected && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                            </div>
+                            <div className="space-y-1 text-left">
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className={`inline-flex items-center gap-1 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                                  isSelected
+                                    ? "bg-[#782860] text-white"
+                                    : "bg-slate-200/80 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                                }`}>
+                                  <TagIcon className="w-2.5 h-2.5" />
+                                  {addr.tag}
+                                </span>
 
-                            {addr.recipientType && (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
-                                <RecipientIcon className="w-2.5 h-2.5" />
-                                {addr.recipientType}
-                              </span>
-                            )}
+                                {addr.recipientType && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/40">
+                                    <RecipientIcon className="w-2.5 h-2.5" />
+                                    {addr.recipientType}
+                                  </span>
+                                )}
 
-                            {addr.locality && (
-                              <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 font-mono">
-                                <MapPin className="w-2.5 h-2.5" />
-                                {addr.locality} ({addr.pincode || "Varanasi"})
+                                {addr.locality && (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40 font-mono">
+                                    <MapPin className="w-2.5 h-2.5" />
+                                    {addr.locality} ({addr.pincode || "Varanasi"})
+                                  </span>
+                                )}
+                              </div>
+
+                              <p className="text-xs font-extrabold text-foreground pt-0.5 leading-snug">{addr.addressLine}</p>
+
+                              {(addr.recipientName || addr.recipientPhone) && (
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
+                                  {addr.recipientName && <span>For: {addr.recipientName}</span>}
+                                  {addr.recipientPhone && <span className="text-slate-400">| {addr.recipientPhone}</span>}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingAddress(addr);
+                                setShowAddAddress(true);
+                              }}
+                              className="px-2 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                            >
+                              <Edit3 className="w-2.5 h-2.5" /> Edit
+                            </button>
+
+                            {isSelected && (
+                              <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-[10px] rounded-xl flex items-center gap-1 border border-emerald-500/20">
+                                <CheckCircle className="w-3 h-3" /> Selected
                               </span>
                             )}
                           </div>
-
-                          <p className="text-xs font-extrabold text-foreground pt-0.5 leading-snug">{addr.addressLine}</p>
-
-                          {(addr.recipientName || addr.recipientPhone) && (
-                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
-                              {addr.recipientName && <span>For: {addr.recipientName}</span>}
-                              {addr.recipientPhone && <span className="text-slate-400">| {addr.recipientPhone}</span>}
-                            </p>
-                          )}
                         </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingAddress(addr);
-                            setShowAddAddress(true);
-                          }}
-                          className="px-2 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500 hover:text-white text-[10px] font-bold transition-all cursor-pointer flex items-center gap-1"
-                        >
-                          <Edit3 className="w-2.5 h-2.5" /> Edit
-                        </button>
-
-                        {isSelected && (
-                          <span className="px-2.5 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-[10px] rounded-xl flex items-center gap-1 border border-emerald-500/20">
-                            <CheckCircle className="w-3 h-3" /> Selected
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
