@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 export function formatImageUrl(imgUrl?: string): string {
   if (!imgUrl || typeof imgUrl !== "string") return "";
@@ -31,16 +31,13 @@ export function formatImageUrl(imgUrl?: string): string {
   // 3. Convert backslashes to forward slashes
   trimmed = trimmed.replace(/\\/g, "/");
 
-  // 4. Fix port 5000 -> 5005 conflict on macOS AirTunes
-  trimmed = trimmed.replace("localhost:5000", "localhost:5005");
-
-  // 5. Proxy /api/media/ URLs via same-origin Next.js rewrite
+  // 4. Proxy /api/media/ URLs via same-origin Next.js rewrite to bypass CORS
   if (trimmed.includes("/api/media/")) {
     const mediaIdx = trimmed.indexOf("/api/media/");
     return trimmed.substring(mediaIdx);
   }
 
-  // 6. Handle relative URLs by prepending API_BASE_URL
+  // 5. Handle relative URLs by prepending API_BASE_URL
   if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
     if (!trimmed.startsWith("/")) {
       trimmed = `/${trimmed}`;

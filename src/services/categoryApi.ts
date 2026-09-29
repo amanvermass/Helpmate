@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api";
 
 // In-memory cache for ultra-fast API response
 const memoryCache = new Map<string, any>();
