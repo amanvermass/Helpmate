@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   MapPin,
@@ -45,8 +45,11 @@ import { AddAddressForm } from "@/components/booking/AddAddressForm";
 import { fetchScheduleAvailabilityApi } from "@/services/scheduleApi";
 import { fetchCustomerPackagesApi } from "@/services/packageApi";
 
-export default function BookingPage() {
+function BookingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const stepParam = searchParams?.get("step");
+
   const {
     cart,
     addToCart,
@@ -83,6 +86,15 @@ export default function BookingPage() {
   }, [token, fetchAddresses]);
 
   const [step, setStep] = useState(0); // 0: Cart/Add-ons, 1: Schedule, 2: Address, 3: Payment, 4: Success
+
+  useEffect(() => {
+    if (stepParam !== null && stepParam !== undefined) {
+      const parsedStep = parseInt(stepParam, 10);
+      if (!isNaN(parsedStep) && parsedStep >= 0 && parsedStep <= 4) {
+        setStep(parsedStep);
+      }
+    }
+  }, [stepParam]);
   const [couponInput, setCouponInput] = useState("");
   const [couponError, setCouponError] = useState("");
   const [showAddAddress, setShowAddAddress] = useState(false);
@@ -887,14 +899,14 @@ export default function BookingPage() {
 
                           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-2 max-w-sm mx-auto">
                             <Link
-                              href="/login"
+                              href="/login?redirect=%2Fbooking%3Fstep%3D2"
                               className="w-full sm:w-1/2 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
                               <User className="w-4 h-4" />
                               <span>Sign In</span>
                             </Link>
                             <Link
-                              href="/register"
+                              href="/register?redirect=%2Fbooking%3Fstep%3D2"
                               className="w-full sm:w-1/2 py-3.5 px-6 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs sm:text-sm border border-white/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
                               <UserPlus className="w-4 h-4" />
@@ -1306,13 +1318,13 @@ export default function BookingPage() {
                   <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
-                      <button
+                      {/* <button
                         type="button"
                         onClick={() => setShowCouponsSlider(true)}
                         className="text-[11px] font-extrabold text-[#782860] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Tag className="w-3 h-3" /> View Offers (5)
-                      </button>
+                      </button> */}
                     </div>
 
                     <div className="flex gap-2">
@@ -1350,7 +1362,7 @@ export default function BookingPage() {
                 </div>
 
                 {/* MEMBERSHIP PROMOTIONAL CARD */}
-                <MembershipBanner variant="checkout" />
+                {/* <MembershipBanner variant="checkout" /> */}
               </div>
             )}
           </div>
@@ -1372,5 +1384,13 @@ export default function BookingPage() {
 
       <Footer />
     </>
+  );
+}
+
+export default function BookingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 flex items-center justify-center font-sans">Loading booking details...</div>}>
+      <BookingContent />
+    </Suspense>
   );
 }

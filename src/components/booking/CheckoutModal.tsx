@@ -713,7 +713,7 @@ export default function CheckoutModal({
 
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 max-w-sm mx-auto">
                     <Link
-                      href="/login"
+                      href="/login?redirect=%2Fbooking%3Fstep%3D2"
                       onClick={onClose}
                       className="w-full sm:w-1/2 py-3 px-5 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-extrabold text-xs shadow-lg shadow-purple-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >
@@ -721,7 +721,7 @@ export default function CheckoutModal({
                       <span>Sign In</span>
                     </Link>
                     <Link
-                      href="/register"
+                      href="/register?redirect=%2Fbooking%3Fstep%3D2"
                       onClick={onClose}
                       className="w-full sm:w-1/2 py-3 px-5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-extrabold text-xs border border-white/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
                     >

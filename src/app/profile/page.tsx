@@ -35,7 +35,11 @@ import {
   Building,
   Trash2,
   Edit3,
-  Bookmark
+  Bookmark,
+  ShoppingBag,
+  Video,
+  Film,
+  UploadCloud
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/common/Header";
@@ -43,6 +47,7 @@ import Footer from "@/components/common/Footer";
 import { useStore, Booking, Address } from "@/store/useStore";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
 import { formatImageUrl } from "@/utils/image";
+
 
 function ProfilePageContent() {
   const searchParams = useSearchParams();
@@ -75,8 +80,13 @@ function ProfilePageContent() {
     addWalletFunds,
     redeemLoyaltyPoints,
     fetchCustomerProfile,
+    createReviewAsync,
+    updateReviewAsync,
+    deleteReviewAsync,
+    attachReviewToBooking,
     token
   } = useStore();
+
 
   useEffect(() => {
     if (token) {
@@ -109,6 +119,72 @@ function ProfilePageContent() {
   const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
+  const [reviewVideoFile, setReviewVideoFile] = useState<File | null>(null);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // Inline card review state for booking history
+  const [inlineRatings, setInlineRatings] = useState<Record<string, number>>({});
+  const [inlineComments, setInlineComments] = useState<Record<string, string>>({});
+  const [inlineVideoFiles, setInlineVideoFiles] = useState<Record<string, File | null>>({});
+  const [submittingReviewBookingId, setSubmittingReviewBookingId] = useState<string | null>(null);
+
+  const handleInlineReviewSubmit = async (booking: Booking) => {
+    const rating = inlineRatings[booking.id] || 5;
+    const comment = (inlineComments[booking.id] || "").trim();
+    const videoFile = inlineVideoFiles[booking.id] || null;
+
+    setSubmittingReviewBookingId(booking.id);
+
+    try {
+      const pkgId = (booking.items && booking.items[0]?.id) || undefined;
+
+      const res = await createReviewAsync({
+        bookingId: booking.id,
+        packageId: pkgId,
+        rating,
+        review: comment,
+        video: videoFile,
+      });
+
+      if (res.success) {
+        const newReviewId = res.data?._id || res.data?.id;
+        addNotification(
+          "Review Posted Successfully!",
+          res.message || "Thank you for rating your service experience.",
+          "success"
+        );
+        attachReviewToBooking(booking.id, {
+          reviewId: newReviewId,
+          rating,
+          comment,
+          dateCreated: "Just now",
+        });
+        setInlineRatings((prev) => {
+          const copy = { ...prev };
+          delete copy[booking.id];
+          return copy;
+        });
+        setInlineComments((prev) => {
+          const copy = { ...prev };
+          delete copy[booking.id];
+          return copy;
+        });
+        setInlineVideoFiles((prev) => {
+          const copy = { ...prev };
+          delete copy[booking.id];
+          return copy;
+        });
+      } else {
+        addNotification("Submission Failed", res.message || "Failed to post review.", "warning");
+      }
+    } catch (err: any) {
+      addNotification("Error", err.message || "An unexpected error occurred while posting review.", "warning");
+    } finally {
+      setSubmittingReviewBookingId(null);
+    }
+  };
+
 
   // Address Form State
   const [showAddressForm, setShowAddressForm] = useState(false);
@@ -197,16 +273,98 @@ function ProfilePageContent() {
     setRescheduleSlot("");
   };
 
-  const handleReviewSubmit = () => {
-    addNotification(
-      "Review Submitted",
-      `Thank you for rating ${reviewingBooking?.professional?.name}. You earned 50 loyalty points!`,
-      "success"
-    );
-    setReviewingBooking(null);
-    setReviewComment("");
-    setReviewRating(5);
+  const handleReviewSubmit = async () => {
+    if (!reviewingBooking) return;
+    setIsSubmittingReview(true);
+    const targetBookingId = reviewingBooking.id;
+
+    try {
+      const pkgId = (reviewingBooking.items && reviewingBooking.items[0]?.id) || undefined;
+
+      if (editingReviewId) {
+        const res = await updateReviewAsync(editingReviewId, {
+          rating: reviewRating,
+          review: reviewComment.trim(),
+        });
+        if (res.success) {
+          addNotification("Review Updated!", res.message || "Your review has been updated successfully.", "success");
+          attachReviewToBooking(targetBookingId, {
+            reviewId: editingReviewId,
+            rating: reviewRating,
+            comment: reviewComment.trim(),
+            dateCreated: "Edited just now",
+          });
+          setReviewingBooking(null);
+          setReviewComment("");
+          setReviewRating(5);
+          setEditingReviewId(null);
+        } else {
+          addNotification("Update Failed", res.message || "Failed to update review.", "warning");
+        }
+      } else {
+        const res = await createReviewAsync({
+          bookingId: targetBookingId,
+          packageId: pkgId,
+          rating: reviewRating,
+          review: reviewComment.trim(),
+        });
+        if (res.success) {
+          const newReviewId = res.data?._id || res.data?.id;
+          addNotification(
+            "Review Submitted!",
+            res.message || `Thank you for rating ${reviewingBooking?.professional?.name || "our service"}.`,
+            "success"
+          );
+          attachReviewToBooking(targetBookingId, {
+            reviewId: newReviewId,
+            rating: reviewRating,
+            comment: reviewComment.trim(),
+            dateCreated: "Just now",
+          });
+          setReviewingBooking(null);
+          setReviewComment("");
+          setReviewRating(5);
+          setEditingReviewId(null);
+        } else {
+          addNotification("Submission Failed", res.message || "Failed to submit review.", "warning");
+        }
+      }
+    } catch (err: any) {
+      addNotification("Error", err.message || "An unexpected error occurred.", "warning");
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!confirm("Are you sure you want to delete this review?")) return;
+    try {
+      const res = await deleteReviewAsync(reviewId);
+      if (res.success) {
+        addNotification("Review Deleted", res.message || "Review deleted successfully.", "info");
+        if (reviewingBooking) {
+          attachReviewToBooking(reviewingBooking.id, null);
+        } else {
+          // Find booking with matching reviewId
+          const matched = bookings.find((b) => b.review?.reviewId === reviewId);
+          if (matched) {
+            attachReviewToBooking(matched.id, null);
+          }
+        }
+        setReviewingBooking(null);
+        setReviewComment("");
+        setReviewRating(5);
+        setEditingReviewId(null);
+      } else {
+        addNotification("Delete Failed", res.message || "Failed to delete review.", "warning");
+      }
+    } catch (err: any) {
+      addNotification("Error", err.message || "Failed to delete review.", "warning");
+    }
+  };
+
+
+
 
   return (
     <>
@@ -329,7 +487,7 @@ function ProfilePageContent() {
                           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
                             <div>
                               <span className="text-[9px] uppercase font-bold text-muted-lux">Active Tracker</span>
-                              <h4 className="text-sm font-bold text-foreground mt-0.5">Booking #{b.id}</h4>
+                              <h4 className="text-sm font-bold text-foreground mt-0.5">Booking #{b.bookingNumber || b.id}</h4>
                               <p className="text-[10px] text-slate-400 capitalize mt-0.5">{b.items[0]?.name}</p>
                             </div>
 
@@ -428,7 +586,7 @@ function ProfilePageContent() {
                             <div>
                               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{b.dateCreated}</span>
                               <h4 className="text-xs sm:text-sm font-bold text-foreground mt-0.5 flex items-center gap-2">
-                                Booking #{b.id}
+                                Booking #{b.bookingNumber || b.id}
                                 <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${b.status === "Completed" && "bg-success-lux/10 text-success-lux"
                                   } ${b.status === "Cancelled" && "bg-red-500/10 text-red-500"
                                   } ${b.status !== "Completed" && b.status !== "Cancelled" && "bg-accent-lux/10 text-accent-lux"
@@ -443,42 +601,209 @@ function ProfilePageContent() {
                             </div>
                           </div>
 
-                          {/* Invoice & Actions Row */}
-                          <div className="flex flex-wrap items-center justify-between gap-4 pt-2">
-                            <div className="text-[10px] text-slate-400">
-                              <strong>Service Variant:</strong> {b.items[0]?.name}
+                          {/* Package Name Section */}
+                          <div className="space-y-1 text-left pt-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] uppercase font-extrabold text-accent-lux tracking-wider">
+                                Package Name
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-medium">
+                                {b.date} • {b.timeSlot}
+                              </span>
                             </div>
-
-                            <div className="flex gap-2">
-                              {/* Reschedule option */}
-                              {b.status !== "Completed" && b.status !== "Cancelled" && (
-                                <>
-                                  <button
-                                    onClick={() => setReschedulingId(b.id)}
-                                    className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 text-[10px] font-bold rounded-xl cursor-pointer"
-                                  >
-                                    Reschedule
-                                  </button>
-                                  <button
-                                    onClick={() => handleCancelBooking(b.id)}
-                                    className="px-3.5 py-2 border border-red-200 text-red-500 hover:bg-red-500/10 text-[10px] font-bold rounded-xl cursor-pointer"
-                                  >
-                                    Cancel Booking
-                                  </button>
-                                </>
-                              )}
-
-                              {/* Completed rating option */}
-                              {b.status === "Completed" && (
-                                <button
-                                  onClick={() => setReviewingBooking(b)}
-                                  className="px-3.5 py-2 bg-accent-lux hover:bg-accent-lux/95 text-white text-[10px] font-bold rounded-xl cursor-pointer flex items-center gap-1"
-                                >
-                                  <Smile className="w-3.5 h-3.5" /> Leave Review
-                                </button>
-                              )}
-                            </div>
+                            <h3 className="text-xs sm:text-sm font-extrabold text-foreground flex items-center gap-2">
+                              <ShoppingBag className="w-4 h-4 text-accent-lux shrink-0" />
+                              {b.items && b.items.length > 0 ? b.items[0].name : "Service Package"}
+                            </h3>
                           </div>
+
+                          {/* Completed Rating & Review Display (DIRECTLY Below Package Name) */}
+                          {b.status === "Completed" && (
+                            <div className="w-full pt-2">
+                              {b.review ? (
+                                <div className="bg-slate-50 dark:bg-slate-900/90 p-4 rounded-2xl border border-amber-500/20 dark:border-amber-500/30 space-y-2.5 text-left shadow-sm relative overflow-hidden">
+                                  <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-1 text-amber-500">
+                                        {[1, 2, 3, 4, 5].map((star) => (
+                                          <Star
+                                            key={star}
+                                            className={`w-4 h-4 ${star <= b.review!.rating ? "fill-amber-500 text-amber-500" : "text-slate-300 dark:text-slate-700"}`}
+                                          />
+                                        ))}
+                                      </div>
+                                      <span className="text-xs font-black text-foreground font-sans px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                        {b.review.rating}.0 / 5.0
+                                      </span>
+                                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-500/20">
+                                        <CheckCircle className="w-3 h-3 text-emerald-500" /> Posted Review
+                                      </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => {
+                                          setReviewingBooking(b);
+                                          setReviewRating(b.review!.rating);
+                                          setReviewComment(b.review!.comment || "");
+                                          setEditingReviewId(b.review!.reviewId || null);
+                                        }}
+                                        className="px-3 py-1 rounded-full bg-accent-lux/10 hover:bg-accent-lux/20 text-accent-lux text-[10px] sm:text-[11px] font-extrabold transition-colors flex items-center gap-1.5 cursor-pointer border border-accent-lux/20"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5" /> Edit Review
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteReview(b.review!.reviewId || b.id)}
+                                        className="px-3 py-1 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] sm:text-[11px] font-extrabold transition-colors flex items-center gap-1.5 cursor-pointer border border-red-500/20"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {b.review.comment ? (
+                                    <div className="p-3 bg-white/80 dark:bg-slate-950/80 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                                      <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed italic">
+                                        "{b.review.comment}"
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <p className="text-[11px] text-slate-400 italic">No text comment provided with rating.</p>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="bg-slate-50/90 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 text-left">
+                                  <div className="flex items-center justify-between">
+                                    <h5 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                                      <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> Rate &amp; Review Service
+                                    </h5>
+                                    <span className="text-[10px] text-slate-400 font-semibold">Share your feedback</span>
+                                  </div>
+
+                                  {/* Interactive 5-Star Rating Selector */}
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Rating:</span>
+                                    <div className="flex items-center gap-1">
+                                      {[1, 2, 3, 4, 5].map((star) => {
+                                        const currentRating = inlineRatings[b.id] || 5;
+                                        return (
+                                          <button
+                                            key={star}
+                                            type="button"
+                                            onClick={() => setInlineRatings({ ...inlineRatings, [b.id]: star })}
+                                            className="p-1 hover:scale-110 transition-transform cursor-pointer"
+                                            title={`${star} Star${star > 1 ? 's' : ''}`}
+                                          >
+                                            <Star
+                                              className={`w-5 h-5 ${star <= currentRating ? "fill-amber-500 text-amber-500" : "text-slate-300 dark:text-slate-700"}`}
+                                            />
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                    <span className="text-xs font-black text-amber-600 dark:text-amber-400 ml-1 font-sans">
+                                      {(inlineRatings[b.id] || 5)}.0 Stars
+                                    </span>
+                                  </div>
+
+                                  {/* Comment Textarea Input */}
+                                  <div>
+                                    <textarea
+                                      placeholder="Write your review comment here (e.g. Very good service. The technician was professional)..."
+                                      value={inlineComments[b.id] || ""}
+                                      onChange={(e) => setInlineComments({ ...inlineComments, [b.id]: e.target.value })}
+                                      rows={2}
+                                      className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-accent-lux placeholder:text-slate-400 transition-all"
+                                    />
+                                  </div>
+
+                                  {/* Video Upload input for Inline Review */}
+                                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                                    {!inlineVideoFiles[b.id] ? (
+                                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold cursor-pointer transition-colors border border-slate-200/60 dark:border-slate-700">
+                                        <Video className="w-3.5 h-3.5 text-accent-lux" /> Add Video Clip (Optional)
+                                        <input
+                                          type="file"
+                                          accept="video/*"
+                                          className="hidden"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                              if (file.size > 100 * 1024 * 1024) {
+                                                alert("Video file size must be less than 100MB");
+                                                return;
+                                              }
+                                              setInlineVideoFiles((prev) => ({ ...prev, [b.id]: file }));
+                                            }
+                                          }}
+                                        />
+                                      </label>
+                                    ) : (
+                                      <div className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1 rounded-xl text-[11px] border border-slate-800">
+                                        <Video className="w-3.5 h-3.5 text-accent-lux shrink-0" />
+                                        <span className="truncate max-w-[130px] font-bold text-slate-200">{inlineVideoFiles[b.id]!.name}</span>
+                                        <span className="text-[9px] text-slate-400 font-mono">({(inlineVideoFiles[b.id]!.size / (1024 * 1024)).toFixed(1)}MB)</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setInlineVideoFiles((prev) => {
+                                            const copy = { ...prev };
+                                            delete copy[b.id];
+                                            return copy;
+                                          })}
+                                          className="text-slate-400 hover:text-red-400 p-0.5 cursor-pointer ml-1"
+                                          title="Remove video"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center gap-2">
+                                      <span className="hidden sm:flex text-[10px] text-slate-400 font-semibold items-center gap-1">
+                                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Verified
+                                      </span>
+                                      <button
+                                        type="button"
+                                        disabled={submittingReviewBookingId === b.id}
+                                        onClick={() => handleInlineReviewSubmit(b)}
+                                        className="px-4 py-2 bg-accent-lux hover:bg-accent-lux/95 disabled:opacity-50 text-white text-xs font-extrabold rounded-xl shadow-md shadow-accent-lux/20 transition-all cursor-pointer flex items-center gap-2"
+                                      >
+                                        {submittingReviewBookingId === b.id ? (
+                                          <>
+                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                            <span>Posting...</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Star className="w-3.5 h-3.5 fill-white text-white" />
+                                            <span>Post Review</span>
+                                          </>
+                                        )}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Reschedule / Cancel Actions */}
+                          {b.status !== "Completed" && b.status !== "Cancelled" && (
+                            <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                              <button
+                                onClick={() => setReschedulingId(b.id)}
+                                className="px-3.5 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 text-[10px] font-bold rounded-xl cursor-pointer"
+                              >
+                                Reschedule
+                              </button>
+                              <button
+                                onClick={() => handleCancelBooking(b.id)}
+                                className="px-3.5 py-2 border border-red-200 text-red-500 hover:bg-red-500/10 text-[10px] font-bold rounded-xl cursor-pointer"
+                              >
+                                Cancel Booking
+                              </button>
+                            </div>
+                          )}
 
                           {/* Rescheduling Form Panel */}
                           {reschedulingId === b.id && (() => {
@@ -1410,7 +1735,7 @@ function ProfilePageContent() {
               </div>
 
               {/* Message */}
-              <div className="space-y-1">
+              <div className="space-y-1 text-left">
                 <label className="text-[10px] uppercase font-bold text-muted-lux">Review Comment</label>
                 <textarea
                   placeholder="Share details of your luxury service experience..."
@@ -1421,12 +1746,86 @@ function ProfilePageContent() {
                 />
               </div>
 
-              <button
-                onClick={handleReviewSubmit}
-                className="w-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs py-3 rounded-full cursor-pointer"
-              >
-                Submit Feedback
-              </button>
+              {/* Video Upload Section */}
+              <div className="space-y-1.5 text-left">
+                <label className="text-[10px] uppercase font-bold text-muted-lux flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Video className="w-3.5 h-3.5 text-accent-lux" /> Upload Video Review (Optional)
+                  </span>
+                  <span className="text-[9px] text-slate-400 font-normal">MP4, MOV, WEBM</span>
+                </label>
+
+                {!reviewVideoFile ? (
+                  <label className="flex flex-col items-center justify-center p-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 hover:bg-slate-100/50 dark:hover:bg-slate-900/50 cursor-pointer transition-all group">
+                    <div className="w-9 h-9 rounded-full bg-accent-lux/10 text-accent-lux flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
+                      <Film className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-extrabold text-foreground">Click to select video clip</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Share short clip of service results</span>
+                    <input
+                      type="file"
+                      accept="video/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 100 * 1024 * 1024) {
+                            alert("Video file size must be less than 100MB");
+                            return;
+                          }
+                          setReviewVideoFile(file);
+                        }
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <div className="p-3 rounded-2xl bg-slate-900 text-white relative flex flex-col gap-2 overflow-hidden border border-slate-800 shadow-md">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0 pr-2">
+                        <Video className="w-4 h-4 text-accent-lux shrink-0" />
+                        <span className="font-bold truncate text-[11px] text-slate-200">{reviewVideoFile.name}</span>
+                        <span className="text-[9px] text-slate-400 shrink-0 font-mono">({(reviewVideoFile.size / (1024 * 1024)).toFixed(1)} MB)</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReviewVideoFile(null)}
+                        className="p-1 rounded-full bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors cursor-pointer"
+                        title="Remove video"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="relative rounded-xl overflow-hidden max-h-36 bg-black border border-slate-800">
+                      <video
+                        controls
+                        src={URL.createObjectURL(reviewVideoFile)}
+                        className="w-full h-full object-cover max-h-36"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-2">
+                {editingReviewId && (
+                  <button
+                    disabled={isSubmittingReview}
+                    onClick={() => handleDeleteReview(editingReviewId)}
+                    className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-bold text-xs py-3 rounded-full cursor-pointer transition-colors border border-red-500/20"
+                  >
+                    Delete Review
+                  </button>
+                )}
+                <button
+                  disabled={isSubmittingReview}
+                  onClick={handleReviewSubmit}
+                  className="flex-1 bg-accent-lux hover:bg-accent-lux/95 disabled:opacity-50 text-white font-bold text-xs py-3 rounded-full cursor-pointer transition-colors"
+                >
+                  {isSubmittingReview ? "Processing..." : editingReviewId ? "Update Review" : "Submit Feedback"}
+                </button>
+              </div>
+
             </motion.div>
           </div>
         )}

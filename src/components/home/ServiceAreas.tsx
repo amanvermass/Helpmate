@@ -184,13 +184,19 @@ export default function ServiceAreas() {
                   {currentZone.areasCovered?.map((area) => {
                     const slug = area.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
                     return (
-                      <Link
-                        key={area}
-                        href={`/places/${slug}`}
-                        className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/80 px-4 py-2 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-350 shadow-sm hover:border-accent-lux/30 transition-all hover:text-accent-lux dark:hover:text-accent-lux cursor-pointer block"
-                      >
-                        {area}
-                      </Link>
+                      // <Link
+                      //   key={area}
+                      //   href={`/places/${slug}`}
+                      //   className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/80 px-4 py-2 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-350 shadow-sm hover:border-accent-lux/30 transition-all hover:text-accent-lux dark:hover:text-accent-lux cursor-pointer block"
+                      // >
+                      //   {area}
+                      // </Link>
+                      <div
+  key={area}
+  className="bg-white dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/80 px-4 py-2 rounded-full text-xs font-semibold text-slate-700 dark:text-slate-350 shadow-sm"
+>
+  {area}
+</div>
                     );
                   })}
                 </div>

@@ -42,7 +42,7 @@ function SearchPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const { wishlist, toggleWishlist, addNotification, addToCart, clearCart, cart } = useStore();
+  const { wishlist, toggleWishlist, addNotification, addToCart, clearCart, cart, token, isLoggedIn } = useStore();
 
   // Dynamic API Categories & Subcategories State
   const [dynamicCategories, setDynamicCategories] = useState<CategoryItem[]>([]);
@@ -213,6 +213,10 @@ function SearchPageContent() {
   const handleWishlistToggle = (e: React.MouseEvent, id: string, name: string) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!isLoggedIn && !token) {
+      addNotification("Login Required", "Please log in to save or bookmark packages.", "warning");
+      return;
+    }
     toggleWishlist(id);
     const isSaved = wishlist.includes(id);
     addNotification(

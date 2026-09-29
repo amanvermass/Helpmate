@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "@/components/common/Providers";
 import CursorGlow from "@/components/common/CursorGlow";
 import FloatingHelp from "@/components/common/FloatingHelp";
+import ToastContainer from "@/components/common/ToastContainer";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -49,6 +50,7 @@ export default function RootLayout({
           <CursorGlow />
           {children}
           <FloatingHelp />
+          <ToastContainer />
         </Providers>
       </body>
     </html>

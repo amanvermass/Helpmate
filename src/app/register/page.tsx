@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useStore } from "@/store/useStore";
@@ -9,8 +9,10 @@ import { registerCustomerApi } from "@/services/authApi";
 import { Loader2, Eye, EyeOff, CheckCircle2, AlertCircle, ShieldCheck, User, Phone, Lock, ArrowRight } from "lucide-react";
 import confetti from "canvas-confetti";
 
-export default function RegisterPage() {
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect") || "/";
   const { setAuth } = useStore();
 
   const [fullName, setFullName] = useState("");
@@ -77,13 +79,13 @@ export default function RegisterPage() {
       if (res.success && res.data) {
         triggerConfetti();
         setSuccessMsg("Registration successful! Logging you in...");
-        setAuth({
+        await setAuth({
           token: res.data.token,
           customer: res.data.customer,
         });
 
         setTimeout(() => {
-          router.push("/");
+          router.push(redirectParam);
         }, 1200);
       } else {
         setErrorMsg(res.message || "Registration failed. Mobile number may already be registered.");
@@ -274,12 +276,23 @@ export default function RegisterPage() {
         <div className="pt-4 border-t border-slate-100 text-center space-y-2">
           <p className="text-xs text-slate-500">
             Already registered?{" "}
-            <Link href="/login" className="text-accent-lux hover:underline font-bold">
+            <Link
+              href={redirectParam !== "/" ? `/login?redirect=${encodeURIComponent(redirectParam)}` : "/login"}
+              className="text-accent-lux hover:underline font-bold"
+            >
               Sign In to Account
             </Link>
           </p>
         </div>
       </motion.div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center font-sans">Loading registration page...</div>}>
+      <RegisterContent />
+    </Suspense>
   );
 }

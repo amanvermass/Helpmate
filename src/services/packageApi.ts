@@ -146,3 +146,102 @@ export async function fetchCustomerPackagesApi(
     };
   }
 }
+
+export interface CustomerPackageDetailsData {
+  package: {
+    id: string;
+    name: string;
+    subtitle?: string;
+    description?: string;
+    price: number;
+    originalPrice?: number;
+    discountPercentage?: number;
+    duration?: number;
+    imageUrl?: string;
+    thumbnailUrl?: string;
+    isBookmarked?: boolean;
+  };
+  category?: {
+    id: string;
+    name: string;
+  };
+  subCategory?: {
+    id: string;
+    name: string;
+  };
+  serviceAction?: {
+    id: string;
+    name: string;
+  };
+  addons?: Array<{
+    _id: string;
+    addonName: string;
+    description?: string;
+    price: number;
+    unit?: string;
+    imageUrl?: string;
+  }>;
+  reviews?: {
+    averageRating: number;
+    totalReviews: number;
+    items: Array<{
+      id: string;
+      customer?: {
+        id?: string;
+        name?: string;
+      };
+      rating: number;
+      review?: string;
+      isEdited?: boolean;
+      createdAt?: string;
+      video?: {
+        originalName?: string;
+        mimeType?: string;
+        size?: number;
+        duration?: number;
+        videoUrl?: string;
+      } | null;
+    }>;
+  };
+}
+
+export interface CustomerPackageDetailsResponse {
+  success: boolean;
+  message: string;
+  data?: CustomerPackageDetailsData;
+}
+
+/**
+ * Fetch package details by packageId:
+ * GET /api/customer/packages/:packageId
+ */
+export async function fetchCustomerPackageDetailsApi(
+  packageId: string,
+  token?: string | null
+): Promise<CustomerPackageDetailsResponse> {
+  try {
+    const url = `${API_BASE_URL}/api/customer/packages/${packageId}`;
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    const data = await response.json();
+    return data;
+  } catch (error: any) {
+    console.error("Error fetching package details:", error);
+    return {
+      success: false,
+      message: error?.message || "Failed to fetch package details.",
+    };
+  }
+}
+

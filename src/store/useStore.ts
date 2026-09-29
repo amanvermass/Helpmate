@@ -28,6 +28,15 @@ import {
 } from "@/services/bookmarkApi";
 import { createBookingApi, fetchCustomerBookingsApi, CreateBookingPayload } from "@/services/bookingApi";
 import { getCurrentCustomerApi } from "@/services/authApi";
+import {
+  createReviewApi,
+  updateReviewApi,
+  deleteReviewApi,
+  fetchCustomerReviewsApi,
+  CreateReviewPayload,
+  UpdateReviewPayload,
+} from "@/services/reviewApi";
+
 
 export interface CartItem {
   id: string;
@@ -87,6 +96,7 @@ export const varanasiLocalities = [
 
 export interface Booking {
   id: string;
+  bookingNumber?: string;
   items: CartItem[];
   address: Address;
   date: string;
@@ -107,6 +117,12 @@ export interface Booking {
   timeline: { status: string; time: string; done: boolean }[];
   invoiceId: string;
   dateCreated: string;
+  review?: {
+    reviewId?: string;
+    rating: number;
+    comment?: string;
+    dateCreated?: string;
+  };
 }
 
 export interface ChatMessage {
@@ -203,6 +219,15 @@ interface AppState {
   cancelBooking: (id: string) => void;
   rescheduleBooking: (id: string, date: string, slot: string) => void;
   updateBookingStatus: (id: string, status: Booking["status"]) => void;
+
+  // Reviews
+  createReviewAsync: (payload: CreateReviewPayload) => Promise<{ success: boolean; message: string; data?: any }>;
+  updateReviewAsync: (reviewId: string, payload: UpdateReviewPayload) => Promise<{ success: boolean; message: string; data?: any }>;
+  deleteReviewAsync: (reviewId: string) => Promise<{ success: boolean; message: string }>;
+  fetchPackageReviewsAsync: (packageId?: string) => Promise<{ success: boolean; message: string; data?: any }>;
+  attachReviewToBooking: (bookingId: string, review: { reviewId?: string; rating: number; comment?: string; dateCreated?: string } | null) => void;
+
+
 
   // Wishlist / History
   wishlist: string[];
@@ -446,7 +471,8 @@ export const useStore = create<AppState>()(
         return get().bookmarkedPackageIds.includes(packageId);
       },
 
-      login: (phone, token, customer) => {
+      login: async (phone, token, customer) => {
+        const existingGuestCart = [...get().cart];
         set({
           isLoggedIn: true,
           guestMode: false,
@@ -457,13 +483,26 @@ export const useStore = create<AppState>()(
           customerCode: customer?.customerCode || null,
         });
         if (token) {
+          if (existingGuestCart.length > 0) {
+            try {
+              for (const item of existingGuestCart) {
+                const packageId = item.id || item.itemId;
+                if (packageId) {
+                  await addToCartApi(token, packageId, item.quantity || 1);
+                }
+              }
+            } catch (err) {
+              console.error("Error syncing guest cart items to server:", err);
+            }
+          }
+          await get().fetchServerCart();
           get().fetchAddresses();
-          get().fetchServerCart();
           get().fetchBookmarks();
           get().fetchCustomerProfile();
         }
       },
-      setAuth: ({ token, customer }) => {
+      setAuth: async ({ token, customer }) => {
+        const existingGuestCart = [...get().cart];
         set({
           isLoggedIn: true,
           guestMode: false,
@@ -473,7 +512,19 @@ export const useStore = create<AppState>()(
           customerId: customer.id,
           customerCode: customer.customerCode,
         });
-        get().fetchServerCart();
+        if (token && existingGuestCart.length > 0) {
+          try {
+            for (const item of existingGuestCart) {
+              const packageId = item.id || item.itemId;
+              if (packageId) {
+                await addToCartApi(token, packageId, item.quantity || 1);
+              }
+            }
+          } catch (err) {
+            console.error("Error syncing guest cart items to server:", err);
+          }
+        }
+        await get().fetchServerCart();
         get().fetchAddresses();
         get().fetchBookmarks();
         get().fetchCustomerProfile();
@@ -548,8 +599,19 @@ export const useStore = create<AppState>()(
               category: "Service",
               selectedAddons: item.selectedAddons || [],
             }));
+
+            // Merge with any local cart items that might not have server counterparts (e.g. guest items or local additions)
+            const currentCart = get().cart;
+            const finalCart = [...mappedItems];
+            for (const localItem of currentCart) {
+              const exists = finalCart.some((m) => m.id === localItem.id || m.itemId === localItem.itemId);
+              if (!exists) {
+                finalCart.push(localItem);
+              }
+            }
+
             set({
-              cart: mappedItems,
+              cart: finalCart,
               cartId: res.data.cartId || null,
               cartPricing: res.data.pricing || null,
             });
@@ -883,7 +945,7 @@ export const useStore = create<AppState>()(
         try {
           const res = await fetchCustomerBookingsApi(state.token);
           if (res.success && res.data) {
-            const mappedBookings: Booking[] = res.data.map((item) => {
+            let mappedBookings: Booking[] = res.data.map((item) => {
               const defaultAddress: Address = state.addresses[0] || {
                 id: "1",
                 tag: "Home",
@@ -906,8 +968,8 @@ export const useStore = create<AppState>()(
 
               const items = item.services && item.services.length > 0
                 ? item.services.map((srv, idx) => ({
-                    id: (srv.package as any)?.id || `pkg-${idx}`,
-                    name: (srv.package as any)?.name || pkgName,
+                    id: (srv.package as any)?._id || (srv.package as any)?.id || (srv as any)?.packageId || `pkg-${idx}`,
+                    name: (srv.package as any)?.name || (srv.package as any)?.packageName || pkgName,
                     price: (srv.package as any)?.price || srv.totalPrice || item.amount,
                     quantity: srv.quantity || 1,
                     category: catSlug,
@@ -915,7 +977,7 @@ export const useStore = create<AppState>()(
                   }))
                 : [
                     {
-                      id: item.bookingId,
+                      id: (item as any)?.packageId || (item as any)?.package?._id || (item as any)?.package?.id || item.bookingId,
                       name: pkgName,
                       price: item.amount,
                       quantity: 1,
@@ -925,7 +987,8 @@ export const useStore = create<AppState>()(
                   ];
 
               return {
-                id: item.bookingNumber || item.bookingId,
+                id: item.bookingId || (item as any)._id || item.bookingNumber,
+                bookingNumber: item.bookingNumber || item.bookingId,
                 items,
                 address: defaultAddress,
                 date: item.bookingDate || new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
@@ -953,6 +1016,64 @@ export const useStore = create<AppState>()(
                 ],
               };
             });
+
+            // Fetch reviews via GET API and attach to mapped bookings
+            try {
+              const reviewsRes = await fetchCustomerReviewsApi(undefined, state.token);
+              const bulkReviews: any[] = reviewsRes.success && Array.isArray(reviewsRes.data) ? reviewsRes.data : [];
+
+              mappedBookings = await Promise.all(
+                mappedBookings.map(async (b) => {
+                  const pkgId = b.items && b.items[0]?.id;
+
+                  const isMatch = (r: any) => {
+                    if (!r) return false;
+                    const revBookingId = typeof r.bookingId === "object" ? (r.bookingId?._id || r.bookingId?.id) : r.bookingId;
+                    const revBooking = typeof r.booking === "object" ? (r.booking?._id || r.booking?.id) : r.booking;
+                    const revPkgId = typeof r.packageId === "object" ? (r.packageId?._id || r.packageId?.id) : r.packageId;
+                    const revPkg = typeof r.package === "object" ? (r.package?._id || r.package?.id) : r.package;
+
+                    if (b.id && (revBookingId === b.id || revBooking === b.id)) return true;
+                    if (b.bookingNumber && (revBookingId === b.bookingNumber || revBooking === b.bookingNumber)) return true;
+                    if (pkgId && pkgId !== b.id && !pkgId.startsWith("pkg-")) {
+                      if (revPkgId === pkgId || revPkg === pkgId) return true;
+                    }
+                    return false;
+                  };
+
+                  let foundRev = bulkReviews.find(isMatch);
+
+                  // If not found in bulk list and valid pkgId exists, fetch explicitly by packageId
+                  if (!foundRev && pkgId && !pkgId.startsWith("pkg-") && pkgId !== b.id) {
+                    try {
+                      const pkgRevRes = await fetchCustomerReviewsApi(pkgId, state.token || undefined);
+                      if (pkgRevRes.success && Array.isArray(pkgRevRes.data) && pkgRevRes.data.length > 0) {
+                        foundRev = pkgRevRes.data[0];
+                      }
+                    } catch (e) {
+                      console.error("Error fetching review by packageId:", e);
+                    }
+                  }
+
+                  if (foundRev) {
+                    return {
+                      ...b,
+                      review: {
+                        reviewId: foundRev._id || foundRev.id,
+                        rating: foundRev.rating,
+                        comment: foundRev.review || foundRev.comment || "",
+                        dateCreated: foundRev.createdAt
+                          ? new Date(foundRev.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                          : "Just now",
+                      },
+                    };
+                  }
+                  return b;
+                })
+              );
+            } catch (rErr) {
+              console.error("Error fetching reviews in fetchBookings:", rErr);
+            }
 
             set({ bookings: mappedBookings, isLoadingBookings: false });
           } else {
@@ -997,7 +1118,8 @@ export const useStore = create<AppState>()(
             const chosenProf = professionals[Math.floor(Math.random() * professionals.length)];
 
             const newBooking: Booking = {
-              id: bData.bookingNumber || bData.bookingId,
+              id: bData.bookingId || (bData as any)._id || bData.bookingNumber,
+              bookingNumber: bData.bookingNumber || bData.bookingId,
               items: state.cart,
               address,
               date: state.selectedDate,
@@ -1099,6 +1221,43 @@ export const useStore = create<AppState>()(
 
           return { bookings: updated };
         }),
+
+      // Reviews
+      createReviewAsync: async (payload) => {
+        const token = get().token;
+        if (!token) {
+          return { success: false, message: "Authentication required to submit review." };
+        }
+        return await createReviewApi(token, payload);
+      },
+      updateReviewAsync: async (reviewId, payload) => {
+        const token = get().token;
+        if (!token) {
+          return { success: false, message: "Authentication required to update review." };
+        }
+        return await updateReviewApi(token, reviewId, payload);
+      },
+      deleteReviewAsync: async (reviewId) => {
+        const token = get().token;
+        if (!token) {
+          return { success: false, message: "Authentication required to delete review." };
+        }
+        return await deleteReviewApi(token, reviewId);
+      },
+      fetchPackageReviewsAsync: async (packageId) => {
+        const token = get().token || undefined;
+        return await fetchCustomerReviewsApi(packageId, token);
+      },
+      attachReviewToBooking: (bookingId, review) =>
+        set((state) => ({
+          bookings: state.bookings.map((b) =>
+            b.id === bookingId || b.bookingNumber === bookingId
+              ? { ...b, review: review || undefined }
+              : b
+          ),
+        })),
+
+
 
       // Wishlist & History
       wishlist: [],

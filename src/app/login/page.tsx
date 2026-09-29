@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useStore } from "@/store/useStore";
@@ -10,6 +10,8 @@ import { Loader2, Eye, EyeOff, ShieldCheck, CheckCircle2, AlertCircle, Phone, Lo
 
 function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect") || "/";
   const { setAuth } = useStore();
 
   const [phone, setPhone] = useState("");
@@ -46,13 +48,13 @@ function LoginContent() {
 
       if (res.success && res.data) {
         setSuccessMsg("Login successful! Welcome back.");
-        setAuth({
+        await setAuth({
           token: res.data.token,
           customer: res.data.customer,
         });
 
         setTimeout(() => {
-          router.push("/");
+          router.push(redirectParam);
         }, 600);
       } else {
         setLoginError(res.message || "Invalid mobile number or password.");
@@ -188,7 +190,7 @@ function LoginContent() {
         {/* Register Button Link */}
         <div className="pt-4 border-t border-slate-100 text-center">
           <Link
-            href="/register"
+            href={redirectParam !== "/" ? `/register?redirect=${encodeURIComponent(redirectParam)}` : "/register"}
             className="w-full py-3 px-4 rounded-2xl border border-slate-200 hover:border-accent-lux bg-slate-50 hover:bg-white text-slate-700 hover:text-accent-lux font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
             <UserPlus className="w-4 h-4 text-accent-lux" />

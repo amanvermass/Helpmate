@@ -3,12 +3,14 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Star, Heart, Clock, ArrowRight } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
 import { fetchCustomerTrendingApi, TrendingPackageItem } from "@/services/trendingApi";
 import { formatImageUrl } from "@/utils/image";
 
 export default function Trending() {
-  const { bookmarkedPackageIds, toggleBookmark, addNotification, token } = useStore();
+  const router = useRouter();
+  const { bookmarkedPackageIds, toggleBookmark, addNotification, addToCart, token, isLoggedIn } = useStore();
   const [trendingItems, setTrendingItems] = useState<TrendingPackageItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,6 +34,13 @@ export default function Trending() {
 
   const handleWishlistToggle = (e: React.MouseEvent, id: string, name: string) => {
     e.preventDefault();
+    e.stopPropagation();
+
+    if (!isLoggedIn && !token) {
+      addNotification("Login Required", "Please log in to save or bookmark packages.", "warning");
+      return;
+    }
+
     const isSaved = bookmarkedPackageIds.includes(id);
     toggleBookmark(id);
     addNotification(
@@ -39,6 +48,23 @@ export default function Trending() {
       isSaved ? `${name} removed from your saved list.` : `${name} has been saved for fast booking.`,
       "info"
     );
+  };
+
+  const handleBookNow = (e: React.MouseEvent, service: any) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    addToCart({
+      id: service.id,
+      itemId: service.id,
+      name: service.name,
+      price: service.price,
+      category: service.category,
+      duration: service.duration,
+    });
+
+    addNotification("Added to Cart", `"${service.name}" added to cart. Opening booking...`, "success");
+    router.push("/booking");
   };
 
   const displayServices = trendingItems.map((item) => {
@@ -202,11 +228,13 @@ export default function Trending() {
                           </div>
                         </div>
 
-                        <div
-                          className="inline-flex items-center gap-1 bg-primary-lux hover:bg-slate-800 dark:bg-accent-lux dark:hover:bg-accent-lux/95 text-white font-bold text-[10px] px-4 py-2 rounded-full shadow-md transition-colors cursor-pointer"
+                        <button
+                          type="button"
+                          onClick={(e) => handleBookNow(e, service)}
+                          className="inline-flex items-center gap-1 bg-accent-lux hover:bg-accent-lux/95 text-white font-extrabold text-[10px] px-4 py-2 rounded-full shadow-md transition-all hover:scale-105 active:scale-95 cursor-pointer z-10 relative"
                         >
                           Book Now <ArrowRight className="w-3.5 h-3.5" />
-                        </div>
+                        </button>
                       </div>
                     </div>
                   </Link>

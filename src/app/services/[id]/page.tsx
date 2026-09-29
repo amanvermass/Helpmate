@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
-import { services, reviews as mockReviews } from "@/utils/mockData";
+import { services } from "@/utils/mockData";
 import { useStore, getItemAddonTotal } from "@/store/useStore";
 import confetti from "canvas-confetti";
 import { formatImageUrl } from "@/utils/image";
@@ -32,7 +32,12 @@ import {
   ServiceActionItem,
   PackageItem,
 } from "@/services/serviceActionApi";
-import { fetchCustomerPackagesApi as fetchGlobalPackagesApi } from "@/services/packageApi";
+import {
+  fetchCustomerPackagesApi as fetchGlobalPackagesApi,
+  fetchCustomerPackageDetailsApi,
+} from "@/services/packageApi";
+import { fetchCustomerReviewsApi } from "@/services/reviewApi";
+import { fetchCustomerTrendingApi } from "@/services/trendingApi";
 
 // Stepper Interface Config for CRM manageability
 export interface ServiceWizardItem {
@@ -338,7 +343,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
     toggleBookmark,
     fetchBookmarks,
     toggleAddonInCart,
-    token
+    token,
+    isLoggedIn
   } = useStore();
 
   const normalizedSlug = serviceId.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -402,6 +408,39 @@ function ServiceDetailPageContent({ params }: PageProps) {
   const [selectedAct, setSelectedAct] = useState<string | null>(actParam);
   const [searchQuery, setSearchQuery] = useState("");
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [packageReviews, setPackageReviews] = useState<any[]>([]);
+  const [loadingPackageReviews, setLoadingPackageReviews] = useState<boolean>(false);
+
+  const activePackageId = itemParam || (fetchedItemPackage as any)?._id || fetchedItemPackage?.id || serviceId;
+
+  useEffect(() => {
+    let isCancelled = false;
+    async function loadPackageReviews() {
+      if (!activePackageId) {
+        setPackageReviews([]);
+        return;
+      }
+      setLoadingPackageReviews(true);
+      try {
+        const res = await fetchCustomerReviewsApi(activePackageId, token || undefined);
+        if (res.success && Array.isArray(res.data) && !isCancelled) {
+          setPackageReviews(res.data);
+        } else if (!isCancelled) {
+          setPackageReviews([]);
+        }
+      } catch (err) {
+        console.error("Error fetching package reviews:", err);
+        if (!isCancelled) setPackageReviews([]);
+      } finally {
+        if (!isCancelled) setLoadingPackageReviews(false);
+      }
+    }
+
+    loadPackageReviews();
+    return () => {
+      isCancelled = true;
+    };
+  }, [activePackageId, token]);
 
   useEffect(() => {
     if (token) {
@@ -419,7 +458,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
   useEffect(() => {
     let isCancelled = false;
     async function loadItemPackage() {
-      if (!itemParam) {
+      const targetId = itemParam || serviceId;
+      if (!targetId) {
         setFetchedItemPackage(null);
         setLoadingItemPackage(false);
         return;
@@ -427,8 +467,55 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
       setLoadingItemPackage(true);
 
-      // Check mock services first
-      const foundMock = services.find((s) => s.id === itemParam);
+      // 1. Fetch from backend single package details API: GET /api/customer/packages/:packageId
+      try {
+        const detailsRes = await fetchCustomerPackageDetailsApi(targetId, token || undefined);
+        if (detailsRes.success && detailsRes.data?.package && !isCancelled) {
+          const pData = detailsRes.data;
+          const pkg = pData.package;
+
+          setFetchedItemPackage({
+            id: pkg.id || (pkg as any)._id || targetId,
+            name: pkg.name,
+            price: pkg.price,
+            originalPrice: pkg.originalPrice,
+            discountPercentage: pkg.discountPercentage,
+            duration: pkg.duration || 60,
+            subtitle: pkg.subtitle || "",
+            description: pkg.description || pkg.subtitle || `${pkg.name} execution by certified Helpmate specialists.`,
+            image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || ""),
+            addons: pData.addons || [],
+            category: pData.category,
+            subCategory: pData.subCategory,
+            serviceAction: pData.serviceAction,
+            reviews: pData.reviews,
+            isBookmarked: pkg.isBookmarked
+          });
+
+          if (pData.category?.id) {
+            setResolvedCategoryId(pData.category.id);
+          }
+          if (pData.subCategory?.id && !subParam) {
+            setSelectedSub(pData.subCategory.id);
+          }
+          if (pData.serviceAction?.id && !actParam) {
+            setSelectedAct(pData.serviceAction.id);
+          }
+          if (pData.reviews?.items && Array.isArray(pData.reviews.items) && pData.reviews.items.length > 0) {
+            setPackageReviews(pData.reviews.items);
+          }
+
+          setLoadingItemPackage(false);
+          return;
+        }
+      } catch (dErr) {
+        console.error("Error fetching package details API:", dErr);
+      }
+
+      // 2. Check mock services fallback
+      const foundMock = services.find(
+        (s) => s.id === targetId || s.id.toLowerCase() === targetId.toLowerCase()
+      );
       if (foundMock) {
         if (!isCancelled) {
           setFetchedItemPackage({
@@ -447,28 +534,75 @@ function ServiceDetailPageContent({ params }: PageProps) {
         return;
       }
 
-      // Fetch from backend customer packages API
+      // 3. Check Trending packages API fallback
       try {
-        const res = await fetchGlobalPackagesApi({ limit: 50 });
-        if (res.success && res.data && !isCancelled) {
-          const matched = res.data.find(
-            (p: any) => String(p.package?.id) === String(itemParam) || String(p.package?._id) === String(itemParam) || String(p.package?.name) === String(itemParam)
+        const trendingRes = await fetchCustomerTrendingApi(token || undefined);
+        if (trendingRes.success && Array.isArray(trendingRes.data) && !isCancelled) {
+          const foundTrending = trendingRes.data.find(
+            (t: any) =>
+              String(t.packageId) === String(targetId) ||
+              String(t._id) === String(targetId) ||
+              String(t.packageName).toLowerCase() === String(targetId).toLowerCase()
           );
-          if (matched) {
-            const pkg = matched.package as any;
+          if (foundTrending) {
             setFetchedItemPackage({
-              id: pkg.id || pkg._id,
-              name: pkg.name || pkg.packageName,
-              price: pkg.price,
-              originalPrice: pkg.originalPrice,
-              duration: pkg.duration || 60,
-              subtitle: pkg.subtitle || "",
-              description: pkg.description || pkg.subtitle || `${pkg.name || pkg.packageName} execution by certified Helpmate specialists.`,
-              image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || ""),
-              addons: matched.addons || [],
+              id: foundTrending.packageId || (foundTrending as any)._id || targetId,
+              name: foundTrending.packageName,
+              price: foundTrending.price,
+              originalPrice: foundTrending.originalPrice,
+              duration: foundTrending.duration || 60,
+              subtitle: foundTrending.subtitle || "",
+              description: foundTrending.description || foundTrending.subtitle || `${foundTrending.packageName} execution by certified Helpmate specialists.`,
+              image: formatImageUrl(foundTrending.imageUrl || foundTrending.thumbnailUrl || ""),
+              addons: [],
             });
-            if (matched.category?.id) {
-              setResolvedCategoryId(matched.category.id);
+            if (foundTrending.category?.id) {
+              setResolvedCategoryId(foundTrending.category.id);
+            }
+            setLoadingItemPackage(false);
+            return;
+          }
+        }
+      } catch (tErr) {
+        console.error("Error checking trending package for itemParam:", tErr);
+      }
+
+      // 4. Fetch from backend global customer packages API list fallback
+      try {
+        const res = await fetchGlobalPackagesApi({ limit: 100 }, token || undefined);
+        if (res.success && res.data && !isCancelled) {
+          const matched = res.data.find((p: any) => {
+            if (!p) return false;
+            const pkg = p.package || p;
+            const pkgId = pkg.id || pkg._id || p._id || p.id || p.packageId;
+            const pkgName = pkg.name || pkg.packageName || p.name || p.packageName;
+            return (
+              String(pkgId) === String(targetId) ||
+              String(pkg._id) === String(targetId) ||
+              String(pkg.id) === String(targetId) ||
+              String(p.packageId) === String(targetId) ||
+              String(p._id) === String(targetId) ||
+              String(p.id) === String(targetId) ||
+              (pkgName && String(pkgName).toLowerCase() === String(targetId).toLowerCase())
+            );
+          });
+
+          const matchedAny = matched as any;
+          if (matchedAny && !isCancelled) {
+            const pkgAny = matchedAny.package || matchedAny;
+            setFetchedItemPackage({
+              id: pkgAny.id || pkgAny._id || matchedAny._id || matchedAny.id || targetId,
+              name: pkgAny.name || pkgAny.packageName || matchedAny.name || matchedAny.packageName || "Service Package",
+              price: pkgAny.price ?? matchedAny.price ?? 499,
+              originalPrice: pkgAny.originalPrice ?? matchedAny.originalPrice,
+              duration: pkgAny.duration || matchedAny.duration || 60,
+              subtitle: pkgAny.subtitle || matchedAny.subtitle || "",
+              description: pkgAny.description || pkgAny.subtitle || matchedAny.description || matchedAny.subtitle || `${pkgAny.name || pkgAny.packageName || "Service"} execution by certified Helpmate specialists.`,
+              image: formatImageUrl(pkgAny.imageUrl || pkgAny.thumbnailUrl || matchedAny.imageUrl || matchedAny.thumbnailUrl || ""),
+              addons: matchedAny.addons || pkgAny.addons || [],
+            });
+            if (matchedAny.category?.id || matchedAny.category?._id) {
+              setResolvedCategoryId(matchedAny.category?.id || matchedAny.category?._id);
             }
           }
         }
@@ -485,7 +619,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
     return () => {
       isCancelled = true;
     };
-  }, [itemParam]);
+  }, [itemParam, token]);
 
   // Fetch live subcategories from API if categoryIdParam exists or lookup category by slug
   useEffect(() => {
@@ -700,16 +834,35 @@ function ServiceDetailPageContent({ params }: PageProps) {
   });
 
   const selectedItem =
-    availablePackagesList.find((i) => i.id === itemParam || (i as any)._id === itemParam) ||
     fetchedItemPackage ||
-    (availablePackagesList.length > 0 ? availablePackagesList[0] : null);
+    (itemParam ? availablePackagesList.find((i) => String(i.id) === String(itemParam) || String((i as any)._id) === String(itemParam)) : null) ||
+    (availablePackagesList.length > 0 ? availablePackagesList[0] : null) ||
+    (itemParam
+      ? {
+          id: itemParam,
+          name: formattedName,
+          price: service?.price || 499,
+          originalPrice: service?.price ? service.price + 200 : 699,
+          duration: service?.duration || 60,
+          subtitle: "Certified Specialist Execution",
+          description: service?.description || `${formattedName} service execution by certified Helpmate specialists in Varanasi.`,
+          image: service?.image || "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=600&q=80",
+          addons: [],
+        }
+      : null);
 
   // Set active details based on query parameters or fall back to main service
-  const activeName = selectedItem
-    ? selectedItem.name
-    : service.name;
+  const activeName = selectedItem ? selectedItem.name : service.name;
   const activePrice = selectedItem ? selectedItem.price : service.price;
+  const activeOriginalPrice = selectedItem?.originalPrice;
+  const activeDiscount = selectedItem?.discountPercentage || (selectedItem?.originalPrice && selectedItem?.price && selectedItem.originalPrice > selectedItem.price ? Math.round(((selectedItem.originalPrice - selectedItem.price) / selectedItem.originalPrice) * 100) : null);
   const activeDuration = selectedItem ? selectedItem.duration : service.duration;
+  const activeSubtitle = selectedItem?.subtitle || "";
+  const activeCategoryName = selectedItem?.category?.name || getCategoryDisplayName(service?.category || "");
+  const activeSubCategoryName = selectedItem?.subCategory?.name || currentSub?.name;
+  const activeServiceActionName = selectedItem?.serviceAction?.name || currentAct?.name;
+  const activeRating = selectedItem?.reviews?.averageRating || selectedItem?.rating || service.rating || 4.9;
+  const activeReviewsCount = selectedItem?.reviews?.totalReviews ?? (packageReviews.length > 0 ? packageReviews.length : service.reviewsCount);
 
   const itemDetails = selectedItem
     ? { description: selectedItem.description, image: selectedItem.image }
@@ -1045,24 +1198,54 @@ function ServiceDetailPageContent({ params }: PageProps) {
                       {activeName}
                     </h1>
 
-                    <div className="flex flex-wrap gap-4 items-center text-xs text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-6">
-                      <span className="flex items-center gap-1 text-amber-500 font-bold">
-                        <Star className="w-4 h-4 fill-amber-500 text-amber-500" /> {service.rating}
-                      </span>
-                      <span>({service.reviewsCount} reviews)</span>
-                      <span>•</span>
+                    <div className="flex flex-wrap gap-3 items-center text-xs text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-6">
+                      {activeReviewsCount > 0 && activeRating ? (
+                        <>
+                          <span className="flex items-center gap-1 text-amber-500 font-bold">
+                            <Star className="w-4 h-4 fill-amber-500 text-amber-500" /> {activeRating}
+                          </span>
+                          <span>({activeReviewsCount} review{activeReviewsCount > 1 ? "s" : ""})</span>
+                          <span>•</span>
+                        </>
+                      ) : null}
                       <span className="flex items-center gap-1">
                         <Clock className="w-4 h-4" /> {activeDuration} Mins Duration
                       </span>
-                      <span>•</span>
-                      <span className="capitalize">{service.category}</span>
+                      {activeCategoryName && (
+                        <>
+                          <span>•</span>
+                          <span className="font-semibold text-accent-lux">{activeCategoryName}</span>
+                        </>
+                      )}
+                      {activeSubCategoryName && (
+                        <>
+                          <span>•</span>
+                          <span className="font-medium text-slate-600 dark:text-slate-400">{activeSubCategoryName}</span>
+                        </>
+                      )}
+                      {activeServiceActionName && (
+                        <>
+                          <span>•</span>
+                          <span className="font-medium text-slate-500">{activeServiceActionName}</span>
+                        </>
+                      )}
                     </div>
                   </div>
+
+                  {activeSubtitle && (
+                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs font-semibold leading-relaxed flex items-start gap-2.5 shadow-sm">
+                      <span className="text-base leading-none">💡</span>
+                      <div>
+                        <span className="font-bold uppercase tracking-wider text-[10px] text-amber-600 dark:text-amber-400 block mb-0.5">Package Highlights &amp; Notes</span>
+                        <p className="text-xs">{activeSubtitle}</p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Description */}
                   <div className="space-y-3">
                     <h3 className="font-bold text-base text-foreground">Service Overview</h3>
-                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed whitespace-pre-line">
                       {itemDetails.description}
                     </p>
                   </div>
@@ -1263,33 +1446,68 @@ function ServiceDetailPageContent({ params }: PageProps) {
                     </div>
                   )}
 
-                  {/* Reviews */}
-                  <div className="space-y-4">
-                    <h3 className="font-bold text-base text-foreground">Recent Reviews</h3>
+                  {/* Reviews (Only shown if API reviews exist) */}
+                  {!loadingPackageReviews && packageReviews.length > 0 && (
                     <div className="space-y-4">
-                      {mockReviews.map((rev) => (
-                        <div key={rev.id} className="bg-white dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-800/60 p-6 rounded-[24px] space-y-3 shadow-sm hover:border-accent-lux/30 transition-colors">
-                          <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-3">
-                              <img src={rev.avatar} alt={rev.name} className="w-10 h-10 rounded-full object-cover" />
-                              <div>
-                                <span className="font-bold text-xs block text-foreground">{rev.name}</span>
-                                <span className="text-[9px] text-slate-400 block mt-0.5">{rev.date}</span>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-bold text-base text-foreground">Package Customer Reviews</h3>
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                          {packageReviews.length} Verified Review{packageReviews.length > 1 ? "s" : ""}
+                        </span>
+                      </div>
+
+                      <div className="space-y-4">
+                        {packageReviews.map((rev, idx) => {
+                          const revRating = rev.rating || 5;
+                          const revUser = rev.customer?.name || rev.customerName || rev.customer?.fullName || rev.userName || "Verified Customer";
+                          const revComment = rev.review || rev.comment || "";
+                          const revDate = rev.createdAt ? new Date(rev.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recently";
+                          const revVideo = rev.video?.videoUrl;
+
+                          return (
+                            <div key={rev._id || rev.id || idx} className="bg-white dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-800/60 p-6 rounded-[24px] space-y-3 shadow-sm hover:border-accent-lux/30 transition-colors text-left">
+                              <div className="flex justify-between items-center">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-accent-lux/10 text-accent-lux font-bold flex items-center justify-center text-sm border border-accent-lux/20">
+                                    {revUser.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <span className="font-bold text-xs block text-foreground">{revUser}</span>
+                                    <span className="text-[9px] text-slate-400 block mt-0.5">{revDate}</span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 text-amber-500">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star
+                                      key={star}
+                                      className={`w-3.5 h-3.5 ${star <= revRating ? "fill-amber-500 text-amber-500" : "text-slate-300 dark:text-slate-700"}`}
+                                    />
+                                  ))}
+                                  <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 ml-1">
+                                    {revRating}.0
+                                  </span>
+                                </div>
                               </div>
+                              {revComment && (
+                                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
+                                  "{revComment}"
+                                </p>
+                              )}
+                              {revVideo && (
+                                <div className="mt-3 rounded-xl overflow-hidden max-w-sm border border-slate-200/60 dark:border-slate-800">
+                                  <video
+                                    controls
+                                    src={revVideo}
+                                    className="w-full h-auto rounded-xl max-h-52 object-cover bg-black"
+                                  />
+                                </div>
+                              )}
                             </div>
-                            <div className="flex gap-0.5 text-amber-500">
-                              {[...Array(5)].map((_, i) => (
-                                <Star key={i} className="w-3 h-3 fill-amber-500" />
-                              ))}
-                            </div>
-                          </div>
-                          <p className="text-xs text-slate-555 dark:text-slate-455 leading-relaxed italic">
-                            "{rev.comment}"
-                          </p>
-                        </div>
-                      ))}
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 {/* Right Sticky Card column - Service Summary & Action */}
@@ -1307,21 +1525,19 @@ function ServiceDetailPageContent({ params }: PageProps) {
                     </div>
 
                     <div className="border-t border-slate-100 dark:border-slate-850 pt-4 space-y-3">
-                      <div className="flex justify-between text-xs font-semibold text-slate-500 font-sans">
-                        <span>Rate</span>
-                        <span className="text-foreground font-bold">₹{activePrice}</span>
-                      </div>
-                      <div className="flex justify-between text-xs font-semibold text-slate-500 font-sans">
-                        <span>Taxes &amp; GST (18%)</span>
-                        <span className="text-foreground font-bold">₹{taxAmount}</span>
-                      </div>
-                      <div className="flex justify-between text-xs font-semibold text-slate-500 font-sans border-b border-slate-100 dark:border-slate-850 pb-3">
-                        <span>Convenience Fee</span>
-                        <span className="text-foreground font-bold">₹{convenienceFee}</span>
-                      </div>
-                      <div className="flex justify-between text-sm font-extrabold text-foreground pt-1">
-                        <span>Grand Total</span>
-                        <span className="text-lg font-black text-accent-lux font-sans">₹{grandTotal}</span>
+                      <div className="flex justify-between items-baseline text-xs font-semibold text-slate-500 font-sans">
+                        <span>Package Price</span>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-accent-lux font-black text-lg font-sans">₹{activePrice}</span>
+                          {activeOriginalPrice && activeOriginalPrice > activePrice && (
+                            <span className="text-slate-400 line-through text-xs font-normal font-sans">₹{activeOriginalPrice}</span>
+                          )}
+                          {activeDiscount && (
+                            <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-sans">
+                              {activeDiscount}% OFF
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -1620,6 +1836,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
+                                          if (!isLoggedIn && !token) {
+                                            addNotification("Login Required", "Please log in to save or bookmark packages.", "warning");
+                                            return;
+                                          }
                                           if (!isItemSaved) triggerSmallConfetti(e, ['#801C6E', '#48073d', '#A21CAF']);
                                           toggleBookmark(pkgId);
                                           addNotification(

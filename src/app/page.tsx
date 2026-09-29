@@ -66,9 +66,9 @@ export default function Home() {
         <FaqSection />
 
         {/* Membership Customer Benefits Promotional Section */}
-        <div className="max-w-7xl mx-auto px-6">
+        {/* <div className="max-w-7xl mx-auto px-6">
           <MembershipBanner variant="full" />
-        </div>
+        </div> */}
 
         {/* CTA Download Banner */}
         <CtaBanner />

@@ -22,8 +22,8 @@ import { useRouter } from "next/navigation";
 export default function Reviews() {
   const router = useRouter();
   const { addToCart } = useStore();
-  
-  // Duplicate reviews for infinite marquee effect
+
+  // Duplicate hardcoded reviews for infinite marquee effect
   const marqueeReviews = [...reviews, ...reviews, ...reviews];
 
   // Video reviews scroll reference & modal states
