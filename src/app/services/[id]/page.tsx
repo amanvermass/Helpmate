@@ -971,12 +971,6 @@ function ServiceDetailPageContent({ params }: PageProps) {
       category: service.category,
       duration: activeDuration
     });
-
-    addNotification(
-      "Added to Cart",
-      `"${activeName}" has been added to your cart.`,
-      "success"
-    );
   };
 
   const handleBookNow = (e: React.MouseEvent) => {
@@ -1005,12 +999,6 @@ function ServiceDetailPageContent({ params }: PageProps) {
       category: service?.category || "Service",
       duration: item.duration || 30
     });
-
-    addNotification(
-      "Added to Cart",
-      `"${pkgName}" has been added to your cart.`,
-      "success"
-    );
   };
 
   const handleItemBookNow = (e: React.MouseEvent, item: any) => {

@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { getCurrentCustomerApi } from "@/services/authApi";
 import {
   addToCartApi,
   getCartApi,
@@ -27,7 +28,6 @@ import {
   BookmarkItem,
 } from "@/services/bookmarkApi";
 import { createBookingApi, fetchCustomerBookingsApi, CreateBookingPayload } from "@/services/bookingApi";
-import { getCurrentCustomerApi } from "@/services/authApi";
 import {
   createReviewApi,
   updateReviewApi,
@@ -36,8 +36,7 @@ import {
   CreateReviewPayload,
   UpdateReviewPayload,
 } from "@/services/reviewApi";
-
-
+import { fetchCustomerPackagesApi } from "@/services/packageApi";
 export interface CartItem {
   id: string;
   itemId?: string;
@@ -589,22 +588,129 @@ export const useStore = create<AppState>()(
         try {
           const res = await getCartApi(token);
           if (res.success && res.data) {
-            const mappedItems: CartItem[] = (res.data.items || []).map((item) => ({
-              id: item.package?._id || item.itemId,
-              itemId: item.itemId,
-              name: item.package?.packageName || "Package Item",
-              price: item.package?.price || 0,
-              quantity: item.quantity,
-              duration: item.package?.duration || 30,
-              category: "Service",
-              selectedAddons: item.selectedAddons || [],
-            }));
+            const rawItems = res.data.items || res.data.cart?.items || (res.data as any).data?.items || [];
+            let mappedItems: CartItem[] = rawItems.map((item: any) => {
+              const pkgObj = typeof item.package === "object" && item.package ? item.package : (typeof item.packageId === "object" && item.packageId ? item.packageId : {});
+              const pkgId = typeof item.package === "string" 
+                ? item.package 
+                : typeof item.packageId === "string" 
+                ? item.packageId 
+                : (pkgObj._id || pkgObj.id || item.itemId || item._id);
 
-            // Merge with any local cart items that might not have server counterparts (e.g. guest items or local additions)
+              const pkgName = pkgObj.packageName || pkgObj.name || pkgObj.title || item.name || null;
+              const pkgPrice = typeof pkgObj.price === "number" ? pkgObj.price : (typeof item.price === "number" ? item.price : item.packageTotal || 0);
+              const pkgDuration = pkgObj.duration || item.duration || 30;
+
+              return {
+                id: pkgId || item.itemId || item._id,
+                itemId: item.itemId || item._id || pkgId,
+                name: pkgName || "Service Package",
+                price: pkgPrice,
+                quantity: item.quantity || 1,
+                duration: pkgDuration,
+                category: item.category || pkgObj.category || "Service",
+                selectedAddons: item.selectedAddons || [],
+              };
+            });
+
+            // If any mapped item is missing package name or price, fetch customer packages to enrich details
+            const needsEnrichment = mappedItems.some((m) => !m.name || m.name === "Service Package" || m.price === 0);
+            if (needsEnrichment && mappedItems.length > 0) {
+              try {
+                const pkgRes = await fetchCustomerPackagesApi({ limit: 100 });
+                if (pkgRes.success && pkgRes.data) {
+                  const fetchedList = pkgRes.data;
+                  mappedItems = mappedItems.map((m) => {
+                    const match = fetchedList.find((p: any) => String(p._id || p.id) === String(m.id) || String(p._id || p.id) === String(m.itemId));
+                    if (match) {
+                      const pData = (match.package || match) as any;
+                      return {
+                        ...m,
+                        name: pData.packageName || pData.name || m.name,
+                        price: pData.price || m.price,
+                        duration: pData.duration || m.duration,
+                        category: match.category?.name || m.category,
+                      };
+                    }
+                    return m;
+                  });
+                }
+              } catch (e) {
+                console.warn("Could not enrich cart package details:", e);
+              }
+            }
+
             const currentCart = get().cart;
-            const finalCart = [...mappedItems];
+
+            if (mappedItems.length === 0) {
+              let enrichedLocalCart = [...currentCart];
+              const localNeedsEnrichment = enrichedLocalCart.some((c) => !c.name || c.name === "Service Package" || c.price === 0);
+              if (localNeedsEnrichment && enrichedLocalCart.length > 0) {
+                try {
+                  const pkgRes = await fetchCustomerPackagesApi({ limit: 100 });
+                  if (pkgRes.success && pkgRes.data) {
+                    const fetchedList = pkgRes.data;
+                    enrichedLocalCart = enrichedLocalCart.map((m) => {
+                      const match = fetchedList.find((p: any) => String(p._id || p.id) === String(m.id) || String(p._id || p.id) === String(m.itemId));
+                      if (match) {
+                        const pData = (match.package || match) as any;
+                        return {
+                          ...m,
+                          name: pData.packageName || pData.name || m.name,
+                          price: pData.price || m.price,
+                          duration: pData.duration || m.duration,
+                          category: match.category?.name || m.category,
+                        };
+                      }
+                      return m;
+                    });
+                  }
+                } catch (e) {
+                  console.warn("Could not enrich local cart package details:", e);
+                }
+              }
+              set({
+                cart: enrichedLocalCart,
+                cartId: res.data.cartId || res.data.cart?._id || get().cartId,
+                cartPricing: res.data.pricing || get().cartPricing,
+              });
+              return;
+            }
+
+            const findLocalMatch = (m: CartItem) => {
+              return currentCart.find((c) => {
+                if (c.id && m.id && String(c.id) === String(m.id)) return true;
+                if (c.itemId && m.itemId && String(c.itemId) === String(m.itemId)) return true;
+                if (c.id && m.itemId && String(c.id) === String(m.itemId)) return true;
+                if (c.itemId && m.id && String(c.itemId) === String(m.id)) return true;
+                return false;
+              });
+            };
+
+            const finalCart: CartItem[] = mappedItems.map((m) => {
+              const localMatch = findLocalMatch(m);
+              if (localMatch) {
+                return {
+                  ...localMatch,
+                  ...m,
+                  name: (m.name && m.name !== "Service Package") ? m.name : localMatch.name,
+                  price: m.price > 0 ? m.price : localMatch.price,
+                  duration: m.duration || localMatch.duration,
+                  category: localMatch.category || m.category,
+                };
+              }
+              return m;
+            });
+
+            // Keep any local cart items not returned by server yet
             for (const localItem of currentCart) {
-              const exists = finalCart.some((m) => m.id === localItem.id || m.itemId === localItem.itemId);
+              const exists = finalCart.some((m) => {
+                if (localItem.id && m.id && String(localItem.id) === String(m.id)) return true;
+                if (localItem.itemId && m.itemId && String(localItem.itemId) === String(m.itemId)) return true;
+                if (localItem.id && m.itemId && String(localItem.id) === String(m.itemId)) return true;
+                if (localItem.itemId && m.id && String(localItem.itemId) === String(m.id)) return true;
+                return false;
+              });
               if (!exists) {
                 finalCart.push(localItem);
               }
@@ -612,7 +718,7 @@ export const useStore = create<AppState>()(
 
             set({
               cart: finalCart,
-              cartId: res.data.cartId || null,
+              cartId: res.data.cartId || res.data.cart?._id || null,
               cartPricing: res.data.pricing || null,
             });
           }
@@ -622,25 +728,85 @@ export const useStore = create<AppState>()(
       },
 
       addToCart: async (item) => {
+        const targetId = item.id || item.itemId || `pkg-${Date.now()}`;
+        const itemQuantity = (item as any).quantity || 1;
+        set((state) => {
+          const existingIndex = state.cart.findIndex((i) => 
+            (i.id && String(i.id) === String(targetId)) ||
+            (i.itemId && String(i.itemId) === String(targetId))
+          );
+          if (existingIndex >= 0) {
+            const updated = [...state.cart];
+            updated[existingIndex] = {
+              ...updated[existingIndex],
+              quantity: (updated[existingIndex].quantity || 1) + itemQuantity,
+            };
+            return { cart: updated };
+          }
+          const newItem: CartItem = {
+            id: targetId,
+            itemId: item.itemId || targetId,
+            name: item.name || "Service Package",
+            price: item.price || 0,
+            category: item.category || "Service",
+            duration: item.duration || 30,
+            quantity: itemQuantity,
+            selectedAddons: item.selectedAddons || [],
+          };
+          return {
+            cart: [...state.cart, newItem],
+          };
+        });
+
         const token = get().token;
-        if (token) {
+        if (token && targetId) {
           try {
-            await addToCartApi(token, item.id, 1);
+            const res = await addToCartApi(token, targetId, 1);
+            if (res.success && res.data?.cart?.items && Array.isArray(res.data.cart.items)) {
+              try {
+                const pkgRes = await fetchCustomerPackagesApi({ limit: 100 });
+                const catalog = pkgRes.success && pkgRes.data ? pkgRes.data : [];
+                const currentCart = get().cart;
+
+                const serverMappedCart: CartItem[] = res.data.cart.items.map((sItem: any) => {
+                  const pId = typeof sItem.packageId === "string" 
+                    ? sItem.packageId 
+                    : (sItem.packageId?._id || sItem.packageId?.id || sItem._id);
+
+                  const catalogMatch = catalog.find((p: any) => 
+                    String(p._id || p.id || p.package?.id || p.package?._id) === String(pId)
+                  );
+                  const pkgData = (catalogMatch?.package || catalogMatch) as any;
+                  const localMatch = currentCart.find((c) => 
+                    String(c.id) === String(pId) || String(c.itemId) === String(sItem._id)
+                  );
+
+                  return {
+                    id: pId,
+                    itemId: sItem._id || pId,
+                    name: pkgData?.packageName || pkgData?.name || localMatch?.name || "Service Package",
+                    price: typeof pkgData?.price === "number" ? pkgData.price : (localMatch?.price || 0),
+                    quantity: sItem.quantity || localMatch?.quantity || 1,
+                    duration: pkgData?.duration || localMatch?.duration || 30,
+                    category: catalogMatch?.category?.name || localMatch?.category || "Service",
+                    selectedAddons: sItem.selectedAddons || localMatch?.selectedAddons || [],
+                  };
+                });
+
+                set({
+                  cart: serverMappedCart,
+                  cartId: res.data.cartId || res.data.cart?._id || get().cartId,
+                });
+                return;
+              } catch (e) {
+                console.warn("Could not enrich backend addToCart items:", e);
+              }
+            }
             await get().fetchServerCart();
-            return;
           } catch (err) {
             console.error("Error adding to server cart:", err);
           }
         }
-        set((state) => {
-          const existing = state.cart.find((i) => i.id === item.id);
-          if (existing) {
-            return {
-              cart: state.cart.map((i) => (i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)),
-            };
-          }
-          return { cart: [...state.cart, { ...item, quantity: 1 }] };
-        });
       },
 
       removeFromCart: async (id) => {

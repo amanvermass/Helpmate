@@ -1144,7 +1144,6 @@ function ProfilePageContent() {
                                   category: pkg.serviceAction?.name || "Service",
                                   duration: pkg.duration || 30,
                                 });
-                                addNotification("Added to Cart", `${pkg.packageName} added to your cart.`, "success");
                               }}
                               className="flex-1 py-2 px-3 rounded-xl bg-accent-lux text-white text-xs font-bold hover:bg-accent-lux/90 transition-all text-center cursor-pointer"
                             >

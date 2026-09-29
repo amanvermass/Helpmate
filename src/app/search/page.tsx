@@ -245,7 +245,6 @@ function SearchPageContent() {
         totalPrice: a.price,
       })),
     });
-    addNotification("Added to Cart", `${pkg.name} added to your cart.`, "success");
   };
 
   const handleBookNow = (e: React.MouseEvent, item: CustomerPackageItem) => {

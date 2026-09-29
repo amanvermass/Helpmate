@@ -63,7 +63,6 @@ export default function Trending() {
       duration: service.duration,
     });
 
-    addNotification("Added to Cart", `"${service.name}" added to cart. Opening booking...`, "success");
     router.push("/booking");
   };
 
