@@ -31,13 +31,25 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
     locationPermissionDenied, 
     setLocationPermissionDenied,
     addNotification,
-    setIsLocationSet
+    setIsLocationSet,
+    setHasPromptedLocation
   } = useStore();
 
   const [mode, setMode] = useState<"prompt" | "detecting" | "manual" | "success">("prompt");
   const [manualInput, setManualInput] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [zones, setZones] = useState<NeighborhoodZoneItem[]>([]);
+
+  // Prevent background scrolling when Location Modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     async function loadZones() {
@@ -51,6 +63,10 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
 
   const handleCloseModal = () => {
     setIsLocationSet(true);
+    setHasPromptedLocation(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("helpmate_location_set", "true");
+    }
     onClose();
   };
 
@@ -87,6 +103,11 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
         setSelectedLocation(detectedArea);
         setLocationPermissionDenied(false);
         setIsLocationSet(true);
+        setHasPromptedLocation(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("helpmate_location_set", "true");
+          localStorage.setItem("helpmate_user_location", detectedArea);
+        }
         setMode("success");
 
         addNotification(
@@ -122,6 +143,11 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
     const formattedLoc = manualInput.trim();
     setSelectedLocation(formattedLoc);
     setIsLocationSet(true);
+    setHasPromptedLocation(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("helpmate_location_set", "true");
+      localStorage.setItem("helpmate_user_location", formattedLoc);
+    }
     addNotification("Location Set", `Service location set to "${formattedLoc}".`, "info");
     onClose();
   };
@@ -129,6 +155,11 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
   const handleSelectQuickCity = (cityName: string) => {
     setSelectedLocation(cityName);
     setIsLocationSet(true);
+    setHasPromptedLocation(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("helpmate_location_set", "true");
+      localStorage.setItem("helpmate_user_location", cityName);
+    }
     addNotification("Location Updated", `Selected zone: ${cityName}`, "success");
     onClose();
   };
@@ -137,14 +168,14 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 font-sans">
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 sm:p-6 font-sans overflow-hidden">
         {/* Backdrop overlay */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
-          className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
+          onClick={handleCloseModal}
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-md"
         />
 
         {/* Main Modal Card */}
@@ -188,10 +219,10 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
               <div className="space-y-3 pt-2">
                 <button
                   onClick={handleAllowLocation}
-                  className="w-full py-3.5 px-6 rounded-2xl bg-accent-lux hover:bg-accent-lux/90 text-primary-lux font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  className="w-full py-3.5 px-6 rounded-2xl bg-accent-lux hover:bg-accent-lux/90 text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/10 transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                 >
-                  <Navigation className="w-4 h-4" />
-                  Allow Location Access
+                  <Navigation className="w-4 h-4 text-white" />
+                  <span className="text-white">Allow Location Access</span>
                 </button>
 
                 <button
@@ -289,13 +320,13 @@ export default function LocationModal({ isOpen, onClose, autoPrompt = false }: L
                 <button
                   type="submit"
                   disabled={!manualInput.trim()}
-                  className={`w-full py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all ${
+                  className={`w-full py-3 px-4 rounded-2xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all ${
                     manualInput.trim()
-                      ? "bg-accent-lux text-primary-lux shadow-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                      ? "bg-accent-lux text-white shadow-md hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                       : "bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed"
                   }`}
                 >
-                  Save &amp; Continue <ArrowRight className="w-3.5 h-3.5" />
+                  <span className={manualInput.trim() ? "text-white" : ""}>Save &amp; Continue</span> <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </form>
 

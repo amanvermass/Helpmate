@@ -56,6 +56,7 @@ function HeaderContent() {
     setSelectedLocation,
     hasPromptedLocation,
     setHasPromptedLocation,
+    isLocationSet,
     bookmarkedPackageIds
   } = useStore();
 
@@ -69,14 +70,20 @@ function HeaderContent() {
 
   // Auto prompt location modal on first visit/open
   useEffect(() => {
-    if (!hasPromptedLocation) {
+    const isLocationSavedInStorage =
+      typeof window !== "undefined" && localStorage.getItem("helpmate_location_set") === "true";
+
+    if (!hasPromptedLocation && !isLocationSet && !isLocationSavedInStorage) {
       const timer = setTimeout(() => {
         setShowLocationModal(true);
         setHasPromptedLocation(true);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("helpmate_location_set", "true");
+        }
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [hasPromptedLocation, setHasPromptedLocation]);
+  }, [hasPromptedLocation, isLocationSet, setHasPromptedLocation]);
 
   // Refs for outside click tracking
   const searchRef = useRef<HTMLFormElement>(null);
