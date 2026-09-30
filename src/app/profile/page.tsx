@@ -390,12 +390,12 @@ function ProfilePageContent() {
 
             <div className="pt-4 space-y-1">
               {[
-                { id: "dashboard", label: "Dashboard Overview", icon: <Award className="w-4 h-4" /> },
+                // { id: "dashboard", label: "Dashboard Overview", icon: <Award className="w-4 h-4" /> },
                 { id: "bookings", label: "Booking History", icon: <Calendar className="w-4 h-4" /> },
                 { id: "bookmarks", label: "Saved Packages", icon: <Bookmark className="w-4 h-4" /> },
                 { id: "addresses", label: "Manage Locations", icon: <MapPin className="w-4 h-4" /> },
-                { id: "wallet", label: "Wallet & Loyalty", icon: <Wallet className="w-4 h-4" /> },
-                { id: "settings", label: "Account Settings", icon: <Settings className="w-4 h-4" /> }
+                // { id: "wallet", label: "Wallet & Loyalty", icon: <Wallet className="w-4 h-4" /> },
+                // { id: "settings", label: "Account Settings", icon: <Settings className="w-4 h-4" /> }
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -788,7 +788,7 @@ function ProfilePageContent() {
                           )}
 
                           {/* Reschedule / Cancel Actions */}
-                          {b.status !== "Completed" && b.status !== "Cancelled" && (
+                          {/* {b.status !== "Completed" && b.status !== "Cancelled" && (
                             <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
                               <button
                                 onClick={() => setReschedulingId(b.id)}
@@ -803,7 +803,7 @@ function ProfilePageContent() {
                                 Cancel Booking
                               </button>
                             </div>
-                          )}
+                          )} */}
 
                           {/* Rescheduling Form Panel */}
                           {reschedulingId === b.id && (() => {

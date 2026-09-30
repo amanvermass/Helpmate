@@ -512,13 +512,13 @@ function HeaderContent() {
                       </div>
                     </div>
                     <div className="p-1 space-y-0.5">
-                      <Link
+                      {/* <Link
                         href="/profile"
                         onClick={() => setShowProfileMenu(false)}
                         className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                       >
                         <User className="w-3.5 h-3.5" /> Dashboard & Address
-                      </Link>
+                      </Link> */}
                       <Link
                         href="/profile?tab=bookings"
                         onClick={() => setShowProfileMenu(false)}
@@ -540,7 +540,7 @@ function HeaderContent() {
                           </span>
                         )}
                       </Link>
-                      <button
+                      {/* <button
                         onClick={() => {
                           setShowProfileMenu(false);
                           setChatOpen(true);
@@ -548,7 +548,7 @@ function HeaderContent() {
                         className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer text-left"
                       >
                         <MessageSquare className="w-3.5 h-3.5" /> Live Support Chat
-                      </button>
+                      </button> */}
                       <button
                         onClick={() => {
                           setShowProfileMenu(false);
