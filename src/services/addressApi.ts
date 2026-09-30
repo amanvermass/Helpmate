@@ -202,7 +202,7 @@ export const mapBackendAddressToFrontend = (bAddr: BackendAddress): Address => {
     localityId: localityIdStr,
     pincode: bAddr.pincode || localityObj?.pincode || "221002",
     landmark: bAddr.landmark || "",
-    addressLine: bAddr.serviceAddress,
+    addressLine: bAddr.serviceAddress || (bAddr as any).address || "",
     city: "Varanasi",
     isDefault: bAddr.isPrimary || false,
   };

@@ -129,12 +129,18 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    const cleanPhone = (recipientPhone || "").trim().replace(/\D/g, "");
+    if (recipientType !== "Self" && cleanPhone.length !== 10) {
+      alert("Please enter a valid 10-digit recipient mobile number.");
+      return;
+    }
+
     onSave({
       tag: tag || "Home",
       recipientType,
       recipientName: recipientName || currentUser.name,
-      recipientPhone: recipientPhone || currentUser.phone,
-      recipientMobile: recipientPhone || currentUser.phone,
+      recipientPhone: cleanPhone || currentUser.phone,
+      recipientMobile: cleanPhone || currentUser.phone,
       locality,
       localityId: localityId || "6a6b0d83dc4a5f2b04e35a90",
       pincode,
@@ -262,14 +268,18 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
-                  Recipient Phone Number *
+                  Recipient Mobile Number *
                 </label>
                 <input
                   type="tel"
+                  maxLength={10}
                   value={recipientPhone}
-                  onChange={(e) => setRecipientPhone(e.target.value)}
-                  placeholder="+91 98765 43210"
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:border-amber-500"
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setRecipientPhone(digits);
+                  }}
+                  placeholder="e.g. 9876543210"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-xl text-xs font-mono font-semibold focus:outline-none focus:border-amber-500"
                   required
                 />
               </div>

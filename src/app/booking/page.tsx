@@ -1055,14 +1055,25 @@ function BookingContent() {
                                         )}
                                       </div>
 
-                                      <p className="text-sm font-extrabold text-foreground pt-0.5 leading-snug">{addr.addressLine}</p>
-
-                                      {(addr.recipientName || addr.recipientPhone) && (
-                                        <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-2">
-                                          {addr.recipientName && <span>Recipient: {addr.recipientName}</span>}
-                                          {addr.recipientPhone && <span className="text-slate-400">| {addr.recipientPhone}</span>}
-                                        </p>
+                                      {(addr.recipientName || addr.recipientPhone || addr.recipientMobile) && (
+                                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 text-xs font-black text-foreground">
+                                          <span>{addr.recipientName}</span>
+                                          {(addr.recipientPhone || addr.recipientMobile) && (
+                                            <span className="text-xs font-bold text-slate-500 font-mono">
+                                              ({addr.recipientPhone || addr.recipientMobile})
+                                            </span>
+                                          )}
+                                        </div>
                                       )}
+
+                                      <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 leading-snug">
+                                        {addr.addressLine}
+                                        {addr.landmark && (
+                                          <span className="text-slate-500 dark:text-slate-400">, {addr.landmark.toLowerCase().startsWith("near") ? addr.landmark : `Near ${addr.landmark}`}</span>
+                                        )}
+                                        {addr.locality && <span className="text-slate-500 dark:text-slate-400">, {addr.locality}</span>}
+                                        {addr.pincode && <span className="text-slate-500 dark:text-slate-400"> - {addr.pincode}</span>}
+                                      </p>
                                     </div>
                                   </div>
 
