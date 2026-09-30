@@ -36,6 +36,15 @@ export function formatImageUrl(imgUrl?: string): string {
     const mediaIdx = trimmed.indexOf("/api/media/");
     return trimmed.substring(mediaIdx);
   }
+  if (trimmed.includes("media/package/")) {
+    const mediaIdx = trimmed.indexOf("media/package/");
+    return `/api/${trimmed.substring(mediaIdx)}`;
+  }
+  if (trimmed.includes("package/") && (trimmed.includes("/image") || trimmed.length > 20)) {
+    const pkgIdx = trimmed.indexOf("package/");
+    const pkgPath = trimmed.substring(pkgIdx);
+    return pkgPath.endsWith("/image") ? `/api/media/${pkgPath}` : `/api/media/${pkgPath}/image`;
+  }
 
   // 5. Handle relative URLs by prepending API_BASE_URL
   if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {

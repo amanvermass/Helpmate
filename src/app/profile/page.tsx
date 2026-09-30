@@ -1096,24 +1096,30 @@ function ProfilePageContent() {
                       const pkg = item.package;
                       if (!pkg) return null;
 
+                      const rawImg = pkg.imageUrl || pkg.thumbnailUrl || (pkg as any).image;
+                      const packageId = pkg._id || (pkg as any).id;
+                      const displayImg = rawImg 
+                        ? formatImageUrl(rawImg) 
+                        : (packageId ? `/api/media/package/${packageId}/image` : "");
+
                       return (
                         <div
                           key={item.bookmarkId || pkg._id}
                           className="glass-panel p-5 border border-slate-200/60 dark:border-slate-800 rounded-3xl text-left flex flex-col justify-between space-y-4 hover:shadow-lg transition-all"
                         >
                           <div className="flex gap-4 items-start">
-                            {pkg.imageUrl || pkg.thumbnailUrl ? (
-                              <img
-                                src={formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl)}
-                                alt={pkg.packageName}
-                                referrerPolicy="no-referrer"
-                                className="w-20 h-20 rounded-2xl object-cover shrink-0 border border-slate-100 dark:border-slate-800"
-                              />
-                            ) : (
-                              <div className="w-20 h-20 rounded-2xl bg-accent-lux/10 text-accent-lux flex items-center justify-center shrink-0">
-                                <Bookmark className="w-8 h-8 fill-accent-lux" />
-                              </div>
-                            )}
+                            <img
+                              src={displayImg || `/api/media/package/${packageId}/image`}
+                              alt={pkg.packageName}
+                              referrerPolicy="no-referrer"
+                              className="w-20 h-20 rounded-2xl object-cover shrink-0 border border-slate-100 dark:border-slate-800 bg-slate-100 dark:bg-slate-800"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                if (packageId && !target.src.includes(`/api/media/package/${packageId}/image`)) {
+                                  target.src = `/api/media/package/${packageId}/image`;
+                                }
+                              }}
+                            />
 
                             <div className="space-y-1 min-w-0 flex-1">
                               <span className="text-[9px] font-black uppercase tracking-wider text-accent-lux px-2 py-0.5 rounded-md bg-accent-lux/10 inline-block">
