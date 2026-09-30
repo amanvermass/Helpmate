@@ -40,11 +40,18 @@ import { fetchCustomerPackagesApi } from "@/services/packageApi";
 export interface CartItem {
   id: string;
   itemId?: string;
+  packageId?: string;
   name: string;
   price: number;
   quantity: number;
   category: string;
   duration: number; // in mins
+  review?: {
+    reviewId?: string;
+    rating: number;
+    comment?: string;
+    dateCreated?: string;
+  } | null;
   selectedAddons?: Array<{
     addonId: string;
     addonName: string;
@@ -103,7 +110,7 @@ export interface Booking {
   totalAmount: number;
   discount: number;
   finalAmount: number;
-  status: "Assigned" | "In-Transit" | "Arrived" | "In-Progress" | "Completed" | "Cancelled";
+  status: "Pending" | "Assigned" | "In-Transit" | "Arrived" | "In-Progress" | "Completed" | "Cancelled";
   professional?: {
     name: string;
     rating: number;
@@ -224,7 +231,7 @@ interface AppState {
   updateReviewAsync: (reviewId: string, payload: UpdateReviewPayload) => Promise<{ success: boolean; message: string; data?: any }>;
   deleteReviewAsync: (reviewId: string) => Promise<{ success: boolean; message: string }>;
   fetchPackageReviewsAsync: (packageId?: string) => Promise<{ success: boolean; message: string; data?: any }>;
-  attachReviewToBooking: (bookingId: string, review: { reviewId?: string; rating: number; comment?: string; dateCreated?: string } | null) => void;
+  attachReviewToBooking: (bookingId: string, review: { reviewId?: string; rating: number; comment?: string; dateCreated?: string } | null, packageId?: string) => void;
 
 
 
@@ -1119,12 +1126,13 @@ export const useStore = create<AppState>()(
                 city: "Varanasi"
               };
 
-              let mappedStatus: Booking["status"] = "Assigned";
+              let mappedStatus: Booking["status"] = "Pending";
               if (item.status === "completed") mappedStatus = "Completed";
               else if (item.status === "cancelled") mappedStatus = "Cancelled";
               else if (item.status === "in_progress") mappedStatus = "In-Progress";
               else if (item.status === "on_the_way" || item.status === "accepted") mappedStatus = "In-Transit";
               else if (item.status === "partner_assigned") mappedStatus = "Assigned";
+              else if (item.status === "pending") mappedStatus = "Pending";
 
               const firstService = item.services?.[0];
               const pkgName = item.serviceVariant || (firstService?.package as any)?.name || "Service Package";
@@ -1133,36 +1141,102 @@ export const useStore = create<AppState>()(
                 : "general";
 
               const items = item.services && item.services.length > 0
-                ? item.services.map((srv, idx) => ({
-                    id: (srv.package as any)?._id || (srv.package as any)?.id || (srv as any)?.packageId || `pkg-${idx}`,
-                    name: (srv.package as any)?.name || (srv.package as any)?.packageName || pkgName,
-                    price: (srv.package as any)?.price || srv.totalPrice || item.amount,
-                    quantity: srv.quantity || 1,
-                    category: catSlug,
-                    duration: (srv.package as any)?.duration || 60
-                  }))
+                ? item.services.map((srv, idx) => {
+                    const pkgObj = (srv.package as any) || {};
+                    const pkgId = pkgObj._id || pkgObj.id || (srv as any).packageId || `pkg-${idx}`;
+                    const pkgRev = pkgObj.review || (srv as any).review;
+                    let mappedPkgRev: CartItem["review"] = undefined;
+                    if (pkgRev && typeof pkgRev === "object" && (pkgRev._id || pkgRev.id || pkgRev.rating)) {
+                      mappedPkgRev = {
+                        reviewId: pkgRev._id || pkgRev.id,
+                        rating: Number(pkgRev.rating) || 5,
+                        comment: pkgRev.review || pkgRev.comment || "",
+                        dateCreated: pkgRev.createdAt ? new Date(pkgRev.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Just now"
+                      };
+                    }
+
+                    return {
+                      id: pkgId,
+                      packageId: pkgId,
+                      name: pkgObj.name || pkgObj.packageName || pkgName,
+                      price: pkgObj.price || srv.totalPrice || item.amount,
+                      quantity: srv.quantity || 1,
+                      category: catSlug,
+                      duration: pkgObj.duration || 60,
+                      review: mappedPkgRev
+                    };
+                  })
                 : [
                     {
                       id: (item as any)?.packageId || (item as any)?.package?._id || (item as any)?.package?.id || item.bookingId,
+                      packageId: (item as any)?.packageId || (item as any)?.package?._id || (item as any)?.package?.id || item.bookingId,
                       name: pkgName,
                       price: item.amount,
                       quantity: 1,
                       category: catSlug,
-                      duration: 60
+                      duration: 60,
+                      review: undefined
                     }
                   ];
+
+              let formattedDate = item.bookingDate;
+              if (item.bookingDate) {
+                try {
+                  const d = new Date(item.bookingDate);
+                  if (!isNaN(d.getTime())) {
+                    formattedDate = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                  }
+                } catch (e) {}
+              }
+              if (!formattedDate) {
+                formattedDate = new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+              }
+
+              const st = mappedStatus as string;
+              const isAssigned = st === "Assigned" || st === "In-Transit" || st === "Arrived" || st === "In-Progress" || st === "Completed";
+              const isTransit = st === "In-Transit" || st === "Arrived" || st === "In-Progress" || st === "Completed";
+              const isArrived = st === "Arrived" || st === "In-Progress" || st === "Completed";
+              const isCompleted = st === "Completed";
+
+              // Directly extract review object from GET /api/customer/bookings response
+              let mappedReview: Booking["review"] = undefined;
+              const itemRev = (item as any).review;
+              if (itemRev && typeof itemRev === "object" && (itemRev._id || itemRev.id || itemRev.rating)) {
+                mappedReview = {
+                  reviewId: itemRev._id || itemRev.id,
+                  rating: Number(itemRev.rating) || 5,
+                  comment: itemRev.review || itemRev.comment || "",
+                  dateCreated: itemRev.createdAt ? new Date(itemRev.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Just now"
+                };
+              }
+
+              if (!mappedReview && item.services && Array.isArray(item.services)) {
+                for (const srv of item.services) {
+                  const pkgRev = (srv.package as any)?.review || (srv as any)?.review;
+                  if (pkgRev && typeof pkgRev === "object" && (pkgRev._id || pkgRev.id || pkgRev.rating)) {
+                    mappedReview = {
+                      reviewId: pkgRev._id || pkgRev.id,
+                      rating: Number(pkgRev.rating) || 5,
+                      comment: pkgRev.review || pkgRev.comment || "",
+                      dateCreated: pkgRev.createdAt ? new Date(pkgRev.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Just now"
+                    };
+                    break;
+                  }
+                }
+              }
 
               return {
                 id: item.bookingId || (item as any)._id || item.bookingNumber,
                 bookingNumber: item.bookingNumber || item.bookingId,
                 items,
                 address: defaultAddress,
-                date: item.bookingDate || new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+                date: formattedDate,
                 timeSlot: item.timeSlot || "10:00 AM",
                 totalAmount: item.amount,
                 discount: 0,
                 finalAmount: item.amount,
                 status: mappedStatus,
+                review: mappedReview,
                 professional: {
                   name: "Vetted Helpmate Pro",
                   rating: 4.9,
@@ -1175,71 +1249,13 @@ export const useStore = create<AppState>()(
                 invoiceId: "INV-" + (item.bookingNumber || item.bookingId).replace(/[^0-9]/g, ""),
                 timeline: [
                   { status: "Booking Confirmed", time: "Completed", done: true },
-                  { status: "Professional Assigned", time: "Completed", done: true },
-                  { status: "In-Transit to Location", time: mappedStatus === "In-Transit" || mappedStatus === "In-Progress" || mappedStatus === "Completed" ? "Completed" : "Pending", done: mappedStatus === "In-Transit" || mappedStatus === "In-Progress" || mappedStatus === "Completed" },
-                  { status: "Arrived at Address", time: mappedStatus === "In-Progress" || mappedStatus === "Completed" ? "Completed" : "Pending", done: mappedStatus === "In-Progress" || mappedStatus === "Completed" },
-                  { status: "Service Completed", time: mappedStatus === "Completed" ? "Completed" : "Pending", done: mappedStatus === "Completed" },
+                  { status: "Professional Assigned", time: isAssigned ? "Completed" : "Pending", done: isAssigned },
+                  { status: "In-Transit to Location", time: isTransit ? "Completed" : "Pending", done: isTransit },
+                  { status: "Arrived at Address", time: isArrived ? "Completed" : "Pending", done: isArrived },
+                  { status: "Service Completed", time: isCompleted ? "Completed" : "Pending", done: isCompleted },
                 ],
               };
             });
-
-            // Fetch reviews via GET API and attach to mapped bookings
-            try {
-              const reviewsRes = await fetchCustomerReviewsApi(undefined, state.token);
-              const bulkReviews: any[] = reviewsRes.success && Array.isArray(reviewsRes.data) ? reviewsRes.data : [];
-
-              mappedBookings = await Promise.all(
-                mappedBookings.map(async (b) => {
-                  const pkgId = b.items && b.items[0]?.id;
-
-                  const isMatch = (r: any) => {
-                    if (!r) return false;
-                    const revBookingId = typeof r.bookingId === "object" ? (r.bookingId?._id || r.bookingId?.id) : r.bookingId;
-                    const revBooking = typeof r.booking === "object" ? (r.booking?._id || r.booking?.id) : r.booking;
-                    const revPkgId = typeof r.packageId === "object" ? (r.packageId?._id || r.packageId?.id) : r.packageId;
-                    const revPkg = typeof r.package === "object" ? (r.package?._id || r.package?.id) : r.package;
-
-                    if (b.id && (revBookingId === b.id || revBooking === b.id)) return true;
-                    if (b.bookingNumber && (revBookingId === b.bookingNumber || revBooking === b.bookingNumber)) return true;
-                    if (pkgId && pkgId !== b.id && !pkgId.startsWith("pkg-")) {
-                      if (revPkgId === pkgId || revPkg === pkgId) return true;
-                    }
-                    return false;
-                  };
-
-                  let foundRev = bulkReviews.find(isMatch);
-
-                  // If not found in bulk list and valid pkgId exists, fetch explicitly by packageId
-                  if (!foundRev && pkgId && !pkgId.startsWith("pkg-") && pkgId !== b.id) {
-                    try {
-                      const pkgRevRes = await fetchCustomerReviewsApi(pkgId, state.token || undefined);
-                      if (pkgRevRes.success && Array.isArray(pkgRevRes.data) && pkgRevRes.data.length > 0) {
-                        foundRev = pkgRevRes.data[0];
-                      }
-                    } catch (e) {
-                      console.error("Error fetching review by packageId:", e);
-                    }
-                  }
-
-                  if (foundRev) {
-                    return {
-                      ...b,
-                      review: {
-                        reviewId: foundRev._id || foundRev.id,
-                        rating: foundRev.rating,
-                        comment: foundRev.review || foundRev.comment || "",
-                        dateCreated: foundRev.createdAt
-                          ? new Date(foundRev.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                          : "Just now",
-                      },
-                    };
-                  }
-                  return b;
-                })
-              );
-            } catch (rErr) {
-              console.error("Error fetching reviews in fetchBookings:", rErr);
-            }
 
             set({ bookings: mappedBookings, isLoadingBookings: false });
           } else {
@@ -1414,13 +1430,24 @@ export const useStore = create<AppState>()(
         const token = get().token || undefined;
         return await fetchCustomerReviewsApi(packageId, token);
       },
-      attachReviewToBooking: (bookingId, review) =>
+      attachReviewToBooking: (bookingId, review, packageId) =>
         set((state) => ({
-          bookings: state.bookings.map((b) =>
-            b.id === bookingId || b.bookingNumber === bookingId
-              ? { ...b, review: review || undefined }
-              : b
-          ),
+          bookings: state.bookings.map((b) => {
+            if (b.id === bookingId || b.bookingNumber === bookingId) {
+              const updatedItems = b.items.map((item) => {
+                if (!packageId || item.id === packageId || item.itemId === packageId || item.packageId === packageId) {
+                  return { ...item, review: review || null };
+                }
+                return item;
+              });
+              return {
+                ...b,
+                review: review || b.review,
+                items: updatedItems,
+              };
+            }
+            return b;
+          }),
         })),
 
 

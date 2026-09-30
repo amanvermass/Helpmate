@@ -331,6 +331,11 @@ function ServiceDetailPageContent({ params }: PageProps) {
   const resolvedParams = React.use(params);
   const serviceId = resolvedParams.id;
 
+  const subParam = searchParams.get("sub");
+  const actParam = searchParams.get("act");
+  const itemParam = searchParams.get("item");
+  const categoryIdParam = searchParams.get("categoryId");
+
   const {
     addToRecentlyViewed,
     addToCart,
@@ -340,12 +345,26 @@ function ServiceDetailPageContent({ params }: PageProps) {
     removeFromCart,
     cartPricing,
     bookmarkedPackageIds,
+    bookmarkedPackages,
     toggleBookmark,
     fetchBookmarks,
     toggleAddonInCart,
     token,
     isLoggedIn
   } = useStore();
+
+  const [selectedSub, setSelectedSub] = useState<string | null>(subParam);
+  const [selectedAct, setSelectedAct] = useState<string | null>(actParam);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [packageReviews, setPackageReviews] = useState<any[]>([]);
+  const [loadingPackageReviews, setLoadingPackageReviews] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (showSavedOnly && token && (!bookmarkedPackages || bookmarkedPackages.length === 0)) {
+      fetchBookmarks();
+    }
+  }, [showSavedOnly, token, bookmarkedPackages, fetchBookmarks]);
 
   const normalizedSlug = serviceId.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const foundService = services.find(
@@ -388,11 +407,6 @@ function ServiceDetailPageContent({ params }: PageProps) {
     };
   }, [foundService, serviceId, formattedName]);
 
-  const subParam = searchParams.get("sub");
-  const actParam = searchParams.get("act");
-  const itemParam = searchParams.get("item");
-
-  const categoryIdParam = searchParams.get("categoryId");
   const [resolvedCategoryId, setResolvedCategoryId] = useState<string | null>(categoryIdParam);
   const [apiSubCategories, setApiSubCategories] = useState<SubCategoryItem[]>([]);
   const [apiServiceActions, setApiServiceActions] = useState<ServiceActionItem[]>([]);
@@ -403,13 +417,6 @@ function ServiceDetailPageContent({ params }: PageProps) {
   const [loadingSubCategories, setLoadingSubCategories] = useState<boolean>(true);
   const [loadingServiceActions, setLoadingServiceActions] = useState<boolean>(false);
   const [loadingPackages, setLoadingPackages] = useState<boolean>(false);
-
-  const [selectedSub, setSelectedSub] = useState<string | null>(subParam);
-  const [selectedAct, setSelectedAct] = useState<string | null>(actParam);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showSavedOnly, setShowSavedOnly] = useState(false);
-  const [packageReviews, setPackageReviews] = useState<any[]>([]);
-  const [loadingPackageReviews, setLoadingPackageReviews] = useState<boolean>(false);
 
   const activePackageId = itemParam || (fetchedItemPackage as any)?._id || fetchedItemPackage?.id || serviceId;
 
@@ -1781,174 +1788,249 @@ function ServiceDetailPageContent({ params }: PageProps) {
                               </div>
                             ))}
                           </div>
-                        ) : apiPackages.length > 0 ? (
-                          <div className="space-y-3">
-                            {apiPackages
-                              .map((pkgItem: any) => {
-                                const pkg = pkgItem.package || pkgItem;
-                                const pkgId = pkg.id || pkg._id || pkgItem._id || pkgItem.id;
-                                const pkgName = pkg.name || pkg.packageName || pkgItem.name || "Package Service";
-                                return {
-                                  id: pkgId,
-                                  name: pkgName,
-                                  price: pkg.price || pkgItem.price || 0,
-                                  originalPrice: pkg.originalPrice || pkgItem.originalPrice,
-                                  duration: pkg.duration || pkgItem.duration || 60,
-                                  subtitle: pkg.subtitle || pkgItem.subtitle || "",
-                                  description: pkg.description || pkg.subtitle || pkgItem.description || `${pkgName} execution by certified Helpmate specialists.`,
-                                  image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || pkgItem.imageUrl || pkgItem.thumbnailUrl || ""),
-                                  addons: pkgItem.addons || pkg.addons || [],
-                                };
-                              })
-                              .filter((item) => {
-                                if (!item || !item.name) return false;
-                                const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-                                const matchesSaved = showSavedOnly ? bookmarkedPackageIds.includes(item.id) : true;
-                                return matchesSearch && matchesSaved;
-                              })
-                              .map((item) => {
-                                const pkgId = (item as any)?._id || item.id;
-                                const isAdded = cart.some((c) => c.id === pkgId || c.itemId === pkgId || c.id === `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`);
-                                const isItemSaved = bookmarkedPackageIds.includes(pkgId);
-                                return (
-                                  <div
-                                    key={item.id}
-                                    onClick={() => {
-                                      router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
-                                    }}
-                                    className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl flex flex-col sm:flex-row gap-4 transition-all duration-300 hover:scale-[1.01] hover:shadow-md group text-left shadow-sm relative overflow-hidden cursor-pointer hover:border hover:border-accent-lux/30"
-                                  >
-                                    {/* Left Side: Image */}
-                                    <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative group/image">
-                                      <img src={formatImageUrl(item.image)} alt={item.name} referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (!isLoggedIn && !token) {
-                                            addNotification("Login Required", "Please log in to save or bookmark packages.", "warning");
-                                            return;
-                                          }
-                                          if (!isItemSaved) triggerSmallConfetti(e, ['#801C6E', '#48073d', '#A21CAF']);
-                                          toggleBookmark(pkgId);
-                                          addNotification(
-                                            isItemSaved ? "Bookmark Removed" : "Bookmarked Package",
-                                            isItemSaved ? `${item.name} removed from your saved list.` : `${item.name} saved for fast booking.`,
-                                            "info"
-                                          );
-                                        }}
-                                        className={`absolute top-2 right-2 p-1.5 backdrop-blur-md cursor-pointer rounded-full transition-colors shadow-sm z-10 ${isItemSaved
-                                          ? "bg-accent-lux/10 text-accent-lux dark:bg-accent-lux/20"
-                                          : "bg-white/90 dark:bg-slate-900/90 text-slate-500 hover:text-accent-lux hover:bg-white dark:hover:bg-slate-800"
-                                          }`}
-                                      >
-                                        <Bookmark className={`w-3.5 h-3.5 ${isItemSaved ? "fill-accent-lux text-accent-lux" : ""}`} />
-                                      </button>
-                                    </div>
+                        ) : (() => {
+                          const isBookmarked = (id: string) => bookmarkedPackageIds.some((bId) => String(bId) === String(id));
 
-                                    {/* Right Side: Title, Real Data, Prices, Badges, Addons & Actions */}
-                                    <div className="flex-1 min-w-0 flex flex-col justify-between">
-                                      <div>
-                                        <div className="flex justify-between items-start gap-2">
-                                          <h4 className="font-extrabold text-[13px] sm:text-[14px] text-foreground leading-snug group-hover:text-accent-lux transition-colors truncate">
-                                            {item.name}
-                                          </h4>
-                                          <div className="text-right shrink-0">
-                                            <span className="text-[13px] sm:text-[14px] font-black text-accent-lux font-sans">
-                                              ₹{item.price}
-                                            </span>
-                                            {item.originalPrice && item.originalPrice > item.price && (
-                                              <span className="text-[10px] sm:text-[11px] font-normal text-slate-400 line-through ml-1.5 font-sans">
-                                                ₹{item.originalPrice}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
+                          const currentActionPackages = apiPackages.map((pkgItem: any) => {
+                            const pkg = pkgItem.package || pkgItem;
+                            const pkgId = String(pkg.id || pkg._id || pkgItem._id || pkgItem.id);
+                            const pkgName = pkg.name || pkg.packageName || pkgItem.name || "Package Service";
+                            return {
+                              id: pkgId,
+                              name: pkgName,
+                              price: pkg.price || pkgItem.price || 0,
+                              originalPrice: pkg.originalPrice || pkgItem.originalPrice,
+                              duration: pkg.duration || pkgItem.duration || 60,
+                              subtitle: pkg.subtitle || pkgItem.subtitle || "",
+                              description: pkg.description || pkg.subtitle || pkgItem.description || `${pkgName} execution by certified Helpmate specialists.`,
+                              image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || pkgItem.imageUrl || pkgItem.thumbnailUrl || (pkgId ? `/api/media/package/${pkgId}/image` : "")),
+                              addons: pkgItem.addons || pkg.addons || [],
+                              raw: pkgItem,
+                            };
+                          });
 
-                                        {/* Subtitle & Real Description */}
-                                        {item.subtitle && (
-                                          <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
-                                            {item.subtitle}
-                                          </p>
-                                        )}
-                                        <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5 line-clamp-2">
-                                          {item.description}
-                                        </p>
+                          const userSavedPackages = (bookmarkedPackages || []).map((bmItem: any) => {
+                            const pkg = bmItem.package || bmItem;
+                            const pkgId = String(pkg.id || pkg._id || bmItem._id || bmItem.id);
+                            const pkgName = pkg.packageName || pkg.name || bmItem.name || "Saved Package";
+                            return {
+                              id: pkgId,
+                              name: pkgName,
+                              price: pkg.price || 0,
+                              originalPrice: pkg.originalPrice,
+                              duration: pkg.duration || 60,
+                              subtitle: pkg.subtitle || "",
+                              description: pkg.description || pkg.subtitle || `${pkgName} execution by certified Helpmate specialists.`,
+                              image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || bmItem.imageUrl || bmItem.thumbnailUrl || (pkgId ? `/api/media/package/${pkgId}/image` : "")),
+                              addons: pkg.addons || bmItem.addons || [],
+                              raw: bmItem,
+                            };
+                          });
 
-                                        {/* Duration & Badges */}
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                          <span className="text-[8px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded font-sans shrink-0">
-                                            ⏱ {item.duration} mins
-                                          </span>
-                                          <span className="text-[8px] font-bold text-success-lux bg-success-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
-                                            ✓ Vetted Pro
-                                          </span>
-                                          <span className="text-[8px] font-bold text-accent-lux bg-accent-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
-                                            ★ 4.95 Rated
-                                          </span>
-                                        </div>
+                          let baseListToFilter = currentActionPackages;
+                          if (showSavedOnly) {
+                            const actionSaved = currentActionPackages.filter((item) => isBookmarked(item.id));
+                            const otherSaved = userSavedPackages.filter((item) => isBookmarked(item.id) && !actionSaved.some((a) => a.id === item.id));
+                            baseListToFilter = [...actionSaved, ...otherSaved];
+                          }
 
-                                        {/* Addons List */}
-                                        {item.addons && item.addons.length > 0 && (
-                                          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-                                            <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider block mb-1">Addons Included:</span>
-                                            <div className="flex flex-wrap gap-1.5">
-                                              {item.addons.map((addon: any) => (
-                                                <span key={addon._id || addon.id} className="text-[9px] font-bold bg-accent-lux/10 text-accent-lux px-2 py-0.5 rounded-full">
-                                                  +{addon.addonName || addon.title || addon.name} (₹{addon.price})
-                                                </span>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
+                          const displayedPackages = baseListToFilter.filter((item) => {
+                            if (!item || !item.name) return false;
+                            if (!searchQuery.trim()) return true;
+                            return item.name.toLowerCase().includes(searchQuery.toLowerCase().trim());
+                          });
 
-                                      {/* Action Buttons */}
-                                      <div className="flex justify-end items-center gap-2 mt-4 pt-2">
+                          if (displayedPackages.length > 0) {
+                            return (
+                              <div className="space-y-3">
+                                {displayedPackages.map((item) => {
+                                  const pkgId = item.id;
+                                  const isAdded = cart.some((c) => c.id === pkgId || c.itemId === pkgId || c.id === `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`);
+                                  const isItemSaved = isBookmarked(pkgId);
+                                  return (
+                                    <div
+                                      key={item.id}
+                                      onClick={() => {
+                                        router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
+                                      }}
+                                      className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl flex flex-col sm:flex-row gap-4 transition-all duration-300 hover:scale-[1.01] hover:shadow-md group text-left shadow-sm relative overflow-hidden cursor-pointer hover:border hover:border-accent-lux/30"
+                                    >
+                                      {/* Left Side: Image */}
+                                      <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative group/image">
+                                        <img src={formatImageUrl(item.image)} alt={item.name} referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
+                                            if (!isLoggedIn && !token) {
+                                              addNotification("Login Required", "Please log in to save or bookmark packages.", "warning");
+                                              return;
+                                            }
+                                            if (!isItemSaved) triggerSmallConfetti(e, ['#801C6E', '#48073d', '#A21CAF']);
+                                            toggleBookmark(pkgId);
+                                            addNotification(
+                                              isItemSaved ? "Bookmark Removed" : "Bookmarked Package",
+                                              isItemSaved ? `${item.name} removed from your saved list.` : `${item.name} saved for fast booking.`,
+                                              "info"
+                                            );
                                           }}
-                                          className="px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[9px] sm:text-[10px] transition-colors cursor-pointer"
-                                        >
-                                          View Details ↗
-                                        </button>
-                                        <button
-                                          disabled={isAdded}
-                                          onClick={(e) => {
-                                            if (isAdded) return;
-                                            e.stopPropagation();
-                                            handleItemAddToCart(e, item);
-                                          }}
-                                          className={`px-3 py-1.5 rounded-full font-bold text-[10px] transition-all border shadow-sm ${isAdded
-                                            ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-80 cursor-not-allowed"
-                                            : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 hover:border-slate-350 cursor-pointer"
+                                          className={`absolute top-2 right-2 p-1.5 backdrop-blur-md cursor-pointer rounded-full transition-colors shadow-sm z-10 ${isItemSaved
+                                            ? "bg-accent-lux/10 text-accent-lux dark:bg-accent-lux/20"
+                                            : "bg-white/90 dark:bg-slate-900/90 text-slate-500 hover:text-accent-lux hover:bg-white dark:hover:bg-slate-800"
                                             }`}
                                         >
-                                          {isAdded ? "Added ✓" : "Add to Cart"}
-                                        </button>
-                                        <button
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleItemBookNow(e, item);
-                                          }}
-                                          className="px-3.5 py-1.5 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-[10px] shadow-md transition-colors cursor-pointer relative overflow-hidden"
-                                        >
-                                          <span className="relative z-10 flex items-center justify-center gap-1 font-sans">
-                                            Book Now <ChevronRight className="w-3 h-3" />
-                                          </span>
+                                          <Bookmark className={`w-3.5 h-3.5 ${isItemSaved ? "fill-accent-lux text-accent-lux" : ""}`} />
                                         </button>
                                       </div>
+
+                                      {/* Right Side: Title, Real Data, Prices, Badges, Addons & Actions */}
+                                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                                        <div>
+                                          <div className="flex justify-between items-start gap-2">
+                                            <h4 className="font-extrabold text-[13px] sm:text-[14px] text-foreground leading-snug group-hover:text-accent-lux transition-colors truncate">
+                                              {item.name}
+                                            </h4>
+                                            <div className="text-right shrink-0">
+                                              <span className="text-[13px] sm:text-[14px] font-black text-accent-lux font-sans">
+                                                ₹{item.price}
+                                              </span>
+                                              {item.originalPrice && item.originalPrice > item.price && (
+                                                <span className="text-[10px] sm:text-[11px] font-normal text-slate-400 line-through ml-1.5 font-sans">
+                                                  ₹{item.originalPrice}
+                                                </span>
+                                              )}
+                                            </div>
+                                          </div>
+
+                                          {/* Subtitle & Real Description */}
+                                          {item.subtitle && (
+                                            <p className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
+                                              {item.subtitle}
+                                            </p>
+                                          )}
+                                          <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed mt-0.5 line-clamp-2">
+                                            {item.description}
+                                          </p>
+
+                                          {/* Duration & Badges */}
+                                          <div className="flex flex-wrap gap-2 mt-2">
+                                            <span className="text-[8px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded font-sans shrink-0">
+                                              ⏱ {item.duration} mins
+                                            </span>
+                                            <span className="text-[8px] font-bold text-success-lux bg-success-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
+                                              ✓ Vetted Pro
+                                            </span>
+                                            <span className="text-[8px] font-bold text-accent-lux bg-accent-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
+                                              ★ 4.95 Rated
+                                            </span>
+                                          </div>
+
+                                          {/* Addons List */}
+                                          {item.addons && item.addons.length > 0 && (
+                                            <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
+                                              <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wider block mb-1">Addons Included:</span>
+                                              <div className="flex flex-wrap gap-1.5">
+                                                {item.addons.map((addon: any) => (
+                                                  <span key={addon._id || addon.id} className="text-[9px] font-bold bg-accent-lux/10 text-accent-lux px-2 py-0.5 rounded-full">
+                                                    +{addon.addonName || addon.title || addon.name} (₹{addon.price})
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Action Buttons */}
+                                        <div className="flex justify-end items-center gap-2 mt-4 pt-2">
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
+                                            }}
+                                            className="px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[9px] sm:text-[10px] transition-colors cursor-pointer"
+                                          >
+                                            View Details ↗
+                                          </button>
+                                          <button
+                                            disabled={isAdded}
+                                            onClick={(e) => {
+                                              if (isAdded) return;
+                                              e.stopPropagation();
+                                              handleItemAddToCart(e, item);
+                                            }}
+                                            className={`px-3 py-1.5 rounded-full font-bold text-[10px] transition-all border shadow-sm ${isAdded
+                                              ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-80 cursor-not-allowed"
+                                              : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-200 hover:border-slate-350 cursor-pointer"
+                                              }`}
+                                          >
+                                            {isAdded ? "Added ✓" : "Add to Cart"}
+                                          </button>
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleItemBookNow(e, item);
+                                            }}
+                                            className="px-3.5 py-1.5 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-[10px] shadow-md transition-colors cursor-pointer relative overflow-hidden"
+                                          >
+                                            <span className="relative z-10 flex items-center justify-center gap-1 font-sans">
+                                              Book Now <ChevronRight className="w-3 h-3" />
+                                            </span>
+                                          </button>
+                                        </div>
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })}
-                          </div>
-                        ) : (
-                          <div className="p-6 rounded-2xl bg-slate-100 dark:bg-slate-900/50 text-slate-400 text-xs text-center font-medium">
-                            No packages available for this service action.
-                          </div>
-                        )}
+                                  );
+                                })}
+                              </div>
+                            );
+                          }
+
+                          if (showSavedOnly) {
+                            return (
+                              <div className="p-8 rounded-2xl bg-slate-50 dark:bg-slate-900/50 text-center space-y-3 border border-dashed border-slate-200 dark:border-slate-800">
+                                <div className="w-12 h-12 rounded-full bg-accent-lux/10 flex items-center justify-center mx-auto text-accent-lux">
+                                  <Bookmark className="w-6 h-6" />
+                                </div>
+                                <div>
+                                  <h5 className="font-extrabold text-sm text-foreground">No Saved Packages</h5>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                                    {searchQuery
+                                      ? `No saved packages match "${searchQuery}".`
+                                      : "You haven't saved any packages yet. Click the bookmark icon on any package to save it here for fast booking."}
+                                  </p>
+                                </div>
+                                {searchQuery ? (
+                                  <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="text-xs font-bold text-accent-lux hover:underline cursor-pointer"
+                                  >
+                                    Clear Search
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => setShowSavedOnly(false)}
+                                    className="text-xs font-bold text-accent-lux hover:underline cursor-pointer"
+                                  >
+                                    View All Available Packages
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          }
+
+                          if (searchQuery) {
+                            return (
+                              <div className="p-6 rounded-2xl bg-slate-100 dark:bg-slate-900/50 text-slate-400 text-xs text-center font-medium">
+                                No packages match your search query "{searchQuery}".
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="p-6 rounded-2xl bg-slate-100 dark:bg-slate-900/50 text-slate-400 text-xs text-center font-medium">
+                              No packages available for this service action.
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>

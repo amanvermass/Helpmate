@@ -1315,16 +1315,16 @@ function BookingContent() {
                   </div>
 
                   {/* Promo Coupon Section inside Summary Card */}
-                  <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
+                  {/* <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
-                      {/* <button
+                      <button
                         type="button"
                         onClick={() => setShowCouponsSlider(true)}
                         className="text-[11px] font-extrabold text-[#782860] dark:text-purple-300 hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Tag className="w-3 h-3" /> View Offers (5)
-                      </button> */}
+                      </button>
                     </div>
 
                     <div className="flex gap-2">
@@ -1349,7 +1349,7 @@ function BookingContent() {
                         <button onClick={removeCoupon} className="hover:underline text-[10px] text-rose-500 cursor-pointer">Remove</button>
                       </div>
                     )}
-                  </div>
+                  </div> */}
 
                   <div className="space-y-3 text-[10px] text-slate-400 dark:text-slate-455 border-t border-slate-100 dark:border-slate-800 pt-4">
                     <div className="flex items-center gap-2">

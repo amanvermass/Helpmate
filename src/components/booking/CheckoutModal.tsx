@@ -879,7 +879,7 @@ export default function CheckoutModal({
           {step === 3 && (
             <div className="space-y-6">
               {/* Coupon Code Section */}
-              <div className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800 text-left">
+              {/* <div className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-slate-800 text-left">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Discount Coupon</span>
                   <button
@@ -913,7 +913,7 @@ export default function CheckoutModal({
                     <button type="button" onClick={removeCoupon} className="hover:underline text-[10px] text-rose-500 cursor-pointer">Remove</button>
                   </div>
                 )}
-              </div>
+              </div> */}
 
               {/* Payment Methods */}
               <div className="text-left">

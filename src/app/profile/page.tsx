@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import {
   User,
   Calendar,
@@ -39,12 +40,13 @@ import {
   ShoppingBag,
   Video,
   Film,
-  UploadCloud
+  UploadCloud,
+  ArrowLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
-import { useStore, Booking, Address } from "@/store/useStore";
+import { useStore, Booking, Address, CartItem } from "@/store/useStore";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
 import { formatImageUrl } from "@/utils/image";
 
@@ -117,28 +119,30 @@ function ProfilePageContent() {
 
   // Review state
   const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(null);
+  const [reviewingPackageId, setReviewingPackageId] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewVideoFile, setReviewVideoFile] = useState<File | null>(null);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-  // Inline card review state for booking history
+  // Inline card review state for booking history packages
   const [inlineRatings, setInlineRatings] = useState<Record<string, number>>({});
   const [inlineComments, setInlineComments] = useState<Record<string, string>>({});
   const [inlineVideoFiles, setInlineVideoFiles] = useState<Record<string, File | null>>({});
   const [submittingReviewBookingId, setSubmittingReviewBookingId] = useState<string | null>(null);
 
-  const handleInlineReviewSubmit = async (booking: Booking) => {
-    const rating = inlineRatings[booking.id] || 5;
-    const comment = (inlineComments[booking.id] || "").trim();
-    const videoFile = inlineVideoFiles[booking.id] || null;
+  const handleInlineReviewSubmit = async (booking: Booking, pkgItem?: CartItem) => {
+    const pkgId = pkgItem?.id || (booking.items && booking.items[0]?.id) || undefined;
+    const itemKey = pkgItem ? `${booking.id}_${pkgItem.id}` : booking.id;
 
-    setSubmittingReviewBookingId(booking.id);
+    const rating = inlineRatings[itemKey] || 5;
+    const comment = (inlineComments[itemKey] || "").trim();
+    const videoFile = inlineVideoFiles[itemKey] || null;
+
+    setSubmittingReviewBookingId(itemKey);
 
     try {
-      const pkgId = (booking.items && booking.items[0]?.id) || undefined;
-
       const res = await createReviewAsync({
         bookingId: booking.id,
         packageId: pkgId,
@@ -149,30 +153,31 @@ function ProfilePageContent() {
 
       if (res.success) {
         const newReviewId = res.data?._id || res.data?.id;
-        addNotification(
-          "Review Posted Successfully!",
-          res.message || "Thank you for rating your service experience.",
-          "success"
-        );
-        attachReviewToBooking(booking.id, {
+        const newReviewObj = {
           reviewId: newReviewId,
           rating,
           comment,
           dateCreated: "Just now",
-        });
+        };
+        addNotification(
+          "Review Posted Successfully!",
+          res.message || `Thank you for rating ${pkgItem?.name || "your service"}.`,
+          "success"
+        );
+        attachReviewToBooking(booking.id, newReviewObj, pkgId);
         setInlineRatings((prev) => {
           const copy = { ...prev };
-          delete copy[booking.id];
+          delete copy[itemKey];
           return copy;
         });
         setInlineComments((prev) => {
           const copy = { ...prev };
-          delete copy[booking.id];
+          delete copy[itemKey];
           return copy;
         });
         setInlineVideoFiles((prev) => {
           const copy = { ...prev };
-          delete copy[booking.id];
+          delete copy[itemKey];
           return copy;
         });
       } else {
@@ -279,7 +284,7 @@ function ProfilePageContent() {
     const targetBookingId = reviewingBooking.id;
 
     try {
-      const pkgId = (reviewingBooking.items && reviewingBooking.items[0]?.id) || undefined;
+      const pkgId = reviewingPackageId || (reviewingBooking.items && reviewingBooking.items[0]?.id) || undefined;
 
       if (editingReviewId) {
         const res = await updateReviewAsync(editingReviewId, {
@@ -293,8 +298,9 @@ function ProfilePageContent() {
             rating: reviewRating,
             comment: reviewComment.trim(),
             dateCreated: "Edited just now",
-          });
+          }, pkgId);
           setReviewingBooking(null);
+          setReviewingPackageId(null);
           setReviewComment("");
           setReviewRating(5);
           setEditingReviewId(null);
@@ -320,8 +326,9 @@ function ProfilePageContent() {
             rating: reviewRating,
             comment: reviewComment.trim(),
             dateCreated: "Just now",
-          });
+          }, pkgId);
           setReviewingBooking(null);
+          setReviewingPackageId(null);
           setReviewComment("");
           setReviewRating(5);
           setEditingReviewId(null);
@@ -336,22 +343,21 @@ function ProfilePageContent() {
     }
   };
 
-  const handleDeleteReview = async (reviewId: string) => {
+  const handleDeleteReview = async (reviewId: string, bookingId?: string, packageId?: string) => {
     if (!confirm("Are you sure you want to delete this review?")) return;
     try {
       const res = await deleteReviewAsync(reviewId);
       if (res.success) {
         addNotification("Review Deleted", res.message || "Review deleted successfully.", "info");
-        if (reviewingBooking) {
-          attachReviewToBooking(reviewingBooking.id, null);
+        const targetBId = bookingId || reviewingBooking?.id;
+        const targetPId = packageId || reviewingPackageId || undefined;
+        if (targetBId) {
+          attachReviewToBooking(targetBId, null, targetPId);
         } else {
-          // Find booking with matching reviewId
-          const matched = bookings.find((b) => b.review?.reviewId === reviewId);
-          if (matched) {
-            attachReviewToBooking(matched.id, null);
-          }
+          fetchBookings();
         }
         setReviewingBooking(null);
+        setReviewingPackageId(null);
         setReviewComment("");
         setReviewRating(5);
         setEditingReviewId(null);
@@ -366,12 +372,44 @@ function ProfilePageContent() {
 
 
 
+  const handleBack = () => {
+    if (
+      typeof window !== "undefined" &&
+      window.history.length > 1 &&
+      document.referrer &&
+      document.referrer.includes(window.location.host) &&
+      !document.referrer.includes("/profile")
+    ) {
+      router.back();
+    } else {
+      router.push("/");
+    }
+  };
+
   return (
     <>
       <Header />
 
       <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background pb-16">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="max-w-7xl mx-auto px-6 space-y-6">
+          {/* Top Bar Navigation: Back Button & Breadcrumbs */}
+          <div className="flex items-center justify-between pt-2">
+            <button
+              type="button"
+              onClick={handleBack}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-extrabold shadow-sm transition-all cursor-pointer hover:border-accent-lux/40 active:scale-95"
+            >
+              <ArrowLeft className="w-4 h-4 text-accent-lux" />
+              <span>Back</span>
+            </button>
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold">
+              <Link href="/" className="hover:text-accent-lux transition-colors">Home</Link>
+              <ChevronRight className="w-3.5 h-3.5" />
+              <span className="text-foreground font-bold">My Profile</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 
           {/* Profile Navigation Sidebar */}
           <nav className="lg:col-span-3 glass-panel p-6 space-y-2 shrink-0">
@@ -401,7 +439,7 @@ function ProfilePageContent() {
                   key={tab.id}
                   onClick={() => {
                     setActiveTab(tab.id);
-                    router.push(`/profile?tab=${tab.id}`);
+                    router.replace(`/profile?tab=${tab.id}`, { scroll: false });
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold transition-all text-left cursor-pointer ${activeTab === tab.id
                     ? "bg-accent-lux text-white shadow-lg shadow-accent-lux/10"
@@ -411,6 +449,17 @@ function ProfilePageContent() {
                   {tab.icon} {tab.label}
                 </button>
               ))}
+
+              <div className="pt-3 mt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleBack}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-accent-lux transition-all text-left cursor-pointer border border-dashed border-slate-200 dark:border-slate-800"
+                >
+                  <ArrowLeft className="w-4 h-4 text-accent-lux" />
+                  <span>Back to Home</span>
+                </button>
+              </div>
             </div>
           </nav>
 
@@ -587,10 +636,12 @@ function ProfilePageContent() {
                               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">{b.dateCreated}</span>
                               <h4 className="text-xs sm:text-sm font-bold text-foreground mt-0.5 flex items-center gap-2">
                                 Booking #{b.bookingNumber || b.id}
-                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${b.status === "Completed" && "bg-success-lux/10 text-success-lux"
-                                  } ${b.status === "Cancelled" && "bg-red-500/10 text-red-500"
-                                  } ${b.status !== "Completed" && b.status !== "Cancelled" && "bg-accent-lux/10 text-accent-lux"
-                                  }`}>
+                                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold ${
+                                  b.status === "Completed" ? "bg-success-lux/10 text-success-lux" :
+                                  b.status === "Cancelled" ? "bg-red-500/10 text-red-500" :
+                                  b.status === "Pending" ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" :
+                                  "bg-accent-lux/10 text-accent-lux"
+                                }`}>
                                   {b.status}
                                 </span>
                               </h4>
@@ -601,191 +652,210 @@ function ProfilePageContent() {
                             </div>
                           </div>
 
-                          {/* Package Name Section */}
-                          <div className="space-y-1 text-left pt-1">
+                          {/* Package Name & Review Section */}
+                          <div className="space-y-3 text-left pt-1">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] uppercase font-extrabold text-accent-lux tracking-wider">
-                                Package Name
+                                {b.items && b.items.length > 1 ? `Services (${b.items.length})` : "Service Package"}
                               </span>
                               <span className="text-[10px] text-slate-400 font-medium">
                                 {b.date} • {b.timeSlot}
                               </span>
                             </div>
-                            <h3 className="text-xs sm:text-sm font-extrabold text-foreground flex items-center gap-2">
-                              <ShoppingBag className="w-4 h-4 text-accent-lux shrink-0" />
-                              {b.items && b.items.length > 0 ? b.items[0].name : "Service Package"}
-                            </h3>
-                          </div>
+                            <div className="space-y-4">
+                              {b.items && b.items.length > 0 ? (
+                                b.items.map((sItem, sIdx) => {
+                                  const itemKey = `${b.id}_${sItem.id || sIdx}`;
+                                  const pkgReview = sItem.review || (b.items.length === 1 ? b.review : undefined);
+                                  const currentRating = inlineRatings[itemKey] || 5;
 
-                          {/* Completed Rating & Review Display (DIRECTLY Below Package Name) */}
-                          {b.status === "Completed" && (
-                            <div className="w-full pt-2">
-                              {b.review ? (
-                                <div className="bg-slate-50 dark:bg-slate-900/90 p-4 rounded-2xl border border-amber-500/20 dark:border-amber-500/30 space-y-2.5 text-left shadow-sm relative overflow-hidden">
-                                  <div className="flex items-center justify-between flex-wrap gap-2">
-                                    <div className="flex items-center gap-2">
-                                      <div className="flex items-center gap-1 text-amber-500">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                          <Star
-                                            key={star}
-                                            className={`w-4 h-4 ${star <= b.review!.rating ? "fill-amber-500 text-amber-500" : "text-slate-300 dark:text-slate-700"}`}
-                                          />
-                                        ))}
+                                  return (
+                                    <div key={sIdx} className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800/60 first:border-0 first:pt-0">
+                                      <div className="flex items-center justify-between gap-2">
+                                        <h3 className="text-xs sm:text-sm font-extrabold text-foreground flex items-center gap-2 min-w-0">
+                                          <ShoppingBag className="w-4 h-4 text-accent-lux shrink-0" />
+                                          <span className="truncate">{sItem.name} {sItem.quantity > 1 ? `(x${sItem.quantity})` : ""}</span>
+                                        </h3>
+                                        <span className="text-xs font-semibold text-slate-400 shrink-0">₹{sItem.price * (sItem.quantity || 1)}</span>
                                       </div>
-                                      <span className="text-xs font-black text-foreground font-sans px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                        {b.review.rating}.0 / 5.0
-                                      </span>
-                                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/20 px-2.5 py-0.5 rounded-full flex items-center gap-1 border border-emerald-500/20">
-                                        <CheckCircle className="w-3 h-3 text-emerald-500" /> Posted Review
-                                      </span>
-                                    </div>
 
-                                    <div className="flex items-center gap-2">
-                                      <button
-                                        onClick={() => {
-                                          setReviewingBooking(b);
-                                          setReviewRating(b.review!.rating);
-                                          setReviewComment(b.review!.comment || "");
-                                          setEditingReviewId(b.review!.reviewId || null);
-                                        }}
-                                        className="px-3 py-1 rounded-full bg-accent-lux/10 hover:bg-accent-lux/20 text-accent-lux text-[10px] sm:text-[11px] font-extrabold transition-colors flex items-center gap-1.5 cursor-pointer border border-accent-lux/20"
-                                      >
-                                        <Edit3 className="w-3.5 h-3.5" /> Edit Review
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteReview(b.review!.reviewId || b.id)}
-                                        className="px-3 py-1 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] sm:text-[11px] font-extrabold transition-colors flex items-center gap-1.5 cursor-pointer border border-red-500/20"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                                      </button>
-                                    </div>
-                                  </div>
+                                      {/* Package Rating & Review Display (Visible if completed or reviewed) */}
+                                      {(pkgReview || b.status === "Completed") && (
+                                        <div className="w-full pt-1">
+                                          {pkgReview ? (
+                                            <div className="bg-slate-50 dark:bg-slate-900/90 p-3.5 rounded-2xl border border-amber-500/20 dark:border-amber-500/30 space-y-2 text-left shadow-sm relative overflow-hidden">
+                                              <div className="flex items-center justify-between flex-wrap gap-2">
+                                                <div className="flex items-center gap-2">
+                                                  <div className="flex items-center gap-1 text-amber-500">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                      <Star
+                                                        key={star}
+                                                        className={`w-3.5 h-3.5 ${star <= pkgReview.rating ? "fill-amber-500 text-amber-500" : "text-slate-300 dark:text-slate-700"}`}
+                                                      />
+                                                    ))}
+                                                  </div>
+                                                  <span className="text-[11px] font-black text-foreground font-sans px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                                                    {pkgReview.rating}.0 / 5.0
+                                                  </span>
+                                                  <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 dark:bg-emerald-500/20 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-500/20">
+                                                    <CheckCircle className="w-2.5 h-2.5 text-emerald-500" /> Rated Package
+                                                  </span>
+                                                </div>
 
-                                  {b.review.comment ? (
-                                    <div className="p-3 bg-white/80 dark:bg-slate-950/80 rounded-xl border border-slate-200/60 dark:border-slate-800">
-                                      <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed italic">
-                                        "{b.review.comment}"
-                                      </p>
+                                                <div className="flex items-center gap-1.5">
+                                                  <button
+                                                    onClick={() => {
+                                                      setReviewingBooking(b);
+                                                      setReviewingPackageId(sItem.id);
+                                                      setReviewRating(pkgReview.rating);
+                                                      setReviewComment(pkgReview.comment || "");
+                                                      setEditingReviewId(pkgReview.reviewId || null);
+                                                    }}
+                                                    className="px-2.5 py-1 rounded-full bg-accent-lux/10 hover:bg-accent-lux/20 text-accent-lux text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer border border-accent-lux/20"
+                                                  >
+                                                    <Edit3 className="w-3 h-3" /> Edit Review
+                                                  </button>
+                                                  <button
+                                                    onClick={() => handleDeleteReview(pkgReview.reviewId || b.id, b.id, sItem.id)}
+                                                    className="px-2.5 py-1 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-500 text-[10px] font-extrabold transition-colors flex items-center gap-1 cursor-pointer border border-red-500/20"
+                                                  >
+                                                    <Trash2 className="w-3 h-3" /> Delete
+                                                  </button>
+                                                </div>
+                                              </div>
+
+                                              {pkgReview.comment ? (
+                                                <div className="p-2.5 bg-white/80 dark:bg-slate-950/80 rounded-xl border border-slate-200/60 dark:border-slate-800">
+                                                  <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed italic">
+                                                    "{pkgReview.comment}"
+                                                  </p>
+                                                </div>
+                                              ) : (
+                                                <p className="text-[10px] text-slate-400 italic">No comment provided with rating.</p>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <div className="bg-slate-50/90 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2.5 text-left">
+                                              <div className="flex items-center justify-between">
+                                                <h5 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
+                                                  <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Rate &amp; Review Package
+                                                </h5>
+                                                <span className="text-[10px] text-slate-400 font-semibold">{sItem.name}</span>
+                                              </div>
+
+                                              {/* Interactive 5-Star Rating Selector */}
+                                              <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Rating:</span>
+                                                <div className="flex items-center gap-0.5">
+                                                  {[1, 2, 3, 4, 5].map((star) => (
+                                                    <button
+                                                      key={star}
+                                                      type="button"
+                                                      onClick={() => setInlineRatings({ ...inlineRatings, [itemKey]: star })}
+                                                      className="p-0.5 hover:scale-110 transition-transform cursor-pointer"
+                                                      title={`${star} Star${star > 1 ? 's' : ''}`}
+                                                    >
+                                                      <Star
+                                                        className={`w-4.5 h-4.5 ${star <= currentRating ? "fill-amber-500 text-amber-500" : "text-slate-300 dark:text-slate-700"}`}
+                                                      />
+                                                    </button>
+                                                  ))}
+                                                </div>
+                                                <span className="text-xs font-black text-amber-600 dark:text-amber-400 ml-1 font-sans">
+                                                  {currentRating}.0 Stars
+                                                </span>
+                                              </div>
+
+                                              {/* Comment Textarea Input */}
+                                              <div>
+                                                <textarea
+                                                  placeholder={`Write your review for ${sItem.name}...`}
+                                                  value={inlineComments[itemKey] || ""}
+                                                  onChange={(e) => setInlineComments({ ...inlineComments, [itemKey]: e.target.value })}
+                                                  rows={2}
+                                                  className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-accent-lux placeholder:text-slate-400 transition-all"
+                                                />
+                                              </div>
+
+                                              {/* Video Upload input & Post Review button */}
+                                              <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+                                                {!inlineVideoFiles[itemKey] ? (
+                                                  <label className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold cursor-pointer transition-colors border border-slate-200/60 dark:border-slate-700">
+                                                    <Video className="w-3 h-3 text-accent-lux" /> Add Video Clip (Optional)
+                                                    <input
+                                                      type="file"
+                                                      accept="video/*"
+                                                      className="hidden"
+                                                      onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                          if (file.size > 100 * 1024 * 1024) {
+                                                            alert("Video file size must be less than 100MB");
+                                                            return;
+                                                          }
+                                                          setInlineVideoFiles((prev) => ({ ...prev, [itemKey]: file }));
+                                                        }
+                                                      }}
+                                                    />
+                                                  </label>
+                                                ) : (
+                                                  <div className="flex items-center gap-2 bg-slate-900 text-white px-2.5 py-1 rounded-xl text-[10px] border border-slate-800">
+                                                    <Video className="w-3 h-3 text-accent-lux shrink-0" />
+                                                    <span className="truncate max-w-[110px] font-bold text-slate-200">{inlineVideoFiles[itemKey]!.name}</span>
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => setInlineVideoFiles((prev) => {
+                                                        const copy = { ...prev };
+                                                        delete copy[itemKey];
+                                                        return copy;
+                                                      })}
+                                                      className="text-slate-400 hover:text-red-400 p-0.5 cursor-pointer ml-0.5"
+                                                      title="Remove video"
+                                                    >
+                                                      <Trash2 className="w-3 h-3" />
+                                                    </button>
+                                                  </div>
+                                                )}
+
+                                                <div className="flex items-center gap-2 ml-auto">
+                                                  <span className="hidden sm:flex text-[9px] text-slate-400 font-semibold items-center gap-1">
+                                                    <ShieldCheck className="w-3 h-3 text-emerald-500" /> Verified
+                                                  </span>
+                                                  <button
+                                                    type="button"
+                                                    disabled={submittingReviewBookingId === itemKey}
+                                                    onClick={() => handleInlineReviewSubmit(b, sItem)}
+                                                    className="px-3.5 py-1.5 bg-accent-lux hover:bg-accent-lux/95 disabled:opacity-50 text-white text-[11px] font-extrabold rounded-xl shadow-md shadow-accent-lux/20 transition-all cursor-pointer flex items-center gap-1.5"
+                                                  >
+                                                    {submittingReviewBookingId === itemKey ? (
+                                                      <>
+                                                        <RefreshCw className="w-3 h-3 animate-spin" />
+                                                        <span>Posting...</span>
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <Star className="w-3 h-3 fill-white text-white" />
+                                                        <span>Post Review</span>
+                                                      </>
+                                                    )}
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
-                                  ) : (
-                                    <p className="text-[11px] text-slate-400 italic">No text comment provided with rating.</p>
-                                  )}
-                                </div>
+                                  );
+                                })
                               ) : (
-                                <div className="bg-slate-50/90 dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3 text-left">
-                                  <div className="flex items-center justify-between">
-                                    <h5 className="text-xs font-extrabold text-foreground flex items-center gap-1.5">
-                                      <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> Rate &amp; Review Service
-                                    </h5>
-                                    <span className="text-[10px] text-slate-400 font-semibold">Share your feedback</span>
-                                  </div>
-
-                                  {/* Interactive 5-Star Rating Selector */}
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Rating:</span>
-                                    <div className="flex items-center gap-1">
-                                      {[1, 2, 3, 4, 5].map((star) => {
-                                        const currentRating = inlineRatings[b.id] || 5;
-                                        return (
-                                          <button
-                                            key={star}
-                                            type="button"
-                                            onClick={() => setInlineRatings({ ...inlineRatings, [b.id]: star })}
-                                            className="p-1 hover:scale-110 transition-transform cursor-pointer"
-                                            title={`${star} Star${star > 1 ? 's' : ''}`}
-                                          >
-                                            <Star
-                                              className={`w-5 h-5 ${star <= currentRating ? "fill-amber-500 text-amber-500" : "text-slate-300 dark:text-slate-700"}`}
-                                            />
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
-                                    <span className="text-xs font-black text-amber-600 dark:text-amber-400 ml-1 font-sans">
-                                      {(inlineRatings[b.id] || 5)}.0 Stars
-                                    </span>
-                                  </div>
-
-                                  {/* Comment Textarea Input */}
-                                  <div>
-                                    <textarea
-                                      placeholder="Write your review comment here (e.g. Very good service. The technician was professional)..."
-                                      value={inlineComments[b.id] || ""}
-                                      onChange={(e) => setInlineComments({ ...inlineComments, [b.id]: e.target.value })}
-                                      rows={2}
-                                      className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-xs font-medium text-foreground focus:outline-none focus:border-accent-lux placeholder:text-slate-400 transition-all"
-                                    />
-                                  </div>
-
-                                  {/* Video Upload input for Inline Review */}
-                                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
-                                    {!inlineVideoFiles[b.id] ? (
-                                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-[11px] font-bold cursor-pointer transition-colors border border-slate-200/60 dark:border-slate-700">
-                                        <Video className="w-3.5 h-3.5 text-accent-lux" /> Add Video Clip (Optional)
-                                        <input
-                                          type="file"
-                                          accept="video/*"
-                                          className="hidden"
-                                          onChange={(e) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) {
-                                              if (file.size > 100 * 1024 * 1024) {
-                                                alert("Video file size must be less than 100MB");
-                                                return;
-                                              }
-                                              setInlineVideoFiles((prev) => ({ ...prev, [b.id]: file }));
-                                            }
-                                          }}
-                                        />
-                                      </label>
-                                    ) : (
-                                      <div className="flex items-center gap-2 bg-slate-900 text-white px-3 py-1 rounded-xl text-[11px] border border-slate-800">
-                                        <Video className="w-3.5 h-3.5 text-accent-lux shrink-0" />
-                                        <span className="truncate max-w-[130px] font-bold text-slate-200">{inlineVideoFiles[b.id]!.name}</span>
-                                        <span className="text-[9px] text-slate-400 font-mono">({(inlineVideoFiles[b.id]!.size / (1024 * 1024)).toFixed(1)}MB)</span>
-                                        <button
-                                          type="button"
-                                          onClick={() => setInlineVideoFiles((prev) => {
-                                            const copy = { ...prev };
-                                            delete copy[b.id];
-                                            return copy;
-                                          })}
-                                          className="text-slate-400 hover:text-red-400 p-0.5 cursor-pointer ml-1"
-                                          title="Remove video"
-                                        >
-                                          <Trash2 className="w-3 h-3" />
-                                        </button>
-                                      </div>
-                                    )}
-
-                                    <div className="flex items-center gap-2">
-                                      <span className="hidden sm:flex text-[10px] text-slate-400 font-semibold items-center gap-1">
-                                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" /> Verified
-                                      </span>
-                                      <button
-                                        type="button"
-                                        disabled={submittingReviewBookingId === b.id}
-                                        onClick={() => handleInlineReviewSubmit(b)}
-                                        className="px-4 py-2 bg-accent-lux hover:bg-accent-lux/95 disabled:opacity-50 text-white text-xs font-extrabold rounded-xl shadow-md shadow-accent-lux/20 transition-all cursor-pointer flex items-center gap-2"
-                                      >
-                                        {submittingReviewBookingId === b.id ? (
-                                          <>
-                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                            <span>Posting...</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <Star className="w-3.5 h-3.5 fill-white text-white" />
-                                            <span>Post Review</span>
-                                          </>
-                                        )}
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
+                                <h3 className="text-xs sm:text-sm font-extrabold text-foreground flex items-center gap-2">
+                                  <ShoppingBag className="w-4 h-4 text-accent-lux shrink-0" />
+                                  Service Package
+                                </h3>
                               )}
                             </div>
-                          )}
+                          </div>
 
                           {/* Reschedule / Cancel Actions */}
                           {/* {b.status !== "Completed" && b.status !== "Cancelled" && (
@@ -1686,9 +1756,9 @@ function ProfilePageContent() {
             )}
 
           </div>
-
         </div>
-      </main>
+      </div>
+    </main>
 
       {/* Review Modal popup */}
       <AnimatePresence>
