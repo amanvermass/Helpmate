@@ -36,6 +36,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useStore, Address, CartItem, getItemAddonTotal } from "@/store/useStore";
 import confetti from "canvas-confetti";
 import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/booking/CustomDateTimePickerModal";
+import { isPastDate, isPastTime } from "@/utils/dateTime";
 import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
 import MembershipBanner from "@/components/membership/MembershipBanner";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
@@ -170,6 +171,17 @@ export default function CheckoutModal({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Auto-reset selection if date or time is in the past
+  useEffect(() => {
+    if (selectedDate && isPastDate(selectedDate)) {
+      const todayISO = new Date().toISOString().split("T")[0];
+      setSelectedDate(todayISO);
+    }
+    if (selectedTimeSlot && isPastTime(selectedTimeSlot, selectedDate)) {
+      setSelectedTimeSlot(null);
+    }
+  }, [selectedDate, selectedTimeSlot, setSelectedDate, setSelectedTimeSlot]);
 
   const format24To12 = (time24: string): string => {
     if (!time24) return "";
@@ -504,18 +516,24 @@ export default function CheckoutModal({
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mt-4">
                     {dates.slice(0, 5).map((d) => {
+                      const isPast = isPastDate(d.iso);
                       const isSelected = selectedDate === d.iso && !showCustomDate && !isCustomDateActive;
                       return (
                         <button
                           key={d.iso}
                           type="button"
+                          disabled={isPast}
                           onClick={() => {
+                            if (isPast) return;
                             setSelectedDate(d.iso);
                             setShowCustomDate(false);
                           }}
-                          className={`relative p-3 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${isSelected
-                              ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
-                              : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
+                          className={`relative p-3 rounded-2xl border flex flex-col items-center justify-center text-center transition-all duration-300 ${
+                            isPast
+                              ? "opacity-40 line-through bg-slate-100 dark:bg-slate-900/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed pointer-events-none"
+                              : isSelected
+                              ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105 cursor-pointer"
+                              : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 cursor-pointer"
                             }`}
                         >
                           {isSelected && (
@@ -592,18 +610,24 @@ export default function CheckoutModal({
                   </h4>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mt-4">
                     {timeSlots.map((slot) => {
+                      const isPast = isPastTime(slot, selectedDate);
                       const isSelected = selectedTimeSlot === slot && !isCustomTimeActive && !showCustomTime;
                       return (
                         <button
                           key={slot}
                           type="button"
+                          disabled={isPast}
                           onClick={() => {
+                            if (isPast) return;
                             setSelectedTimeSlot(slot);
                             setShowCustomTime(false);
                           }}
-                          className={`relative p-3 rounded-2xl border text-center cursor-pointer text-xs font-black transition-all duration-300 ${isSelected
-                              ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
-                              : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300"
+                          className={`relative p-3 rounded-2xl border text-center text-xs font-black transition-all duration-300 ${
+                            isPast
+                              ? "opacity-40 line-through bg-slate-100 dark:bg-slate-900/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed pointer-events-none"
+                              : isSelected
+                              ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105 cursor-pointer"
+                              : "bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 cursor-pointer"
                             }`}
                         >
                           {isSelected && (
@@ -661,6 +685,7 @@ export default function CheckoutModal({
                           >
                             <InlineCustomTimePicker
                               selectedTime={selectedTimeSlot}
+                              selectedDate={selectedDate}
                               onSelectTime={(time12) => {
                                 setSelectedTimeSlot(time12);
                                 setShowCustomTime(false);

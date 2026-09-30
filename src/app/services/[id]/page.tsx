@@ -418,13 +418,19 @@ function ServiceDetailPageContent({ params }: PageProps) {
   const [loadingServiceActions, setLoadingServiceActions] = useState<boolean>(false);
   const [loadingPackages, setLoadingPackages] = useState<boolean>(false);
 
-  const activePackageId = itemParam || (fetchedItemPackage as any)?._id || fetchedItemPackage?.id || serviceId;
+  const isPackageId = (id: string | null | undefined): boolean => {
+    if (!id) return false;
+    return /^[0-9a-fA-F]{24}$/.test(id);
+  };
+
+  const activePackageId = itemParam || (fetchedItemPackage as any)?._id || fetchedItemPackage?.id || (isPackageId(serviceId) ? serviceId : null);
 
   useEffect(() => {
     let isCancelled = false;
     async function loadPackageReviews() {
-      if (!activePackageId) {
+      if (!activePackageId || !isPackageId(activePackageId)) {
         setPackageReviews([]);
+        setLoadingPackageReviews(false);
         return;
       }
       setLoadingPackageReviews(true);
@@ -461,12 +467,12 @@ function ServiceDetailPageContent({ params }: PageProps) {
     if (actParam) setSelectedAct(actParam);
   }, [subParam, actParam]);
 
-  // Fetch individual package detail when itemParam query is present
+  // Fetch individual package detail when itemParam query is present or serviceId is a valid package ObjectId
   useEffect(() => {
     let isCancelled = false;
     async function loadItemPackage() {
-      const targetId = itemParam || serviceId;
-      if (!targetId) {
+      const targetId = itemParam || (isPackageId(serviceId) ? serviceId : null);
+      if (!targetId || !isPackageId(targetId)) {
         setFetchedItemPackage(null);
         setLoadingItemPackage(false);
         return;
@@ -1793,8 +1799,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
                           const currentActionPackages = apiPackages.map((pkgItem: any) => {
                             const pkg = pkgItem.package || pkgItem;
-                            const pkgId = String(pkg.id || pkg._id || pkgItem._id || pkgItem.id);
+                            const pkgId = String(pkg.id || pkg._id || pkgItem._id || pkgItem.id || "");
                             const pkgName = pkg.name || pkg.packageName || pkgItem.name || "Package Service";
+                            const rawImg = pkg.imageUrl || pkg.thumbnailUrl || (pkg as any).image || pkgItem.imageUrl || pkgItem.thumbnailUrl || (pkgItem as any).image;
+                            const displayImg = rawImg ? formatImageUrl(rawImg) : (pkgId ? `/api/media/package/${pkgId}/image` : "");
                             return {
                               id: pkgId,
                               name: pkgName,
@@ -1803,25 +1811,30 @@ function ServiceDetailPageContent({ params }: PageProps) {
                               duration: pkg.duration || pkgItem.duration || 60,
                               subtitle: pkg.subtitle || pkgItem.subtitle || "",
                               description: pkg.description || pkg.subtitle || pkgItem.description || `${pkgName} execution by certified Helpmate specialists.`,
-                              image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || pkgItem.imageUrl || pkgItem.thumbnailUrl || (pkgId ? `/api/media/package/${pkgId}/image` : "")),
+                              image: displayImg,
                               addons: pkgItem.addons || pkg.addons || [],
                               raw: pkgItem,
                             };
                           });
 
                           const userSavedPackages = (bookmarkedPackages || []).map((bmItem: any) => {
-                            const pkg = bmItem.package || bmItem;
-                            const pkgId = String(pkg.id || pkg._id || bmItem._id || bmItem.id);
-                            const pkgName = pkg.packageName || pkg.name || bmItem.name || "Saved Package";
+                            const isPkgObj = typeof bmItem.package === "object" && bmItem.package !== null;
+                            const pkg = isPkgObj ? bmItem.package : bmItem;
+                            const pkgId = String(
+                              isPkgObj ? pkg._id || pkg.id : (typeof bmItem.package === "string" ? bmItem.package : bmItem.packageId || bmItem._id || bmItem.id || "")
+                            );
+                            const pkgName = pkg.packageName || pkg.name || bmItem.packageName || bmItem.name || "Saved Package";
+                            const rawImg = pkg.imageUrl || pkg.thumbnailUrl || (pkg as any).image || (pkg as any).icon || bmItem.imageUrl || bmItem.thumbnailUrl || (bmItem as any).image;
+                            const displayImg = rawImg ? formatImageUrl(rawImg) : (pkgId ? `/api/media/package/${pkgId}/image` : "");
                             return {
                               id: pkgId,
                               name: pkgName,
-                              price: pkg.price || 0,
-                              originalPrice: pkg.originalPrice,
-                              duration: pkg.duration || 60,
-                              subtitle: pkg.subtitle || "",
-                              description: pkg.description || pkg.subtitle || `${pkgName} execution by certified Helpmate specialists.`,
-                              image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || bmItem.imageUrl || bmItem.thumbnailUrl || (pkgId ? `/api/media/package/${pkgId}/image` : "")),
+                              price: pkg.price || bmItem.price || 0,
+                              originalPrice: pkg.originalPrice || bmItem.originalPrice,
+                              duration: pkg.duration || bmItem.duration || 60,
+                              subtitle: pkg.subtitle || bmItem.subtitle || "",
+                              description: pkg.description || pkg.subtitle || bmItem.description || `${pkgName} execution by certified Helpmate specialists.`,
+                              image: displayImg,
                               addons: pkg.addons || bmItem.addons || [],
                               raw: bmItem,
                             };
@@ -1847,6 +1860,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                   const pkgId = item.id;
                                   const isAdded = cart.some((c) => c.id === pkgId || c.itemId === pkgId || c.id === `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`);
                                   const isItemSaved = isBookmarked(pkgId);
+                                  const finalImgSrc = item.image || (pkgId ? `/api/media/package/${pkgId}/image` : "");
                                   return (
                                     <div
                                       key={item.id}
@@ -1857,7 +1871,18 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     >
                                       {/* Left Side: Image */}
                                       <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative group/image">
-                                        <img src={formatImageUrl(item.image)} alt={item.name} referrerPolicy="no-referrer" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                        <img
+                                          src={finalImgSrc}
+                                          alt={item.name}
+                                          referrerPolicy="no-referrer"
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                          onError={(e) => {
+                                            const target = e.currentTarget;
+                                            if (pkgId && !target.src.includes(`/api/media/package/${pkgId}/image`)) {
+                                              target.src = `/api/media/package/${pkgId}/image`;
+                                            }
+                                          }}
+                                        />
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();

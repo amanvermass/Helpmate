@@ -32,7 +32,6 @@ export default function Reviews() {
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [isMuted, setIsMuted] = useState<boolean>(false);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const modalVideoRef = useRef<HTMLVideoElement>(null);
 
@@ -57,12 +56,8 @@ export default function Reviews() {
       category: foundService.category,
       duration: foundService.duration,
     });
-    setToastMessage(`Added "${foundService.name}" to cart! Redirecting...`);
-    setTimeout(() => {
-      setToastMessage(null);
-      setActiveVideoIndex(null);
-      router.push("/booking");
-    }, 1200);
+    setActiveVideoIndex(null);
+    router.push("/booking");
   };
 
   useEffect(() => {
@@ -396,19 +391,6 @@ export default function Reviews() {
                 </button>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-slate-900 border border-amber-500/40 text-white text-xs font-semibold shadow-2xl backdrop-blur-xl"
-          >
-            {toastMessage}
           </motion.div>
         )}
       </AnimatePresence>

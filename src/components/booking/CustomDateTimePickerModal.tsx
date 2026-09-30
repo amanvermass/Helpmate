@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, RotateCcw, Clock as ClockIcon } from "lucide-react";
+import { isPastTime } from "@/utils/dateTime";
 
 interface InlineCustomDatePickerProps {
   selectedDate: string | null;
@@ -11,6 +12,7 @@ interface InlineCustomDatePickerProps {
 interface InlineCustomTimePickerProps {
   selectedTime: string | null;
   onSelectTime: (time12h: string) => void;
+  selectedDate?: string | null;
 }
 
 export function InlineCustomDatePicker({
@@ -33,7 +35,10 @@ export function InlineCustomDatePicker({
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
   const totalDays = new Date(viewYear, viewMonth + 1, 0).getDate();
 
+  const isPrevDisabled = viewYear < today.getFullYear() || (viewYear === today.getFullYear() && viewMonth <= today.getMonth());
+
   const handlePrevMonth = () => {
+    if (isPrevDisabled) return;
     if (viewMonth === 0) {
       setViewMonth(11);
       setViewYear(viewYear - 1);
@@ -64,8 +69,13 @@ export function InlineCustomDatePicker({
       <div className="flex items-center justify-between gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-3">
         <button
           type="button"
+          disabled={isPrevDisabled}
           onClick={handlePrevMonth}
-          className="p-1.5 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+          className={`p-1.5 rounded-xl transition-colors ${
+            isPrevDisabled
+              ? "text-slate-300 dark:text-slate-700 cursor-not-allowed"
+              : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+          }`}
         >
           <ChevronLeft className="w-4.5 h-4.5" />
         </button>
@@ -78,9 +88,14 @@ export function InlineCustomDatePicker({
               onChange={(e) => setViewMonth(parseInt(e.target.value, 10))}
               className="appearance-none bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-extrabold px-3.5 py-1.5 pr-7 rounded-full cursor-pointer focus:outline-none border border-transparent hover:border-slate-300"
             >
-              {monthNames.map((m, idx) => (
-                <option key={m} value={idx}>{m}</option>
-              ))}
+              {monthNames.map((m, idx) => {
+                const isPastMonth = viewYear === today.getFullYear() && idx < today.getMonth();
+                return (
+                  <option key={m} value={idx} disabled={isPastMonth}>
+                    {m} {isPastMonth ? "(Past)" : ""}
+                  </option>
+                );
+              })}
             </select>
             <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[9px] text-slate-500 pointer-events-none">▼</span>
           </div>
@@ -92,7 +107,7 @@ export function InlineCustomDatePicker({
               onChange={(e) => setViewYear(parseInt(e.target.value, 10))}
               className="appearance-none bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs font-extrabold px-3.5 py-1.5 pr-7 rounded-full cursor-pointer focus:outline-none border border-transparent hover:border-slate-300"
             >
-              {[2026, 2027, 2028, 2029, 2030].map((y) => (
+              {[today.getFullYear(), today.getFullYear() + 1, today.getFullYear() + 2, today.getFullYear() + 3].map((y) => (
                 <option key={y} value={y}>{y}</option>
               ))}
             </select>
@@ -148,7 +163,7 @@ export function InlineCustomDatePicker({
                   isSelected
                     ? "bg-[#782860] text-white shadow-md shadow-[#782860]/30 scale-105"
                     : isPast
-                    ? "text-slate-300 dark:text-slate-700 cursor-not-allowed"
+                    ? "text-slate-300 dark:text-slate-700 cursor-not-allowed line-through opacity-40 pointer-events-none"
                     : "text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
                 }`}
               >
@@ -178,7 +193,8 @@ export function InlineCustomDatePicker({
 
 export function InlineCustomTimePicker({
   selectedTime,
-  onSelectTime
+  onSelectTime,
+  selectedDate
 }: InlineCustomTimePickerProps) {
   const parse12Time = (timeStr: string | null) => {
     if (!timeStr) return { hour: "09", minute: "00", ampm: "AM" };
@@ -332,19 +348,24 @@ export function InlineCustomTimePicker({
               const y = Math.round(radius * Math.sin(angle));
 
               const isSelected = hour === hObj.val;
+              // Hour is past if the latest minute of that hour (:59) has passed for selected date
+              const isPastHour = isPastTime(`${hObj.val}:59 ${ampm}`, selectedDate);
 
               return (
                 <button
                   key={hObj.val}
                   type="button"
+                  disabled={isPastHour}
                   onClick={() => handleSelectHour(hObj.val)}
                   style={{
                     transform: `translate(${x}px, ${y}px)`
                   }}
-                  className={`absolute w-7.5 h-7.5 rounded-full font-black text-xs flex items-center justify-center transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-[#782860] text-white shadow-md shadow-[#782860]/40 scale-110 z-20"
-                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-[#782860]/10"
+                  className={`absolute w-7.5 h-7.5 rounded-full font-black text-xs flex items-center justify-center transition-all ${
+                    isPastHour
+                      ? "opacity-30 cursor-not-allowed line-through text-slate-300 dark:text-slate-700 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 pointer-events-none"
+                      : isSelected
+                      ? "bg-[#782860] text-white shadow-md shadow-[#782860]/40 scale-110 z-20 cursor-pointer"
+                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-[#782860]/10 cursor-pointer"
                   }`}
                 >
                   {hObj.label}
@@ -366,19 +387,23 @@ export function InlineCustomTimePicker({
               const y = Math.round(radius * Math.sin(angle));
 
               const isSelected = minute === mObj.val;
+              const isPastMinute = isPastTime(`${hour}:${mObj.val} ${ampm}`, selectedDate);
 
               return (
                 <button
                   key={mObj.val}
                   type="button"
+                  disabled={isPastMinute}
                   onClick={() => handleSelectMinute(mObj.val)}
                   style={{
                     transform: `translate(${x}px, ${y}px)`
                   }}
-                  className={`absolute w-8 h-8 rounded-full font-black text-[10px] flex items-center justify-center transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-[#782860] text-white shadow-md shadow-[#782860]/40 scale-110 z-20"
-                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-[#782860]/10"
+                  className={`absolute w-8 h-8 rounded-full font-black text-[10px] flex items-center justify-center transition-all ${
+                    isPastMinute
+                      ? "opacity-30 cursor-not-allowed line-through text-slate-300 dark:text-slate-700 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 pointer-events-none"
+                      : isSelected
+                      ? "bg-[#782860] text-white shadow-md shadow-[#782860]/40 scale-110 z-20 cursor-pointer"
+                      : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-[#782860]/10 cursor-pointer"
                   }`}
                 >
                   {mObj.label}

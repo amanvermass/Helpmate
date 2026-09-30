@@ -189,7 +189,7 @@ interface AppState {
   cartId: string | null;
   cartPricing: ApiCartPricing | null;
   fetchServerCart: () => Promise<void>;
-  addToCart: (item: Omit<CartItem, "quantity">) => Promise<void>;
+  addToCart: (item: Omit<CartItem, "quantity"> | CartItem, quantityOverride?: number) => Promise<void>;
   removeFromCart: (id: string) => Promise<void>;
   updateCartQuantity: (id: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -650,36 +650,10 @@ export const useStore = create<AppState>()(
             const currentCart = get().cart;
 
             if (mappedItems.length === 0) {
-              let enrichedLocalCart = [...currentCart];
-              const localNeedsEnrichment = enrichedLocalCart.some((c) => !c.name || c.name === "Service Package" || c.price === 0);
-              if (localNeedsEnrichment && enrichedLocalCart.length > 0) {
-                try {
-                  const pkgRes = await fetchCustomerPackagesApi({ limit: 100 });
-                  if (pkgRes.success && pkgRes.data) {
-                    const fetchedList = pkgRes.data;
-                    enrichedLocalCart = enrichedLocalCart.map((m) => {
-                      const match = fetchedList.find((p: any) => String(p._id || p.id) === String(m.id) || String(p._id || p.id) === String(m.itemId));
-                      if (match) {
-                        const pData = (match.package || match) as any;
-                        return {
-                          ...m,
-                          name: pData.packageName || pData.name || m.name,
-                          price: pData.price || m.price,
-                          duration: pData.duration || m.duration,
-                          category: match.category?.name || m.category,
-                        };
-                      }
-                      return m;
-                    });
-                  }
-                } catch (e) {
-                  console.warn("Could not enrich local cart package details:", e);
-                }
-              }
               set({
-                cart: enrichedLocalCart,
-                cartId: res.data.cartId || res.data.cart?._id || get().cartId,
-                cartPricing: res.data.pricing || get().cartPricing,
+                cart: [],
+                cartId: res.data.cartId || res.data.cart?._id || null,
+                cartPricing: res.data.pricing || null,
               });
               return;
             }
@@ -709,20 +683,6 @@ export const useStore = create<AppState>()(
               return m;
             });
 
-            // Keep any local cart items not returned by server yet
-            for (const localItem of currentCart) {
-              const exists = finalCart.some((m) => {
-                if (localItem.id && m.id && String(localItem.id) === String(m.id)) return true;
-                if (localItem.itemId && m.itemId && String(localItem.itemId) === String(m.itemId)) return true;
-                if (localItem.id && m.itemId && String(localItem.id) === String(m.itemId)) return true;
-                if (localItem.itemId && m.id && String(localItem.itemId) === String(m.id)) return true;
-                return false;
-              });
-              if (!exists) {
-                finalCart.push(localItem);
-              }
-            }
-
             set({
               cart: finalCart,
               cartId: res.data.cartId || res.data.cart?._id || null,
@@ -734,9 +694,10 @@ export const useStore = create<AppState>()(
         }
       },
 
-      addToCart: async (item) => {
+      addToCart: async (item: Omit<CartItem, "quantity"> | CartItem, quantityOverride?: number) => {
         const targetId = item.id || item.itemId || `pkg-${Date.now()}`;
-        const itemQuantity = (item as any).quantity || 1;
+        const itemQuantity = quantityOverride || (item as any).quantity || 1;
+
         set((state) => {
           const existingIndex = state.cart.findIndex((i) => 
             (i.id && String(i.id) === String(targetId)) ||
@@ -768,47 +729,7 @@ export const useStore = create<AppState>()(
         const token = get().token;
         if (token && targetId) {
           try {
-            const res = await addToCartApi(token, targetId, 1);
-            if (res.success && res.data?.cart?.items && Array.isArray(res.data.cart.items)) {
-              try {
-                const pkgRes = await fetchCustomerPackagesApi({ limit: 100 });
-                const catalog = pkgRes.success && pkgRes.data ? pkgRes.data : [];
-                const currentCart = get().cart;
-
-                const serverMappedCart: CartItem[] = res.data.cart.items.map((sItem: any) => {
-                  const pId = typeof sItem.packageId === "string" 
-                    ? sItem.packageId 
-                    : (sItem.packageId?._id || sItem.packageId?.id || sItem._id);
-
-                  const catalogMatch = catalog.find((p: any) => 
-                    String(p._id || p.id || p.package?.id || p.package?._id) === String(pId)
-                  );
-                  const pkgData = (catalogMatch?.package || catalogMatch) as any;
-                  const localMatch = currentCart.find((c) => 
-                    String(c.id) === String(pId) || String(c.itemId) === String(sItem._id)
-                  );
-
-                  return {
-                    id: pId,
-                    itemId: sItem._id || pId,
-                    name: pkgData?.packageName || pkgData?.name || localMatch?.name || "Service Package",
-                    price: typeof pkgData?.price === "number" ? pkgData.price : (localMatch?.price || 0),
-                    quantity: sItem.quantity || localMatch?.quantity || 1,
-                    duration: pkgData?.duration || localMatch?.duration || 30,
-                    category: catalogMatch?.category?.name || localMatch?.category || "Service",
-                    selectedAddons: sItem.selectedAddons || localMatch?.selectedAddons || [],
-                  };
-                });
-
-                set({
-                  cart: serverMappedCart,
-                  cartId: res.data.cartId || res.data.cart?._id || get().cartId,
-                });
-                return;
-              } catch (e) {
-                console.warn("Could not enrich backend addToCart items:", e);
-              }
-            }
+            await addToCartApi(token, targetId, itemQuantity);
             await get().fetchServerCart();
           } catch (err) {
             console.error("Error adding to server cart:", err);
@@ -819,26 +740,38 @@ export const useStore = create<AppState>()(
       removeFromCart: async (id) => {
         const token = get().token;
         const targetItem = get().cart.find((i) => i.id === id || i.itemId === id);
-        const itemId = targetItem?.itemId || id;
+        const itemId = targetItem?.itemId || targetItem?.id || id;
+
+        // Optimistically remove from local state immediately
+        set((state) => ({
+          cart: state.cart.filter((item) => item.id !== id && item.itemId !== id),
+        }));
 
         if (token && itemId) {
           try {
             await removeCartItemApi(token, itemId);
             await get().fetchServerCart();
-            return;
           } catch (err) {
             console.error("Error removing from server cart:", err);
           }
         }
-        set((state) => ({
-          cart: state.cart.filter((item) => item.id !== id && item.itemId !== id),
-        }));
       },
 
       updateCartQuantity: async (id, quantity) => {
         const token = get().token;
         const targetItem = get().cart.find((i) => i.id === id || i.itemId === id);
-        const itemId = targetItem?.itemId || id;
+        const itemId = targetItem?.itemId || targetItem?.id || id;
+
+        // Optimistically update local state immediately
+        if (quantity <= 0) {
+          set((state) => ({
+            cart: state.cart.filter((item) => item.id !== id && item.itemId !== id),
+          }));
+        } else {
+          set((state) => ({
+            cart: state.cart.map((item) => ((item.id === id || item.itemId === id) ? { ...item, quantity } : item)),
+          }));
+        }
 
         if (token && itemId) {
           try {
@@ -848,20 +781,10 @@ export const useStore = create<AppState>()(
               await updateCartItemApi(token, itemId, quantity);
             }
             await get().fetchServerCart();
-            return;
           } catch (err) {
             console.error("Error updating server cart quantity:", err);
           }
         }
-
-        set((state) => {
-          if (quantity <= 0) {
-            return { cart: state.cart.filter((item) => item.id !== id && item.itemId !== id) };
-          }
-          return {
-            cart: state.cart.map((item) => ((item.id === id || item.itemId === id) ? { ...item, quantity } : item)),
-          };
-        });
       },
 
       clearCart: async () => {

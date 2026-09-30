@@ -39,6 +39,7 @@ import Footer from "@/components/common/Footer";
 import confetti from "canvas-confetti";
 
 import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/booking/CustomDateTimePickerModal";
+import { isPastDate, isPastTime } from "@/utils/dateTime";
 import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
 import MembershipBanner from "@/components/membership/MembershipBanner";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
@@ -218,6 +219,17 @@ function BookingContent() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  // Auto-reset selection if date or time is in the past
+  useEffect(() => {
+    if (selectedDate && isPastDate(selectedDate)) {
+      const todayISO = new Date().toISOString().split("T")[0];
+      setSelectedDate(todayISO);
+    }
+    if (selectedTimeSlot && isPastTime(selectedTimeSlot, selectedDate)) {
+      setSelectedTimeSlot(null);
+    }
+  }, [selectedDate, selectedTimeSlot, setSelectedDate, setSelectedTimeSlot]);
 
   // New address form state
   const [newTag, setNewTag] = useState<Address["tag"]>("Home");
@@ -678,18 +690,24 @@ function BookingContent() {
 
                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                             {dates.slice(0, 5).map((d) => {
+                              const isPast = isPastDate(d.iso);
                               const isSelected = selectedDate === d.iso && !showCustomDate && !isCustomDateActive;
                               return (
                                 <button
                                   key={d.iso}
                                   type="button"
+                                  disabled={isPast}
                                   onClick={() => {
+                                    if (isPast) return;
                                     setSelectedDate(d.iso);
                                     setShowCustomDate(false);
                                   }}
-                                  className={`relative p-4 rounded-2xl border flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 ${isSelected
-                                      ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
-                                      : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80"
+                                  className={`relative p-4 rounded-2xl border flex flex-col items-center justify-center text-center transition-all duration-300 ${
+                                    isPast
+                                      ? "opacity-40 line-through bg-slate-100 dark:bg-slate-900/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed pointer-events-none"
+                                      : isSelected
+                                      ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105 cursor-pointer"
+                                      : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer"
                                     }`}
                                 >
                                   {isSelected && (
@@ -772,18 +790,24 @@ function BookingContent() {
 
                           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
                             {timeSlots.map((slot) => {
+                              const isPast = isPastTime(slot, selectedDate);
                               const isSelected = selectedTimeSlot === slot && !isCustomTimeActive && !showCustomTime;
                               return (
                                 <button
                                   key={slot}
                                   type="button"
+                                  disabled={isPast}
                                   onClick={() => {
+                                    if (isPast) return;
                                     setSelectedTimeSlot(slot);
                                     setShowCustomTime(false);
                                   }}
-                                  className={`relative p-3.5 rounded-2xl border text-center cursor-pointer text-xs font-black transition-all duration-300 ${isSelected
-                                      ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105"
-                                      : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80"
+                                  className={`relative p-3.5 rounded-2xl border text-center text-xs font-black transition-all duration-300 ${
+                                    isPast
+                                      ? "opacity-40 line-through bg-slate-100 dark:bg-slate-900/40 text-slate-400 border-slate-200 dark:border-slate-800 cursor-not-allowed pointer-events-none"
+                                      : isSelected
+                                      ? "bg-gradient-to-br from-[#782860] via-[#8a2f6e] to-[#a03480] text-white border-transparent shadow-lg shadow-[#782860]/25 ring-2 ring-[#782860]/50 scale-105 cursor-pointer"
+                                      : "bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 hover:border-[#782860]/40 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 cursor-pointer"
                                     }`}
                                 >
                                   {isSelected && (
@@ -841,6 +865,7 @@ function BookingContent() {
                                   >
                                     <InlineCustomTimePicker
                                       selectedTime={selectedTimeSlot}
+                                      selectedDate={selectedDate}
                                       onSelectTime={(time12) => {
                                         setSelectedTimeSlot(time12);
                                         setShowCustomTime(false);
