@@ -14,6 +14,8 @@ export interface BackendAddress {
   customerId: string;
   addressLabel: string;
   relationshipType: "self" | "family_member" | "friend_neighbor" | "office_work" | "other_person";
+  recipientName?: string;
+  recipientMobile?: string;
   localityId: BackendLocality | string;
   pincode: string;
   serviceAddress: string;
@@ -27,6 +29,8 @@ export interface BackendAddress {
 export interface CreateAddressPayload {
   addressLabel: string;
   relationshipType: "self" | "family_member" | "friend_neighbor" | "office_work" | "other_person";
+  recipientName?: string;
+  recipientMobile?: string;
   localityId: string;
   pincode: string;
   serviceAddress: string;
@@ -191,6 +195,9 @@ export const mapBackendAddressToFrontend = (bAddr: BackendAddress): Address => {
     id: bAddr._id,
     tag: bAddr.addressLabel || "Home",
     recipientType: mapRelationshipToFrontend(bAddr.relationshipType),
+    recipientName: bAddr.recipientName || "",
+    recipientPhone: bAddr.recipientMobile || "",
+    recipientMobile: bAddr.recipientMobile || "",
     locality: localityName,
     localityId: localityIdStr,
     pincode: bAddr.pincode || localityObj?.pincode || "221002",

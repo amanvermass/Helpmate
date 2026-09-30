@@ -58,10 +58,9 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
   const [pincode, setPincode] = useState<string>(
     initialData?.pincode || varanasiLocalities[0].pincode
   );
-  const [houseNo, setHouseNo] = useState<string>(initialData?.houseNo || "");
   const [landmark, setLandmark] = useState<string>(initialData?.landmark || "");
   const [streetAddress, setStreetAddress] = useState<string>(
-    initialData?.addressLine || ""
+    initialData?.addressLine || initialData?.houseNo || ""
   );
   const [city, setCity] = useState<string>(initialData?.city || "Varanasi");
   const [isDefault, setIsDefault] = useState<boolean>(initialData?.isDefault || false);
@@ -130,28 +129,17 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Construct unified formatted address
-    const fullAddress = [
-      houseNo.trim(),
-      streetAddress.trim(),
-      landmark.trim() ? `Near ${landmark.trim().replace(/^Near\s+/i, "")}` : "",
-      locality,
-      `${city} - ${pincode}`,
-    ]
-      .filter(Boolean)
-      .join(", ");
-
     onSave({
       tag: tag || "Home",
       recipientType,
       recipientName: recipientName || currentUser.name,
       recipientPhone: recipientPhone || currentUser.phone,
+      recipientMobile: recipientPhone || currentUser.phone,
       locality,
       localityId: localityId || "6a6b0d83dc4a5f2b04e35a90",
       pincode,
-      houseNo,
-      landmark,
-      addressLine: fullAddress || streetAddress || `${locality}, ${city}`,
+      landmark: landmark.trim(),
+      addressLine: streetAddress.trim(),
       city,
       isDefault,
     });
@@ -329,46 +317,30 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-              House / Flat / Building No. *
-            </label>
-            <input
-              type="text"
-              value={houseNo}
-              onChange={(e) => setHouseNo(e.target.value)}
-              placeholder="e.g. Flat 302, Royal Enclave / Plot 45"
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-foreground font-semibold focus:outline-none focus:border-emerald-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-              Landmark / Nearby Spot
-            </label>
-            <input
-              type="text"
-              value={landmark}
-              onChange={(e) => setLandmark(e.target.value)}
-              placeholder="e.g. Near BHU Main Gate / Galaxy Hospital"
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-foreground font-semibold focus:outline-none focus:border-emerald-500"
-            />
-          </div>
-        </div>
-
         <div>
           <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
-            Street Address & Area Details *
+            Address *
           </label>
           <textarea
             rows={2}
             value={streetAddress}
             onChange={(e) => setStreetAddress(e.target.value)}
-            placeholder="Street name, colony name, lane number..."
+            placeholder="Flat/House No., Building Name, Street, Colony, Lane details..."
             className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 p-3 rounded-xl text-xs text-foreground font-semibold focus:outline-none focus:border-emerald-500"
             required
+          />
+        </div>
+
+        <div>
+          <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 block mb-1">
+            Landmark / Nearby Spot
+          </label>
+          <input
+            type="text"
+            value={landmark}
+            onChange={(e) => setLandmark(e.target.value)}
+            placeholder="e.g. Near BHU Main Gate / Galaxy Hospital"
+            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-foreground font-semibold focus:outline-none focus:border-emerald-500"
           />
         </div>
       </div>

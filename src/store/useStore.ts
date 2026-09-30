@@ -77,6 +77,7 @@ export interface Address {
   recipientType?: AddressRecipientType;
   recipientName?: string;
   recipientPhone?: string;
+  recipientMobile?: string;
   locality?: string;
   localityId?: string;
   pincode?: string;
@@ -321,6 +322,8 @@ export const useStore = create<AppState>()(
           const payload: CreateAddressPayload = {
             addressLabel: newAddr.tag || "Home",
             relationshipType: mapRelationshipToBackend(newAddr.recipientType),
+            recipientName: newAddr.recipientName,
+            recipientMobile: newAddr.recipientMobile || newAddr.recipientPhone,
             localityId: newAddr.localityId || "6a6b0d83dc4a5f2b04e35a90",
             pincode: newAddr.pincode || "221002",
             serviceAddress: newAddr.addressLine,
@@ -356,6 +359,8 @@ export const useStore = create<AppState>()(
           const payload: UpdateAddressPayload = {
             addressLabel: updatedData.tag,
             relationshipType: updatedData.recipientType ? mapRelationshipToBackend(updatedData.recipientType) : undefined,
+            recipientName: updatedData.recipientName,
+            recipientMobile: updatedData.recipientMobile || updatedData.recipientPhone,
             localityId: updatedData.localityId || "6a6b0d83dc4a5f2b04e35a90",
             pincode: updatedData.pincode || "221002",
             serviceAddress: updatedData.addressLine,
