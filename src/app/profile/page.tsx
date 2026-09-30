@@ -120,7 +120,7 @@ function ProfilePageContent() {
   // Review state
   const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(null);
   const [reviewingPackageId, setReviewingPackageId] = useState<string | null>(null);
-  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewVideoFile, setReviewVideoFile] = useState<File | null>(null);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
@@ -136,7 +136,11 @@ function ProfilePageContent() {
     const pkgId = pkgItem?.id || (booking.items && booking.items[0]?.id) || undefined;
     const itemKey = pkgItem ? `${booking.id}_${pkgItem.id}` : booking.id;
 
-    const rating = inlineRatings[itemKey] || 5;
+    const rating = inlineRatings[itemKey] || 0;
+    if (!rating || rating < 1) {
+      alert("Please select a star rating before submitting your review.");
+      return;
+    }
     const comment = (inlineComments[itemKey] || "").trim();
     const videoFile = inlineVideoFiles[itemKey] || null;
 
@@ -280,6 +284,10 @@ function ProfilePageContent() {
 
   const handleReviewSubmit = async () => {
     if (!reviewingBooking) return;
+    if (!reviewRating || reviewRating < 1) {
+      alert("Please select a star rating before submitting your review.");
+      return;
+    }
     setIsSubmittingReview(true);
     const targetBookingId = reviewingBooking.id;
 
@@ -302,7 +310,7 @@ function ProfilePageContent() {
           setReviewingBooking(null);
           setReviewingPackageId(null);
           setReviewComment("");
-          setReviewRating(5);
+          setReviewRating(0);
           setEditingReviewId(null);
         } else {
           addNotification("Update Failed", res.message || "Failed to update review.", "warning");
@@ -330,7 +338,7 @@ function ProfilePageContent() {
           setReviewingBooking(null);
           setReviewingPackageId(null);
           setReviewComment("");
-          setReviewRating(5);
+          setReviewRating(0);
           setEditingReviewId(null);
         } else {
           addNotification("Submission Failed", res.message || "Failed to submit review.", "warning");
@@ -359,7 +367,7 @@ function ProfilePageContent() {
         setReviewingBooking(null);
         setReviewingPackageId(null);
         setReviewComment("");
-        setReviewRating(5);
+        setReviewRating(0);
         setEditingReviewId(null);
       } else {
         addNotification("Delete Failed", res.message || "Failed to delete review.", "warning");
@@ -667,7 +675,7 @@ function ProfilePageContent() {
                                 b.items.map((sItem, sIdx) => {
                                   const itemKey = `${b.id}_${sItem.id || sIdx}`;
                                   const pkgReview = sItem.review || (b.items.length === 1 ? b.review : undefined);
-                                  const currentRating = inlineRatings[itemKey] || 5;
+                                  const currentRating = inlineRatings[itemKey] || 0;
 
                                   return (
                                     <div key={sIdx} className="space-y-2 pt-3 border-t border-slate-100 dark:border-slate-800/60 first:border-0 first:pt-0">
@@ -762,7 +770,7 @@ function ProfilePageContent() {
                                                   ))}
                                                 </div>
                                                 <span className="text-xs font-black text-amber-600 dark:text-amber-400 ml-1 font-sans">
-                                                  {currentRating}.0 Stars
+                                                  {currentRating > 0 ? `${currentRating}.0 Stars` : "Select rating"}
                                                 </span>
                                               </div>
 
@@ -1808,16 +1816,22 @@ function ProfilePageContent() {
               </div>
 
               {/* Star selector */}
-              <div className="flex items-center justify-center gap-2 py-4 border-y border-slate-50 dark:border-slate-900">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    onClick={() => setReviewRating(star)}
-                    className="cursor-pointer hover:scale-110 transition-transform"
-                  >
-                    <Star className={`w-8 h-8 ${star <= reviewRating ? "fill-amber-500 text-amber-500" : "text-slate-350 dark:text-slate-700"}`} />
-                  </button>
-                ))}
+              <div className="flex flex-col items-center justify-center gap-1.5 py-4 border-y border-slate-50 dark:border-slate-900">
+                <div className="flex items-center justify-center gap-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setReviewRating(star)}
+                      className="cursor-pointer hover:scale-110 transition-transform"
+                    >
+                      <Star className={`w-8 h-8 ${star <= reviewRating ? "fill-amber-500 text-amber-500" : "text-slate-350 dark:text-slate-700"}`} />
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 font-sans">
+                  {reviewRating > 0 ? `${reviewRating}.0 Stars Selected` : "Tap a star to rate"}
+                </span>
               </div>
 
               {/* Message */}

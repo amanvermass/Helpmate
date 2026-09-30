@@ -415,7 +415,7 @@ function HeaderContent() {
           </div>
 
           {/* Notifications */}
-          {!isHomePage && isLoggedIn && (
+          {/* {!isHomePage && isLoggedIn && (
             <div className="relative" ref={notificationsRef}>
               <button
                 onClick={() => {
@@ -430,7 +430,6 @@ function HeaderContent() {
                 )}
               </button>
 
-              {/* Notifications Menu */}
               <AnimatePresence>
                 {showNotifications && (
                   <motion.div
@@ -474,7 +473,7 @@ function HeaderContent() {
                 )}
               </AnimatePresence>
             </div>
-          )}
+          )} */}
 
           {/* User Profile or Sign In / Signup Button */}
           {isLoggedIn ? (
