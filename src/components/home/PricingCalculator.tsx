@@ -17,7 +17,7 @@ interface CalculatorProps {
 
 export default function PricingCalculator({ onBook }: CalculatorProps) {
   const [activeTab, setActiveTab] = useState<"deep" | "chores">("deep");
-  const { clearCart, addToCart } = useStore();
+  const { clearCart, addToCart, cart } = useStore();
 
   // Deep Cleaning states
   const [homeSize, setHomeSize] = useState<"1bhk" | "2bhk" | "3bhk" | "4bhk">("2bhk");
@@ -105,17 +105,21 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
 
       const customServiceName = `${baseSelection.name} ${selectedAddonLabels.length > 0 ? `(+ ${selectedAddonLabels.join(", ")})` : ""
         }`;
+      const targetId = `custom-deep-${homeSize}`;
+      const isAlreadyInCart = cart.some((c) => String(c.id) === targetId || String(c.itemId) === targetId);
 
-      addToCart({
-        id: `custom-deep-${homeSize}`,
-        name: customServiceName,
-        price: deepTotalPrice,
-        category: "cleaning",
-        duration: deepTotalDuration,
-      });
+      if (!isAlreadyInCart) {
+        addToCart({
+          id: targetId,
+          name: customServiceName,
+          price: deepTotalPrice,
+          category: "cleaning",
+          duration: deepTotalDuration,
+        });
+      }
 
       onBook({
-        id: `custom-deep-${homeSize}`,
+        id: targetId,
         name: customServiceName,
         price: deepTotalPrice,
         category: "cleaning",
@@ -132,17 +136,21 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
       }
 
       const customServiceName = `Daily Chores Bundle: ${selectedChoreLabels.join(", ")}`;
+      const targetId = "custom-chores-bundle";
+      const isAlreadyInCart = cart.some((c) => String(c.id) === targetId || String(c.itemId) === targetId);
 
-      addToCart({
-        id: "custom-chores-bundle",
-        name: customServiceName,
-        price: choresTotalPrice,
-        category: "cleaning", // map to generic chores/cleaning category
-        duration: choresTotalDuration,
-      });
+      if (!isAlreadyInCart) {
+        addToCart({
+          id: targetId,
+          name: customServiceName,
+          price: choresTotalPrice,
+          category: "cleaning", // map to generic chores/cleaning category
+          duration: choresTotalDuration,
+        });
+      }
 
       onBook({
-        id: "custom-chores-bundle",
+        id: targetId,
         name: customServiceName,
         price: choresTotalPrice,
         category: "cleaning",

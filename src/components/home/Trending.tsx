@@ -10,7 +10,7 @@ import { formatImageUrl } from "@/utils/image";
 
 export default function Trending() {
   const router = useRouter();
-  const { bookmarkedPackageIds, toggleBookmark, addNotification, addToCart, token, isLoggedIn } = useStore();
+  const { bookmarkedPackageIds, toggleBookmark, addNotification, addToCart, cart, token, isLoggedIn } = useStore();
   const [trendingItems, setTrendingItems] = useState<TrendingPackageItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,14 +54,20 @@ export default function Trending() {
     e.preventDefault();
     e.stopPropagation();
 
-    addToCart({
-      id: service.id,
-      itemId: service.id,
-      name: service.name,
-      price: service.price,
-      category: service.category,
-      duration: service.duration,
-    });
+    const isAlreadyInCart = cart.some(
+      (c) => String(c.id) === String(service.id) || String(c.itemId) === String(service.id)
+    );
+
+    if (!isAlreadyInCart) {
+      addToCart({
+        id: service.id,
+        itemId: service.id,
+        name: service.name,
+        price: service.price,
+        category: service.category,
+        duration: service.duration,
+      });
+    }
 
     router.push("/booking");
   };

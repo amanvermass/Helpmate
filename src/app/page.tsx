@@ -19,7 +19,7 @@ import { useStore } from "@/store/useStore";
 
 export default function Home() {
   const router = useRouter();
-  const { addToCart, clearCart } = useStore();
+  const { addToCart, cart } = useStore();
 
   const handleBookFromCalculator = (data: {
     id: string;
@@ -28,7 +28,14 @@ export default function Home() {
     category: string;
     duration: number;
   }) => {
-    addToCart(data);
+    const isAlreadyInCart = cart.some(
+      (c) => String(c.id) === String(data.id) || String(c.itemId) === String(data.id)
+    );
+
+    if (!isAlreadyInCart) {
+      addToCart(data);
+    }
+
     router.push("/booking");
   };
 

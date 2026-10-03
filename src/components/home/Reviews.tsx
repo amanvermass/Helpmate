@@ -21,7 +21,7 @@ import { useRouter } from "next/navigation";
 
 export default function Reviews() {
   const router = useRouter();
-  const { addToCart } = useStore();
+  const { addToCart, cart } = useStore();
 
   // Duplicate hardcoded reviews for infinite marquee effect
   const marqueeReviews = [...reviews, ...reviews, ...reviews];
@@ -49,13 +49,20 @@ export default function Reviews() {
 
   const handleBookService = (serviceId: string) => {
     const foundService = services.find((s) => s.id === serviceId) || services[0];
-    addToCart({
-      id: foundService.id,
-      name: foundService.name,
-      price: foundService.price,
-      category: foundService.category,
-      duration: foundService.duration,
-    });
+    const isAlreadyInCart = cart.some(
+      (c) => String(c.id) === String(foundService.id) || String(c.itemId) === String(foundService.id)
+    );
+
+    if (!isAlreadyInCart) {
+      addToCart({
+        id: foundService.id,
+        name: foundService.name,
+        price: foundService.price,
+        category: foundService.category,
+        duration: foundService.duration,
+      });
+    }
+
     setActiveVideoIndex(null);
     router.push("/booking");
   };

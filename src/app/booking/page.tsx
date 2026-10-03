@@ -616,7 +616,7 @@ function BookingContent() {
                                     <button
                                       onClick={async () => {
                                         const action = isAdded ? "remove" : "add";
-                                        await toggleAddonInCart(targetCartItemId, addon.id, action);
+                                        await toggleAddonInCart(targetCartItemId, addon.id, action, { addonName: addon.name, price: addon.price });
                                         addNotification(
                                           action === "add" ? "Add-on Added" : "Add-on Removed",
                                           action === "add" ? `"${addon.name}" added to your cart.` : `"${addon.name}" removed from your cart.`,

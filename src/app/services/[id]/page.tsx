@@ -974,9 +974,13 @@ function ServiceDetailPageContent({ params }: PageProps) {
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    triggerSmallConfetti(e);
     const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
+    const isAlreadyInCart = cart.some(
+      (i) => String(i.id) === String(packageId) || String(i.itemId) === String(packageId)
+    );
+    if (isAlreadyInCart) return;
 
+    triggerSmallConfetti(e);
     addToCart({
       id: packageId,
       name: activeName,
@@ -988,21 +992,31 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   const handleBookNow = (e: React.MouseEvent) => {
     const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
+    const isAlreadyInCart = cart.some(
+      (i) => String(i.id) === String(packageId) || String(i.itemId) === String(packageId)
+    );
 
-    addToCart({
-      id: packageId,
-      name: activeName,
-      price: activePrice,
-      category: service.category,
-      duration: activeDuration
-    });
+    if (!isAlreadyInCart) {
+      addToCart({
+        id: packageId,
+        name: activeName,
+        price: activePrice,
+        category: service.category,
+        duration: activeDuration
+      });
+    }
 
     router.push("/booking");
   };
 
   const handleItemAddToCart = (e: React.MouseEvent, item: any) => {
-    triggerSmallConfetti(e);
     const packageId = item._id || item.id;
+    const isAlreadyInCart = cart.some(
+      (i) => String(i.id) === String(packageId) || String(i.itemId) === String(packageId)
+    );
+    if (isAlreadyInCart) return;
+
+    triggerSmallConfetti(e);
     const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
 
     addToCart({
@@ -1016,15 +1030,20 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   const handleItemBookNow = (e: React.MouseEvent, item: any) => {
     const packageId = item._id || item.id;
-    const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
+    const isAlreadyInCart = cart.some(
+      (i) => String(i.id) === String(packageId) || String(i.itemId) === String(packageId)
+    );
 
-    addToCart({
-      id: packageId,
-      name: pkgName,
-      price: item.price,
-      category: service?.category || "Service",
-      duration: item.duration || 30
-    });
+    if (!isAlreadyInCart) {
+      const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
+      addToCart({
+        id: packageId,
+        name: pkgName,
+        price: item.price,
+        category: service?.category || "Service",
+        duration: item.duration || 30
+      });
+    }
 
     router.push("/booking");
   };
@@ -1425,7 +1444,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                       }
                                     }
 
-                                    await toggleAddonInCart(mainPkgId, addonId, action);
+                                    await toggleAddonInCart(mainPkgId, addonId, action, { addonName, price: addonPrice });
                                     addNotification(
                                       action === "add" ? "Add-on Added" : "Add-on Removed",
                                       action === "add" ? `"${addonName}" added to your cart.` : `"${addonName}" removed from your cart.`,

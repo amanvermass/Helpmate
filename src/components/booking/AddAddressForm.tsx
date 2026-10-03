@@ -1,6 +1,4 @@
-"use client";
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MapPin,
   User,
@@ -13,8 +11,10 @@ import {
   Check,
   CheckCircle2,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import { Address, AddressRecipientType, varanasiLocalities, useStore } from "@/store/useStore";
+import { getLocalitiesApi } from "@/services/addressApi";
 
 interface AddAddressFormProps {
   onSave: (address: Omit<Address, "id"> & { localityId?: string }) => void;
@@ -33,6 +33,8 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
 }) => {
   const userName = useStore((state) => state.userName);
   const userPhone = useStore((state) => state.userPhone);
+  const addNotification = useStore((state) => state.addNotification);
+
   const currentUser = {
     name: userName || "Customer",
     phone: userPhone || "",
@@ -49,6 +51,11 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
   const [recipientPhone, setRecipientPhone] = useState<string>(
     initialData?.recipientPhone || (initialData?.recipientType === "Self" || !initialData?.recipientType ? currentUser.phone : "")
   );
+
+  // Dynamic Varanasi Active Zones API State
+  const [localities, setLocalities] = useState<{ id: string; name: string; pincode: string }[]>(varanasiLocalities);
+  const [isLoadingLocalities, setIsLoadingLocalities] = useState<boolean>(true);
+
   const [locality, setLocality] = useState<string>(
     initialData?.locality || varanasiLocalities[0].name
   );
@@ -64,6 +71,61 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
   );
   const [city, setCity] = useState<string>(initialData?.city || "Varanasi");
   const [isDefault, setIsDefault] = useState<boolean>(initialData?.isDefault || false);
+
+  // Fetch Varanasi active zones dynamically from API
+  useEffect(() => {
+    let isMounted = true;
+    async function loadLocalities() {
+      try {
+        setIsLoadingLocalities(true);
+        const res = await getLocalitiesApi();
+        if (!isMounted) return;
+
+        if (res && res.success) {
+          const rawList: any[] = res.data?.localities || (Array.isArray(res.data) ? res.data : []) || (res as any).localities || [];
+          if (rawList.length > 0) {
+            const mapped = rawList
+              .filter((loc) => loc.status !== false)
+              .map((loc) => ({
+                id: loc._id || loc.id,
+                name: loc.localityName || loc.name || "Locality",
+                pincode: loc.pincode || "221002",
+              }));
+
+            if (mapped.length > 0) {
+              setLocalities(mapped);
+              if (!initialData?.locality) {
+                setLocality(mapped[0].name);
+                setLocalityId(mapped[0].id);
+                setPincode(mapped[0].pincode);
+              } else {
+                const match = mapped.find(
+                  (m) => m.name.toLowerCase() === initialData.locality?.toLowerCase() || m.id === initialData.localityId
+                );
+                if (match) {
+                  setLocality(match.name);
+                  setLocalityId(match.id);
+                  setPincode(match.pincode);
+                }
+              }
+            }
+          }
+        } else {
+          addNotification("Active Zone Error", res.message || "Failed to load Varanasi active zones from server.", "warning");
+        }
+      } catch (err: any) {
+        if (isMounted) {
+          addNotification("Network Error", err.message || "Unable to fetch active zones from server.", "warning");
+        }
+      } finally {
+        if (isMounted) setIsLoadingLocalities(false);
+      }
+    }
+    loadLocalities();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Recipient Badge Configurations
   const recipientBadges = [
@@ -109,8 +171,9 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
   const handleLocalityChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     setLocality(selected);
-    const found = varanasiLocalities.find((l) => l.name === selected);
+    const found = localities.find((l) => l.name === selected);
     if (found) {
+      setLocalityId(found.id);
       setPincode(found.pincode);
     }
   };
@@ -131,7 +194,7 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
 
     const cleanPhone = (recipientPhone || "").trim().replace(/\D/g, "");
     if (recipientType !== "Self" && cleanPhone.length !== 10) {
-      alert("Please enter a valid 10-digit recipient mobile number.");
+      addNotification("Validation Error", "Please enter a valid 10-digit recipient mobile number.", "warning");
       return;
     }
 
@@ -303,13 +366,18 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
             <select
               value={locality}
               onChange={handleLocalityChange}
-              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-foreground font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer"
+              disabled={isLoadingLocalities}
+              className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-foreground font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-60"
             >
-              {varanasiLocalities.map((loc) => (
-                <option key={loc.id} value={loc.name}>
-                  {loc.name} ({loc.pincode})
-                </option>
-              ))}
+              {isLoadingLocalities ? (
+                <option value="">Loading active zones...</option>
+              ) : (
+                localities.map((loc) => (
+                  <option key={loc.id} value={loc.name}>
+                    {loc.name} ({loc.pincode})
+                  </option>
+                ))
+              )}
             </select>
           </div>
 

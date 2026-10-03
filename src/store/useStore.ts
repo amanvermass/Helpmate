@@ -194,7 +194,7 @@ interface AppState {
   removeFromCart: (id: string) => Promise<void>;
   updateCartQuantity: (id: string, quantity: number) => Promise<void>;
   clearCart: () => Promise<void>;
-  toggleAddonInCart: (itemId: string, addonId: string, action: "add" | "remove") => Promise<void>;
+  toggleAddonInCart: (itemId: string, addonId: string, action: "add" | "remove", addonDetails?: { addonName?: string; price?: number }) => Promise<void>;
 
   // Location & Booking details
   selectedLocation: string;
@@ -812,7 +812,7 @@ export const useStore = create<AppState>()(
         });
       },
 
-      toggleAddonInCart: async (itemId, addonId, action) => {
+      toggleAddonInCart: async (itemId, addonId, action, addonDetails) => {
         const token = get().token;
         const targetItem = get().cart.find((i) => i.id === itemId || i.itemId === itemId);
         const serverItemId = targetItem?.itemId || itemId;
@@ -833,13 +833,24 @@ export const useStore = create<AppState>()(
               const currentAddons = item.selectedAddons || [];
               let newAddons = [...currentAddons];
               if (action === "add") {
-                if (!newAddons.some((a) => a.addonId === addonId)) {
+                const existingIdx = newAddons.findIndex((a) => a.addonId === addonId);
+                const name = addonDetails?.addonName || "Addon";
+                const priceVal = typeof addonDetails?.price === "number" ? addonDetails.price : 0;
+                if (existingIdx >= 0) {
+                  const existing = newAddons[existingIdx];
+                  newAddons[existingIdx] = {
+                    ...existing,
+                    addonName: (name && name !== "Addon") ? name : existing.addonName,
+                    price: priceVal > 0 ? priceVal : existing.price,
+                    totalPrice: (priceVal > 0 ? priceVal : existing.price) * (existing.quantity || 1),
+                  };
+                } else {
                   newAddons.push({
                     addonId,
-                    addonName: "Addon",
-                    price: 0,
+                    addonName: name,
+                    price: priceVal,
                     quantity: 1,
-                    totalPrice: 0,
+                    totalPrice: priceVal,
                   });
                 }
               } else {

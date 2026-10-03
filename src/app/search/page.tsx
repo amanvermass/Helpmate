@@ -230,6 +230,11 @@ function SearchPageContent() {
     e.preventDefault();
     e.stopPropagation();
     const pkg = item.package;
+    const isAlreadyInCart = cart.some(
+      (c) => String(c.id) === String(pkg.id) || String(c.itemId) === String(pkg.id)
+    );
+    if (isAlreadyInCart) return;
+
     addToCart({
       id: pkg.id,
       itemId: pkg.id,
@@ -251,22 +256,28 @@ function SearchPageContent() {
     e.preventDefault();
     e.stopPropagation();
     const pkg = item.package;
-    clearCart();
-    addToCart({
-      id: pkg.id,
-      itemId: pkg.id,
-      category: item.category?.name || "Service",
-      name: pkg.name,
-      price: pkg.price,
-      duration: pkg.duration || 60,
-      selectedAddons: (item.addons || []).map((a) => ({
-        addonId: a._id,
-        addonName: a.addonName,
-        price: a.price,
-        quantity: 1,
-        totalPrice: a.price,
-      })),
-    });
+    const isAlreadyInCart = cart.some(
+      (c) => String(c.id) === String(pkg.id) || String(c.itemId) === String(pkg.id)
+    );
+
+    if (!isAlreadyInCart) {
+      addToCart({
+        id: pkg.id,
+        itemId: pkg.id,
+        category: item.category?.name || "Service",
+        name: pkg.name,
+        price: pkg.price,
+        duration: pkg.duration || 60,
+        selectedAddons: (item.addons || []).map((a) => ({
+          addonId: a._id,
+          addonName: a.addonName,
+          price: a.price,
+          quantity: 1,
+          totalPrice: a.price,
+        })),
+      });
+    }
+
     router.push("/booking");
   };
 
