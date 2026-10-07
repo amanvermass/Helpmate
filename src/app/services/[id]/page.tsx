@@ -1302,7 +1302,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                   {/* Inclusions / Exclusions */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {/* Inclusions Card */}
-                    <div className="bg-emerald-500/[0.02] dark:bg-emerald-500/[0.04] border border-emerald-500/10 rounded-[28px] p-6 shadow-sm">
+                    {/* <div className="bg-emerald-500/[0.02] dark:bg-emerald-500/[0.04] border border-emerald-500/10 rounded-[28px] p-6 shadow-sm">
                       <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-450 mb-4 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Included in Package
                       </h4>
@@ -1314,10 +1314,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
                           </li>
                         ))}
                       </ul>
-                    </div>
+                    </div> */}
 
                     {/* Exclusions Card */}
-                    <div className="bg-red-500/[0.02] dark:bg-red-500/[0.04] border border-red-500/10 rounded-[28px] p-6 shadow-sm">
+                    {/* <div className="bg-red-500/[0.02] dark:bg-red-500/[0.04] border border-red-500/10 rounded-[28px] p-6 shadow-sm">
                       <h4 className="font-extrabold text-xs uppercase tracking-wider text-red-655 dark:text-red-400 mb-4 flex items-center gap-1.5">
                         <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Excluded from Package
                       </h4>
@@ -1329,7 +1329,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                           </li>
                         ))}
                       </ul>
-                    </div>
+                    </div> */}
                   </div>
 
                   {/* FAQs */}

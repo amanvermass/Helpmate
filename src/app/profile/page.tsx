@@ -41,7 +41,8 @@ import {
   Video,
   Film,
   UploadCloud,
-  ArrowLeft
+  ArrowLeft,
+  FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/common/Header";
@@ -49,6 +50,7 @@ import Footer from "@/components/common/Footer";
 import { useStore, Booking, Address, CartItem } from "@/store/useStore";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
 import { formatImageUrl } from "@/utils/image";
+import { InvoiceModal } from "@/components/booking/InvoiceModal";
 
 
 function ProfilePageContent() {
@@ -125,6 +127,15 @@ function ProfilePageContent() {
   const [reviewVideoFile, setReviewVideoFile] = useState<File | null>(null);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // Invoice Modal state
+  const [invoiceModalBookingId, setInvoiceModalBookingId] = useState<string | null>(null);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+
+  const handleOpenInvoice = (bookingId: string) => {
+    setInvoiceModalBookingId(bookingId);
+    setIsInvoiceModalOpen(true);
+  };
 
   // Inline card review state for booking history packages
   const [inlineRatings, setInlineRatings] = useState<Record<string, number>>({});
@@ -655,8 +666,17 @@ function ProfilePageContent() {
                               </h4>
                             </div>
 
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2.5">
                               <span className="text-xs sm:text-sm font-extrabold text-foreground">₹{b.finalAmount}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenInvoice(b.id)}
+                                className="px-2.5 py-1 rounded-xl bg-accent-lux/10 hover:bg-accent-lux/20 text-accent-lux text-[10px] font-extrabold transition-all flex items-center gap-1 cursor-pointer border border-accent-lux/20 shadow-xs"
+                                title="View / Download Tax Invoice"
+                              >
+                                <FileText className="w-3.5 h-3.5" />
+                                <span>Invoice</span>
+                              </button>
                             </div>
                           </div>
 
@@ -1930,6 +1950,13 @@ function ProfilePageContent() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Invoice Modal */}
+      <InvoiceModal
+        bookingId={invoiceModalBookingId}
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+      />
 
       <Footer />
     </>

@@ -30,7 +30,8 @@ import {
   Lock,
   HeartHandshake,
   Edit3,
-  X
+  X,
+  FileText
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore, Address, getItemAddonTotal } from "@/store/useStore";
@@ -1254,12 +1255,21 @@ function BookingContent() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => router.push("/profile?tab=bookings")}
-                        className="px-8 py-3.5 bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs rounded-full shadow-lg cursor-pointer transition-transform duration-300 hover:scale-105 active:scale-95"
-                      >
-                        Track Professional Timeline
-                      </button>
+                      <div className="flex flex-wrap items-center justify-center gap-3">
+                        <button
+                          onClick={() => router.push(`/invoices/${createdBookingId}`)}
+                          className="px-6 py-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold text-xs rounded-full shadow-md cursor-pointer transition-all flex items-center gap-2 border border-slate-200 dark:border-slate-700"
+                        >
+                          <FileText className="w-4 h-4 text-accent-lux" />
+                          <span>View Invoice</span>
+                        </button>
+                        <button
+                          onClick={() => router.push("/profile?tab=bookings")}
+                          className="px-8 py-3.5 bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs rounded-full shadow-lg cursor-pointer transition-transform duration-300 hover:scale-105 active:scale-95"
+                        >
+                          Track Professional Timeline
+                        </button>
+                      </div>
                     </div>
                   )}
 
