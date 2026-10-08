@@ -497,6 +497,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
             subtitle: pkg.subtitle || "",
             description: pkg.description || pkg.subtitle || `${pkg.name} execution by certified Helpmate specialists.`,
             image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || ""),
+            includeInPackage: Array.isArray(pkg.includeInPackage) ? pkg.includeInPackage : [],
+            excludeFromPackage: Array.isArray(pkg.excludeFromPackage) ? pkg.excludeFromPackage : [],
             addons: pData.addons || [],
             category: pData.category,
             subCategory: pData.subCategory,
@@ -612,6 +614,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
               subtitle: pkgAny.subtitle || matchedAny.subtitle || "",
               description: pkgAny.description || pkgAny.subtitle || matchedAny.description || matchedAny.subtitle || `${pkgAny.name || pkgAny.packageName || "Service"} execution by certified Helpmate specialists.`,
               image: formatImageUrl(pkgAny.imageUrl || pkgAny.thumbnailUrl || matchedAny.imageUrl || matchedAny.thumbnailUrl || ""),
+              includeInPackage: Array.isArray(pkgAny.includeInPackage) ? pkgAny.includeInPackage : (Array.isArray(matchedAny.includeInPackage) ? matchedAny.includeInPackage : []),
+              excludeFromPackage: Array.isArray(pkgAny.excludeFromPackage) ? pkgAny.excludeFromPackage : (Array.isArray(matchedAny.excludeFromPackage) ? matchedAny.excludeFromPackage : []),
               addons: matchedAny.addons || pkgAny.addons || [],
             });
             if (matchedAny.category?.id || matchedAny.category?._id) {
@@ -842,6 +846,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
       subtitle: pkg.subtitle || item.subtitle || "",
       description: pkg.description || pkg.subtitle || item.description || `${pkgName} execution by certified Helpmate specialists.`,
       image: formatImageUrl(pkg.imageUrl || pkg.thumbnailUrl || item.imageUrl || item.thumbnailUrl || ""),
+      includeInPackage: Array.isArray(pkg.includeInPackage) ? pkg.includeInPackage : (Array.isArray(item.includeInPackage) ? item.includeInPackage : []),
+      excludeFromPackage: Array.isArray(pkg.excludeFromPackage) ? pkg.excludeFromPackage : (Array.isArray(item.excludeFromPackage) ? item.excludeFromPackage : []),
       addons: item.addons || pkg.addons || [],
     };
   });
@@ -974,13 +980,9 @@ function ServiceDetailPageContent({ params }: PageProps) {
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
-    const isAlreadyInCart = cart.some(
-      (i) => String(i.id) === String(packageId) || String(i.itemId) === String(packageId)
-    );
-    if (isAlreadyInCart) return;
-
     triggerSmallConfetti(e);
+    const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
+
     addToCart({
       id: packageId,
       name: activeName,
@@ -992,31 +994,21 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   const handleBookNow = (e: React.MouseEvent) => {
     const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
-    const isAlreadyInCart = cart.some(
-      (i) => String(i.id) === String(packageId) || String(i.itemId) === String(packageId)
-    );
 
-    if (!isAlreadyInCart) {
-      addToCart({
-        id: packageId,
-        name: activeName,
-        price: activePrice,
-        category: service.category,
-        duration: activeDuration
-      });
-    }
+    addToCart({
+      id: packageId,
+      name: activeName,
+      price: activePrice,
+      category: service.category,
+      duration: activeDuration
+    });
 
     router.push("/booking");
   };
 
   const handleItemAddToCart = (e: React.MouseEvent, item: any) => {
-    const packageId = item._id || item.id;
-    const isAlreadyInCart = cart.some(
-      (i) => String(i.id) === String(packageId) || String(i.itemId) === String(packageId)
-    );
-    if (isAlreadyInCart) return;
-
     triggerSmallConfetti(e);
+    const packageId = item._id || item.id;
     const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
 
     addToCart({
@@ -1030,20 +1022,15 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   const handleItemBookNow = (e: React.MouseEvent, item: any) => {
     const packageId = item._id || item.id;
-    const isAlreadyInCart = cart.some(
-      (i) => String(i.id) === String(packageId) || String(i.itemId) === String(packageId)
-    );
+    const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
 
-    if (!isAlreadyInCart) {
-      const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
-      addToCart({
-        id: packageId,
-        name: pkgName,
-        price: item.price,
-        category: service?.category || "Service",
-        duration: item.duration || 30
-      });
-    }
+    addToCart({
+      id: packageId,
+      name: pkgName,
+      price: item.price,
+      category: service?.category || "Service",
+      duration: item.duration || 30
+    });
 
     router.push("/booking");
   };
@@ -1300,37 +1287,41 @@ function ServiceDetailPageContent({ params }: PageProps) {
                   </div>
 
                   {/* Inclusions / Exclusions */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {/* Inclusions Card */}
-                    {/* <div className="bg-emerald-500/[0.02] dark:bg-emerald-500/[0.04] border border-emerald-500/10 rounded-[28px] p-6 shadow-sm">
-                      <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-450 mb-4 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Included in Package
-                      </h4>
-                      <ul className="space-y-3">
-                        {service.inclusions.map((item, idx) => (
-                          <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-655 dark:text-slate-300">
-                            <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div> */}
+                  {(selectedItem?.includeInPackage?.length || selectedItem?.excludeFromPackage?.length) ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      {Boolean(selectedItem.includeInPackage?.length) && (
+                        <div className="bg-emerald-500/[0.02] dark:bg-emerald-500/[0.04] border border-emerald-500/10 rounded-[28px] p-6 shadow-sm">
+                          <h4 className="font-extrabold text-xs uppercase tracking-wider text-emerald-600 dark:text-emerald-450 mb-4 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Included in Package
+                          </h4>
+                          <ul className="space-y-3">
+                            {selectedItem.includeInPackage.map((item: string, idx: number) => (
+                              <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-655 dark:text-slate-300">
+                                <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
-                    {/* Exclusions Card */}
-                    {/* <div className="bg-red-500/[0.02] dark:bg-red-500/[0.04] border border-red-500/10 rounded-[28px] p-6 shadow-sm">
-                      <h4 className="font-extrabold text-xs uppercase tracking-wider text-red-655 dark:text-red-400 mb-4 flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Excluded from Package
-                      </h4>
-                      <ul className="space-y-3">
-                        {service.exclusions.map((item, idx) => (
-                          <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-655 dark:text-slate-300">
-                            <CloseIcon className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div> */}
-                  </div>
+                      {Boolean(selectedItem.excludeFromPackage?.length) && (
+                        <div className="bg-red-500/[0.02] dark:bg-red-500/[0.04] border border-red-500/10 rounded-[28px] p-6 shadow-sm">
+                          <h4 className="font-extrabold text-xs uppercase tracking-wider text-red-600 dark:text-red-400 mb-4 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Excluded from Package
+                          </h4>
+                          <ul className="space-y-3">
+                            {selectedItem.excludeFromPackage.map((item: string, idx: number) => (
+                              <li key={idx} className="flex gap-2.5 items-start text-xs text-slate-655 dark:text-slate-300">
+                                <CloseIcon className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+                                <span>{item}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
 
                   {/* FAQs */}
                   <div className="space-y-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
@@ -1444,7 +1435,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                       }
                                     }
 
-                                    await toggleAddonInCart(mainPkgId, addonId, action, { addonName, price: addonPrice });
+                                    await toggleAddonInCart(mainPkgId, addonId, action);
                                     addNotification(
                                       action === "add" ? "Add-on Added" : "Add-on Removed",
                                       action === "add" ? `"${addonName}" added to your cart.` : `"${addonName}" removed from your cart.`,

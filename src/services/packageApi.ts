@@ -23,6 +23,8 @@ export interface CustomerPackageItem {
     duration?: number;
     imageUrl?: string;
     thumbnailUrl?: string;
+    includeInPackage?: string[];
+    excludeFromPackage?: string[];
     isBookmarked?: boolean;
   };
   category?: {
@@ -159,6 +161,8 @@ export interface CustomerPackageDetailsData {
     duration?: number;
     imageUrl?: string;
     thumbnailUrl?: string;
+    includeInPackage?: string[];
+    excludeFromPackage?: string[];
     isBookmarked?: boolean;
   };
   category?: {
@@ -244,4 +248,3 @@ export async function fetchCustomerPackageDetailsApi(
     };
   }
 }
-

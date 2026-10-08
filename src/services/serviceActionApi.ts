@@ -22,6 +22,8 @@ export interface PackageItem {
   duration: number;
   imageUrl?: string;
   thumbnailUrl?: string;
+  includeInPackage?: string[];
+  excludeFromPackage?: string[];
   addons?: PackageAddon[];
 }
 
@@ -127,4 +129,3 @@ export async function fetchCustomerPackagesApi(
     };
   }
 }
-
