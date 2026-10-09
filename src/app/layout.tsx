@@ -5,6 +5,8 @@ import Providers from "@/components/common/Providers";
 import CursorGlow from "@/components/common/CursorGlow";
 import FloatingHelp from "@/components/common/FloatingHelp";
 
+import NextTopLoader from "nextjs-toploader";
+
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -33,6 +35,9 @@ export const metadata: Metadata = {
   },
 };
 
+import { Suspense } from "react";
+import GlobalTopLoader from "@/components/common/GlobalTopLoader";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -45,6 +50,20 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col selection:bg-accent-lux selection:text-white">
+        <NextTopLoader
+          color="#48073d"
+          initialPosition={0.1}
+          crawlSpeed={200}
+          height={3.5}
+          crawl={true}
+          showSpinner={false}
+          easing="ease"
+          speed={250}
+          shadow="0 0 12px #48073d,0 0 6px #e0b168"
+        />
+        <Suspense fallback={null}>
+          <GlobalTopLoader />
+        </Suspense>
         <Providers>
           <CursorGlow />
           {children}

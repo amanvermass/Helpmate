@@ -858,16 +858,16 @@ function ServiceDetailPageContent({ params }: PageProps) {
     (availablePackagesList.length > 0 ? availablePackagesList[0] : null) ||
     (itemParam
       ? {
-          id: itemParam,
-          name: formattedName,
-          price: service?.price || 499,
-          originalPrice: service?.price ? service.price + 200 : 699,
-          duration: service?.duration || 60,
-          subtitle: "Certified Specialist Execution",
-          description: service?.description || `${formattedName} service execution by certified Helpmate specialists in Varanasi.`,
-          image: service?.image || "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=600&q=80",
-          addons: [],
-        }
+        id: itemParam,
+        name: formattedName,
+        price: service?.price || 499,
+        originalPrice: service?.price ? service.price + 200 : 699,
+        duration: service?.duration || 60,
+        subtitle: "Certified Specialist Execution",
+        description: service?.description || `${formattedName} service execution by certified Helpmate specialists in Varanasi.`,
+        image: service?.image || "https://images.unsplash.com/photo-1621605815971-fbc98d665033?auto=format&fit=crop&w=600&q=80",
+        addons: [],
+      }
       : null);
 
   // Set active details based on query parameters or fall back to main service

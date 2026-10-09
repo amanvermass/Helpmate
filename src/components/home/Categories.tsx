@@ -118,7 +118,7 @@ export default function Categories() {
           </p>
         </div>
         <Link
-          href="/search"
+          href="/search?view=categories"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-lux hover:underline shrink-0 cursor-pointer"
         >
           View all services <ArrowRight className="w-4 h-4" />

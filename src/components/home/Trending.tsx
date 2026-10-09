@@ -126,6 +126,12 @@ export default function Trending() {
             Our most popular deep cleaning and home repair bundles booked by Varanasi residents this week.
           </p>
         </div>
+        <Link
+          href="/search?type=trending"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-lux hover:underline shrink-0 cursor-pointer"
+        >
+          View all trending services <ArrowRight className="w-4 h-4" />
+        </Link>
       </div>
 
       {loading ? (

@@ -20,9 +20,11 @@ import {
   ShieldCheck,
   CheckCircle2,
   Tag,
-  ChevronRight
+  ChevronRight,
+  Layers,
+  Flame
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, Variants } from "framer-motion";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { formatImageUrl } from "@/utils/image";
@@ -37,19 +39,65 @@ import {
   fetchCustomerPackagesApi,
   CustomerPackageItem,
 } from "@/services/packageApi";
+import {
+  fetchCustomerTrendingApi,
+  TrendingPackageItem,
+} from "@/services/trendingApi";
+import { startTopLoader, stopTopLoader } from "@/utils/loader";
+
+// Category Image Display Component
+function CategoryImageDisplay({
+  iconUrl,
+  name,
+}: {
+  iconUrl?: string;
+  name: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [iconUrl]);
+
+  const formattedUrl = formatImageUrl(iconUrl);
+
+  if (formattedUrl && !imgError) {
+    return (
+      <img
+        src={formattedUrl}
+        alt={name || "Category Icon"}
+        className="w-full h-full object-contain"
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 font-bold text-xs">
+      <Layers className="w-8 h-8 text-slate-400" />
+    </div>
+  );
+}
 
 function SearchPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const { wishlist, toggleWishlist, addNotification, addToCart, clearCart, cart, token, isLoggedIn } = useStore();
+  const { wishlist, toggleWishlist, addNotification, addToCart, cart, token, isLoggedIn } = useStore();
+
+  // View Mode: "categories" | "trending" | "packages"
+  const [viewMode, setViewMode] = useState<"categories" | "trending" | "packages">("categories");
 
   // Dynamic API Categories & Subcategories State
   const [dynamicCategories, setDynamicCategories] = useState<CategoryItem[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState<boolean>(true);
+  const [categorySearchQuery, setCategorySearchQuery] = useState<string>("");
+
   const [activeSubCategories, setActiveSubCategories] = useState<SubCategoryItem[]>([]);
   const [selectedSubCat, setSelectedSubCat] = useState<string>("");
 
-  // Search queries
+  // Search & Filter queries for Packages view
   const [query, setQuery] = useState(searchParams.get("q") || "");
   const [selectedCat, setSelectedCat] = useState(searchParams.get("category") || "");
   const [minRating, setMinRating] = useState<number | null>(null);
@@ -57,25 +105,108 @@ function SearchPageContent() {
   const [isBudgetApplied, setIsBudgetApplied] = useState<boolean>(false);
   const [searchSuggestions, setSearchSuggestions] = useState<CustomerPackageItem[]>([]);
 
+  // Trending Packages State (Only fetched when viewMode === "trending")
+  const [trendingPackages, setTrendingPackages] = useState<CustomerPackageItem[]>([]);
+  const [isLoadingTrending, setIsLoadingTrending] = useState<boolean>(false);
+
+  // Sync viewMode & filters from URL searchParams
+  useEffect(() => {
+    const view = searchParams.get("view");
+    const type = searchParams.get("type");
+    const q = searchParams.get("q");
+    const cat = searchParams.get("categoryId") || searchParams.get("category");
+    const sub = searchParams.get("subCategoryId") || searchParams.get("sub");
+    const trending = searchParams.get("trending");
+
+    setQuery(q || "");
+    if (cat) setSelectedCat(cat);
+    if (sub) setSelectedSubCat(sub);
+
+    if (type === "trending" || view === "trending" || trending === "true") {
+      setViewMode("trending");
+    } else if (view === "packages" || q || cat || sub) {
+      setViewMode("packages");
+    } else if (view === "categories" || type === "categories") {
+      setViewMode("categories");
+    } else {
+      // Default view mode when navigating via View All Services
+      setViewMode("categories");
+    }
+  }, [searchParams]);
+
   // Fetch dynamic categories from backend API
   useEffect(() => {
     async function loadCategories() {
+      setIsLoadingCategories(true);
+      startTopLoader();
       const res = await fetchCustomerCategoriesApi();
       if (res.success && res.data) {
         setDynamicCategories(res.data);
+      } else {
+        setDynamicCategories([]);
       }
+      setIsLoadingCategories(false);
+      stopTopLoader();
     }
     loadCategories();
   }, []);
 
-  // Dynamic Packages State from Backend API
+  // Fetch Trending Packages from GET /api/customer/trending when viewMode === "trending"
+  useEffect(() => {
+    let isMounted = true;
+    async function loadTrending() {
+      if (viewMode !== "trending") return;
+      setIsLoadingTrending(true);
+      startTopLoader();
+      try {
+        const res = await fetchCustomerTrendingApi(token);
+        if (isMounted && res.success && res.data && Array.isArray(res.data)) {
+          const mapped: CustomerPackageItem[] = res.data.map((item) => ({
+            package: {
+              id: item.packageId,
+              name: item.packageName,
+              subtitle: item.subtitle,
+              description: item.description,
+              price: item.price,
+              originalPrice: item.originalPrice,
+              discountPercentage: item.discountPercentage,
+              duration: item.duration || 60,
+              imageUrl: item.imageUrl || item.thumbnailUrl,
+              isBookmarked: item.isBookmarked,
+            },
+            category: item.category,
+            subCategory: item.subCategory,
+            serviceAction: item.serviceAction,
+            addons: [],
+          }));
+          setTrendingPackages(mapped);
+        } else if (isMounted) {
+          setTrendingPackages([]);
+        }
+      } catch (err) {
+        console.error("Error loading trending packages:", err);
+      } finally {
+        if (isMounted) {
+          setIsLoadingTrending(false);
+          stopTopLoader();
+        }
+      }
+    }
+
+    loadTrending();
+    return () => {
+      isMounted = false;
+    };
+  }, [viewMode, token]);
+
+  // Dynamic Packages State from Backend API for All Packages view
   const [apiPackages, setApiPackages] = useState<CustomerPackageItem[]>([]);
   const [isLoadingPackages, setIsLoadingPackages] = useState<boolean>(true);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(0);
 
-  // Fetch subcategories when a category is selected
+  // Fetch subcategories when a category is selected in Packages view
   useEffect(() => {
     async function loadSubCategories() {
       if (!selectedCat) {
@@ -89,21 +220,25 @@ function SearchPageContent() {
       );
 
       if (foundCat) {
+        startTopLoader();
         const res = await fetchCustomerSubCategoriesApi(foundCat._id);
         if (res.success && res.data) {
           setActiveSubCategories(res.data);
         }
+        stopTopLoader();
       }
     }
 
     loadSubCategories();
   }, [selectedCat, dynamicCategories]);
 
-  // Fetch packages from GET /api/customer/packages using search/category/subcategory/maxBudget/page filters
+  // Fetch packages from GET /api/customer/packages when viewMode === "packages"
   useEffect(() => {
     let isMounted = true;
     async function loadPackages() {
+      if (viewMode !== "packages") return;
       setIsLoadingPackages(true);
+      startTopLoader();
       try {
         const foundCat = selectedCat
           ? dynamicCategories.find(
@@ -139,7 +274,10 @@ function SearchPageContent() {
       } catch (err) {
         console.error("Error loading packages from API:", err);
       } finally {
-        if (isMounted) setIsLoadingPackages(false);
+        if (isMounted) {
+          setIsLoadingPackages(false);
+          stopTopLoader();
+        }
       }
     }
 
@@ -147,7 +285,7 @@ function SearchPageContent() {
     return () => {
       isMounted = false;
     };
-  }, [query, selectedCat, selectedSubCat, maxPrice, isBudgetApplied, currentPage, dynamicCategories, activeSubCategories]);
+  }, [viewMode, query, selectedCat, selectedSubCat, maxPrice, isBudgetApplied, currentPage, dynamicCategories, activeSubCategories]);
 
   // Ref for outside click detection & live search suggestions
   const searchWrapperRef = useRef<HTMLDivElement>(null);
@@ -157,13 +295,14 @@ function SearchPageContent() {
       setSearchSuggestions([]);
       return;
     }
-    const filtered = apiPackages.filter((item) =>
+    const targetPool = viewMode === "trending" ? trendingPackages : apiPackages;
+    const filtered = targetPool.filter((item) =>
       item.package.name.toLowerCase().includes(query.toLowerCase()) ||
       item.category?.name.toLowerCase().includes(query.toLowerCase()) ||
       item.subCategory?.name.toLowerCase().includes(query.toLowerCase())
     );
     setSearchSuggestions(filtered.slice(0, 4));
-  }, [query, apiPackages]);
+  }, [query, apiPackages, trendingPackages, viewMode]);
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -179,15 +318,6 @@ function SearchPageContent() {
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
   const [voiceActive, setVoiceActive] = useState(false);
   const [voiceText, setVoiceText] = useState("Listening for your request...");
-
-  // Sync URL search queries
-  useEffect(() => {
-    setQuery(searchParams.get("q") || "");
-    const cat = searchParams.get("categoryId") || searchParams.get("category");
-    if (cat) setSelectedCat(cat);
-    const sub = searchParams.get("subCategoryId") || searchParams.get("sub");
-    if (sub) setSelectedSubCat(sub);
-  }, [searchParams]);
 
   // Voice recognition simulation
   const startVoiceSearch = () => {
@@ -205,6 +335,7 @@ function SearchPageContent() {
     setTimeout(() => {
       setVoiceActive(false);
       setQuery("AC");
+      setViewMode("packages");
       router.push(`/search?q=${encodeURIComponent("AC")}`);
       addNotification("Voice Request Resolved", 'Filtered results for "AC"', "info");
     }, 3800);
@@ -281,6 +412,44 @@ function SearchPageContent() {
     router.push("/booking");
   };
 
+  // Category click handler -> Navigate directly to step-by-step wizard page
+  const handleCategoryClick = (cat: CategoryItem) => {
+    const categorySlug = cat.categoryName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+    router.push(`/services/${categorySlug}`);
+  };
+
+  // Filter categories by local search query in categories view
+  const filteredCategories = dynamicCategories.filter((cat) =>
+    cat.categoryName.toLowerCase().includes(categorySearchQuery.toLowerCase())
+  );
+
+  // Filter trending packages locally if search query or category chip selected
+  const displayTrendingPackages = trendingPackages.filter((item) => {
+    const matchesQuery = !query.trim() ||
+      item.package.name.toLowerCase().includes(query.toLowerCase()) ||
+      item.category?.name.toLowerCase().includes(query.toLowerCase()) ||
+      item.subCategory?.name.toLowerCase().includes(query.toLowerCase());
+
+    const matchesCategory = !selectedCat ||
+      item.category?.id === selectedCat ||
+      item.category?.name.toLowerCase().includes(selectedCat.toLowerCase());
+
+    return matchesQuery && matchesCategory;
+  });
+
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.04 }
+    }
+  };
+
+  const itemVariants: Variants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100, damping: 15 } }
+  };
+
   return (
     <>
       <Header />
@@ -288,269 +457,241 @@ function SearchPageContent() {
       <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background pb-16">
         <div className="max-w-7xl mx-auto px-6">
 
-          {/* Page Header */}
-          <div className="pt-2 pb-4">
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">All Services & Packages</h1>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">Browse all verified professional packages delivered by certified specialists</p>
+          {/* Top View Switcher & Title */}
+          <div className="pt-2 pb-6 border-b border-slate-200/70 dark:border-slate-800">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-1">
+                  {viewMode === "categories"
+                    ? "Verified Categories"
+                    : viewMode === "trending"
+                    ? "Best Sellers Only"
+                    : "Service Catalog"}
+                </span>
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
+                  {viewMode === "categories"
+                    ? "All Service Categories"
+                    : viewMode === "trending"
+                    ? "Trending Services"
+                    : "All Packages & Services"}
+                </h1>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {viewMode === "categories"
+                    ? "Browse all service categories. Select any category to open step-by-step options."
+                    : viewMode === "trending"
+                    ? "Showing exclusively verified trending packages booked by Varanasi residents this week."
+                    : "Browse verified professional packages delivered by certified specialists in Varanasi."}
+                </p>
+              </div>
+
+              {/* View Switcher Toggle Tabs */}
+              <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-900 p-1.5 rounded-full border border-slate-200 dark:border-slate-800 self-start md:self-auto flex-wrap">
+                <button
+                  onClick={() => {
+                    setViewMode("categories");
+                    router.push("/search?view=categories");
+                  }}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === "categories"
+                      ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 hover:text-foreground"
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" /> All Categories
+                </button>
+
+                <button
+                  onClick={() => {
+                    setViewMode("trending");
+                    router.push("/search?type=trending");
+                  }}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === "trending"
+                      ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 hover:text-foreground"
+                  }`}
+                >
+                  <TrendingUp className="w-3.5 h-3.5" /> Trending Services
+                </button>
+
+                <button
+                  onClick={() => {
+                    setViewMode("packages");
+                    router.push("/search?view=packages");
+                  }}
+                  className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    viewMode === "packages"
+                      ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-sm"
+                      : "text-slate-600 dark:text-slate-300 hover:text-foreground"
+                  }`}
+                >
+                  <Package className="w-3.5 h-3.5" /> All Packages
+                </button>
+              </div>
+            </div>
           </div>
 
-          {/* Top Search Banner */}
-          <div className="py-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-8">
-            <div ref={searchWrapperRef} className="flex-1 relative">
-              <form onSubmit={(e) => { e.preventDefault(); router.push(`/search?q=${encodeURIComponent(query)}`); setSearchSuggestions([]); }}>
+          {/* VIEW MODE 1: SHOW ONLY ALL CATEGORIES */}
+          {viewMode === "categories" && (
+            <div className="py-8 space-y-8">
+              {/* Category Search Filter */}
+              <div className="max-w-md relative">
                 <input
                   type="text"
-                  placeholder="What service can we clean, fix, or style today?"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-accent-lux focus:ring-1 focus:ring-accent-lux text-foreground shadow-sm"
+                  placeholder="Search categories..."
+                  value={categorySearchQuery}
+                  onChange={(e) => setCategorySearchQuery(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full py-3 pl-10 pr-4 text-xs font-semibold focus:outline-none focus:border-accent-lux focus:ring-1 focus:ring-accent-lux text-foreground shadow-sm"
                 />
-              </form>
-              <Search className="absolute left-4 top-4 w-5 h-5 text-slate-400" />
-
-              {/* Voice Trigger */}
-              <button
-                onClick={startVoiceSearch}
-                className="absolute right-4 top-3.5 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-accent-lux hover:text-white dark:hover:bg-accent-lux text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all duration-300 cursor-pointer"
-                title="Voice Search"
-              >
-                <Mic className="w-4 h-4" />
-              </button>
-
-              {/* Auto Suggestions Dropdown from live API Packages */}
-              <AnimatePresence>
-                {searchSuggestions.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 15 }}
-                    className="absolute left-0 right-0 mt-2 p-2.5 glass-panel z-50 shadow-2xl text-left border border-slate-200/20 rounded-2xl"
-                  >
-                    <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider px-2.5 mb-1.5">Package Suggestions</p>
-                    <div className="space-y-0.5">
-                      {searchSuggestions.map((item) => {
-                        const pkg = item.package;
-                        const categorySlug = item.category?.name
-                          ? item.category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-                          : (item.category?.id || pkg.id);
-
-                        return (
-                          <button
-                            key={pkg.id}
-                            type="button"
-                            onClick={() => {
-                              setSearchSuggestions([]);
-                              router.push(`/services/${categorySlug}?item=${pkg.id}`);
-                            }}
-                            className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left transition-colors cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2.5">
-                              {pkg.imageUrl ? (
-                                <img src={formatImageUrl(pkg.imageUrl)} alt={pkg.name} className="w-8 h-8 rounded-lg object-cover" />
-                              ) : (
-                                <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-                                  <Package className="w-4 h-4" />
-                                </div>
-                              )}
-                              <div>
-                                <p className="text-[11px] font-bold text-foreground line-clamp-1">{pkg.name}</p>
-                                <p className="text-[9px] text-slate-400 capitalize">{item.category?.name || "Service"} • {pkg.duration || 60} mins</p>
-                              </div>
-                            </div>
-                            <span className="text-[11px] font-bold text-accent-lux shrink-0">₹{pkg.price}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* Mobile Filters Trigger */}
-            <button
-              onClick={() => setShowFiltersMobile(!showFiltersMobile)}
-              className="md:hidden flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
-            >
-              <SlidersHorizontal className="w-4 h-4 text-accent-lux" /> Filters
-            </button>
-          </div>
-
-          {/* Dynamic Category Quick-Chips */}
-          {dynamicCategories.length > 0 && (
-            <div className="py-4 flex flex-wrap gap-2 items-center">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5 mr-1">
-                <TrendingUp className="w-3.5 h-3.5 text-accent-lux" /> Categories:
-              </span>
-              {dynamicCategories.map((cat) => {
-                const isActive = selectedCat === cat._id;
-                return (
+                <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400" />
+                {categorySearchQuery && (
                   <button
-                    key={cat._id}
-                    onClick={() => {
-                      if (isActive) {
-                        setSelectedCat("");
-                        setSelectedSubCat("");
-                      } else {
-                        setSelectedCat(cat._id);
-                        setSelectedSubCat("");
-                      }
-                      setCurrentPage(1);
-                    }}
-                    className={`text-[11px] font-semibold px-3.5 py-1.5 rounded-full border transition-all cursor-pointer shadow-sm ${isActive
-                        ? "bg-[#48073d] text-white dark:bg-accent-lux border-[#48073d] dark:border-accent-lux"
-                        : "bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent-lux"
-                      }`}
+                    onClick={() => setCategorySearchQuery("")}
+                    className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600"
                   >
-                    {cat.categoryName}
+                    <X className="w-4 h-4" />
                   </button>
-                );
-              })}
+                )}
+              </div>
+
+              {isLoadingCategories ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                    <div
+                      key={n}
+                      className="bg-white dark:bg-slate-900/60 border border-slate-200/10 dark:border-slate-800 rounded-3xl p-5 flex flex-col justify-between h-60 animate-pulse"
+                    >
+                      <div className="bg-slate-200/70 dark:bg-slate-800/70 rounded-2xl aspect-[4/3] w-full" />
+                      <div className="space-y-2 mt-4">
+                        <div className="h-4 bg-slate-200/80 dark:bg-slate-800/80 rounded w-2/3" />
+                        <div className="h-3 bg-slate-200/50 dark:bg-slate-800/50 rounded w-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : filteredCategories.length === 0 ? (
+                <div className="glass-panel p-12 text-center text-slate-500 text-xs rounded-3xl border border-slate-200/10 max-w-lg mx-auto">
+                  <Layers className="w-10 h-10 text-slate-400 mx-auto mb-3" />
+                  <p className="font-bold text-sm text-foreground">No matching categories found</p>
+                  <p className="mt-1 text-slate-400">Try searching for another service category or clear your search.</p>
+                  {categorySearchQuery && (
+                    <button
+                      onClick={() => setCategorySearchQuery("")}
+                      className="mt-4 px-5 py-2 rounded-full bg-accent-lux text-white text-xs font-bold"
+                    >
+                      Clear Category Filter
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+                >
+                  <AnimatePresence mode="popLayout">
+                    {filteredCategories.map((cat) => (
+                      <motion.div
+                        key={cat._id}
+                        variants={itemVariants}
+                        initial="hidden"
+                        animate="show"
+                        exit="hidden"
+                        layout
+                        onClick={() => handleCategoryClick(cat)}
+                        className="bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800 hover:border-accent-lux/60 dark:hover:border-accent-lux/60 rounded-3xl p-5 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group cursor-pointer h-full relative select-none hover:-translate-y-1"
+                      >
+                        <div>
+                          {/* Icon/Illustration container */}
+                          <div className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl aspect-[4/3] flex items-center justify-center p-4 overflow-hidden group-hover:bg-accent-lux/5 transition-colors">
+                            <div className="w-20 h-20 transition-transform duration-500 group-hover:scale-110 flex items-center justify-center">
+                              <CategoryImageDisplay iconUrl={cat.iconUrl} name={cat.categoryName} />
+                            </div>
+                          </div>
+
+                          {/* Category Title */}
+                          <h3 className="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 leading-tight group-hover:text-accent-lux transition-colors">
+                            {cat.categoryName}
+                          </h3>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                            Explore step-by-step options →
+                          </p>
+                        </div>
+
+                        {/* Arrow indicator at bottom right */}
+                        <div className="flex items-center justify-between mt-6 pt-3 border-t border-slate-100 dark:border-slate-800/80">
+                          <span className="text-[10px] uppercase font-bold text-accent-lux tracking-wider">
+                            View Steps
+                          </span>
+                          <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 group-hover:bg-accent-lux group-hover:text-white flex items-center justify-center transition-all">
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </motion.div>
+              )}
             </div>
           )}
 
-          {/* Core Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mt-6">
+          {/* VIEW MODE 2: SHOW ONLY TRENDING SERVICES */}
+          {viewMode === "trending" && (
+            <div className="py-8 space-y-6">
 
-            {/* Left Filter Sidebar */}
-            <aside className={`md:block md:col-span-3 glass-panel p-6 border border-slate-200/10 space-y-6 ${showFiltersMobile ? "block" : "hidden"}`}>
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-                <span className="text-xs font-bold text-foreground">Filter Catalog</span>
-                <button
-                  onClick={() => {
-                    setQuery("");
-                    setSelectedCat("");
-                    setSelectedSubCat("");
-                    setMinRating(null);
-                    setMaxPrice(10000);
-                    setIsBudgetApplied(false);
-                    setCurrentPage(1);
-                  }}
-                  className="text-[10px] text-accent-lux font-bold hover:underline cursor-pointer"
-                >
-                  Clear all
-                </button>
+              {/* Header banner for Trending view */}
+              <div className="glass-panel p-6 rounded-3xl border border-amber-500/20 bg-gradient-to-r from-amber-500/10 via-purple-900/10 to-slate-900/40 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
+                    <Flame className="w-6 h-6 animate-pulse" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-extrabold text-foreground">Top Booked Trending Packages</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Showing exclusively the trending services & packages on Helpmate</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-extrabold uppercase px-3 py-1 rounded-full bg-amber-500 text-white shrink-0 shadow-sm">
+                  {displayTrendingPackages.length} Trending Items
+                </span>
               </div>
 
-              {/* Categories */}
-              <div className="space-y-3">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Service Category</span>
-                <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
+              {/* Dynamic Category Filter Chips for Trending */}
+              {dynamicCategories.length > 0 && (
+                <div className="py-1 flex flex-wrap gap-2 items-center">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5 mr-1">
+                    <TrendingUp className="w-3.5 h-3.5 text-amber-500" /> Filter Trending:
+                  </span>
                   <button
-                    onClick={() => {
-                      setSelectedCat("");
-                      setSelectedSubCat("");
-                      setCurrentPage(1);
-                    }}
-                    className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer ${selectedCat === ""
-                        ? "bg-accent-lux/10 text-accent-lux"
-                        : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                      }`}
+                    onClick={() => setSelectedCat("")}
+                    className={`text-[11px] font-semibold px-3.5 py-1.5 rounded-full border transition-all cursor-pointer ${
+                      selectedCat === ""
+                        ? "bg-[#48073d] text-white dark:bg-accent-lux border-[#48073d] dark:border-accent-lux"
+                        : "bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent-lux"
+                    }`}
                   >
-                    All Categories
+                    All Trending
                   </button>
-
                   {dynamicCategories.map((cat) => {
-                    const isSelected = selectedCat === cat._id;
+                    const isActive = selectedCat === cat._id || selectedCat === cat.categoryName;
                     return (
                       <button
                         key={cat._id}
-                        onClick={() => {
-                          setSelectedCat(isSelected ? "" : cat._id);
-                          setSelectedSubCat("");
-                          setCurrentPage(1);
-                        }}
-                        className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all capitalize cursor-pointer ${isSelected
-                            ? "bg-accent-lux/10 text-accent-lux"
-                            : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
-                          }`}
+                        onClick={() => setSelectedCat(isActive ? "" : cat._id)}
+                        className={`text-[11px] font-semibold px-3.5 py-1.5 rounded-full border transition-all cursor-pointer ${
+                          isActive
+                            ? "bg-[#48073d] text-white dark:bg-accent-lux border-[#48073d] dark:border-accent-lux"
+                            : "bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent-lux"
+                        }`}
                       >
                         {cat.categoryName}
                       </button>
                     );
                   })}
                 </div>
-              </div>
-
-              {/* Subcategories (Dynamic when category selected) */}
-              {activeSubCategories.length > 0 && (
-                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-                  <span className="text-[10px] uppercase font-bold text-accent-lux tracking-wider">Subcategories</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {activeSubCategories.map((subCat) => {
-                      const isActive = selectedSubCat === subCat._id || selectedSubCat === subCat.name;
-                      return (
-                        <button
-                          key={subCat._id}
-                          onClick={() => {
-                            if (isActive) {
-                              setSelectedSubCat("");
-                            } else {
-                              setSelectedSubCat(subCat._id);
-                            }
-                            setCurrentPage(1);
-                          }}
-                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${isActive
-                              ? "bg-accent-lux text-white border-accent-lux"
-                              : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-accent-lux"
-                            }`}
-                        >
-                          {subCat.name}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
               )}
 
-              {/* Price range */}
-              <div className="space-y-3">
-                <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                  <span>Max Budget {isBudgetApplied ? "(Applied)" : "(Off)"}</span>
-                  <span className="text-foreground font-sans font-bold">₹{maxPrice}</span>
-                </div>
-                <input
-                  type="range"
-                  min="6"
-                  max="10000"
-                  step="50"
-                  value={maxPrice}
-                  onChange={(e) => {
-                    setMaxPrice(Number(e.target.value));
-                    setIsBudgetApplied(true);
-                  }}
-                  className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-accent-lux"
-                />
-                {isBudgetApplied && (
-                  <button
-                    onClick={() => {
-                      setIsBudgetApplied(false);
-                      setMaxPrice(10000);
-                    }}
-                    className="text-[9px] text-accent-lux font-bold hover:underline block"
-                  >
-                    Remove budget filter
-                  </button>
-                )}
-              </div>
-            </aside>
-
-            {/* Right Search Grid */}
-            <div className="md:col-span-9 space-y-6">
-
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-slate-500 font-medium">
-                  Showing <span className="font-bold text-foreground font-sans">{totalItems || apiPackages.length}</span> verified packages
-                </p>
-                {totalPages > 1 && (
-                  <p className="text-xs text-slate-400 font-semibold font-sans">
-                    Page {currentPage} of {totalPages}
-                  </p>
-                )}
-              </div>
-
-              {/* Loading Skeleton */}
-              {isLoadingPackages ? (
+              {isLoadingTrending ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {[1, 2, 3, 4, 5, 6].map((n) => (
                     <div key={n} className="bg-white dark:bg-slate-900/60 rounded-2xl p-4 space-y-4 border border-slate-100 dark:border-slate-800 animate-pulse">
@@ -558,234 +699,667 @@ function SearchPageContent() {
                       <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
                       <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
                       <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-full" />
-                      <div className="flex justify-between items-center pt-2">
-                        <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
-                        <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-xl w-1/3" />
-                      </div>
                     </div>
                   ))}
                 </div>
-              ) : apiPackages.length === 0 ? (
+              ) : displayTrendingPackages.length === 0 ? (
                 <div className="glass-panel p-12 text-center flex flex-col items-center max-w-lg mx-auto border border-slate-200/10 rounded-3xl">
-                  <Package className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-4" />
-                  <h3 className="font-bold text-base text-foreground">No Packages Found</h3>
+                  <Flame className="w-12 h-12 text-amber-500 mb-4 opacity-70" />
+                  <h3 className="font-bold text-base text-foreground">No Trending Packages Found</h3>
                   <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
-                    We couldn't find matching packages for this selection. Try clearing your filters or selecting another category.
+                    No trending packages available for this specific category filter at the moment.
                   </p>
                   <button
-                    onClick={() => {
-                      setQuery("");
-                      setSelectedCat("");
-                      setSelectedSubCat("");
-                      setMinRating(null);
-                      setMaxPrice(10000);
-                      setIsBudgetApplied(false);
-                      setCurrentPage(1);
-                    }}
-                    className="mt-6 px-6 py-2.5 rounded-full bg-[#48073d] text-white dark:bg-accent-lux text-xs font-bold shadow-md cursor-pointer hover:brightness-110"
+                    onClick={() => setSelectedCat("")}
+                    className="mt-6 px-6 py-2.5 rounded-full bg-accent-lux text-white text-xs font-bold shadow-md cursor-pointer hover:brightness-110"
                   >
-                    Reset Filter View
+                    View All Trending Packages
                   </button>
                 </div>
               ) : (
-                <div className="space-y-8">
-                  {/* Dynamic API Package Cards */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {apiPackages.map((item, idx) => {
-                      const pkg = item.package;
-                      const isFavorited = wishlist.includes(pkg.id);
-                      const isCartAdded = cart.some(c => c.id === pkg.id || c.itemId === pkg.id);
-                      const categorySlug = item.category?.name
-                        ? item.category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
-                        : (item.category?.id || pkg.id);
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {displayTrendingPackages.map((item, idx) => {
+                    const pkg = item.package;
+                    const isFavorited = wishlist.includes(pkg.id);
+                    const isCartAdded = cart.some(c => c.id === pkg.id || c.itemId === pkg.id);
+                    const categorySlug = item.category?.name
+                      ? item.category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+                      : (item.category?.id || pkg.id);
 
-                      return (
-                        <motion.div
-                          key={pkg.id}
-                          initial={{ opacity: 0, y: 16 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3, delay: idx * 0.04 }}
-                          onClick={() => router.push(`/services/${categorySlug}?item=${pkg.id}`)}
-                          className="group relative bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800 hover:border-accent-lux/40 dark:hover:border-accent-lux/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden cursor-pointer hover:-translate-y-1"
-                        >
-                          {/* Card Top Banner / Media */}
-                          <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                            {pkg.imageUrl ? (
-                              <img
-                                src={formatImageUrl(pkg.imageUrl)}
-                                alt={pkg.name}
-                                referrerPolicy="no-referrer"
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 bg-gradient-to-br from-purple-900/20 via-slate-900 to-slate-950">
-                                <Package className="w-10 h-10 text-accent-lux/60 mb-1" />
-                                <span className="text-xs font-bold text-slate-300 text-center">{pkg.name}</span>
-                              </div>
-                            )}
-
-                            {/* Overlay Gradients */}
-                            <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20" />
-
-                            {/* Category & Subcategory Pills */}
-                            <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10 max-w-[80%]">
-                              {item.category?.name && (
-                                <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/90 dark:bg-slate-900/90 text-slate-850 dark:text-slate-100 backdrop-blur-md shadow-sm">
-                                  {item.category.name}
-                                </span>
-                              )}
-                              {item.subCategory?.name && (
-                                <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#48073d]/90 text-white backdrop-blur-md shadow-sm">
-                                  {item.subCategory.name}
-                                </span>
-                              )}
+                    return (
+                      <motion.div
+                        key={pkg.id}
+                        initial={{ opacity: 0, y: 16 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: idx * 0.04 }}
+                        onClick={() => router.push(`/services/${categorySlug}?item=${pkg.id}`)}
+                        className="group relative bg-white dark:bg-slate-900/80 rounded-2xl border border-amber-500/20 dark:border-slate-800 hover:border-amber-500/50 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden cursor-pointer hover:-translate-y-1"
+                      >
+                        {/* Card Top Banner / Media */}
+                        <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                          {pkg.imageUrl ? (
+                            <img
+                              src={formatImageUrl(pkg.imageUrl)}
+                              alt={pkg.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 bg-gradient-to-br from-purple-900/20 via-slate-900 to-slate-950">
+                              <Package className="w-10 h-10 text-accent-lux/60 mb-1" />
+                              <span className="text-xs font-bold text-slate-300 text-center">{pkg.name}</span>
                             </div>
+                          )}
 
-                            {/* Wishlist / Bookmark Toggle */}
-                            <button
-                              onClick={(e) => handleWishlistToggle(e, pkg.id, pkg.name)}
-                              className={`absolute top-3 right-3 w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all shadow-sm z-10 ${isFavorited || pkg.isBookmarked
-                                  ? "bg-rose-500 text-white"
-                                  : "bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 hover:text-rose-500 hover:bg-white"
-                                }`}
-                            >
-                              <Heart className={`w-3.5 h-3.5 ${isFavorited || pkg.isBookmarked ? "fill-white" : ""}`} />
-                            </button>
+                          {/* Overlay Gradients */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20" />
 
-                            {/* Discount Badge */}
-                            {pkg.discountPercentage && pkg.discountPercentage > 0 ? (
-                              <span className="absolute bottom-3 left-3 bg-emerald-500 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-md tracking-wider">
-                                {pkg.discountPercentage}% OFF
-                              </span>
-                            ) : null}
-
-                            {/* Duration Badge */}
-                            {pkg.duration && (
-                              <span className="absolute bottom-3 right-3 text-[9px] font-bold text-slate-200 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md flex items-center gap-1 font-sans">
-                                <Clock className="w-3 h-3 text-amber-400" /> {pkg.duration} mins
+                          {/* Trending Fire Badge */}
+                          <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
+                            <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-500 text-white shadow-md flex items-center gap-1">
+                              <Flame className="w-3 h-3 fill-white" /> Trending
+                            </span>
+                            {item.category?.name && (
+                              <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/90 dark:bg-slate-900/90 text-slate-850 dark:text-slate-100 backdrop-blur-md shadow-sm">
+                                {item.category.name}
                               </span>
                             )}
                           </div>
 
-                          {/* Card Body */}
-                          <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                          {/* Wishlist / Bookmark Toggle */}
+                          <button
+                            onClick={(e) => handleWishlistToggle(e, pkg.id, pkg.name)}
+                            className={`absolute top-3 right-3 w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all shadow-sm z-10 ${
+                              isFavorited || pkg.isBookmarked
+                                ? "bg-rose-500 text-white"
+                                : "bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 hover:text-rose-500 hover:bg-white"
+                            }`}
+                          >
+                            <Heart className={`w-3.5 h-3.5 ${isFavorited || pkg.isBookmarked ? "fill-white" : ""}`} />
+                          </button>
+
+                          {/* Discount Badge */}
+                          {pkg.discountPercentage && pkg.discountPercentage > 0 ? (
+                            <span className="absolute bottom-3 left-3 bg-emerald-500 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-md tracking-wider">
+                              {pkg.discountPercentage}% OFF
+                            </span>
+                          ) : null}
+
+                          {/* Duration Badge */}
+                          {pkg.duration && (
+                            <span className="absolute bottom-3 right-3 text-[9px] font-bold text-slate-200 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md flex items-center gap-1 font-sans">
+                              <Clock className="w-3 h-3 text-amber-400" /> {pkg.duration} mins
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Card Body */}
+                        <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                          <div>
+                            <h3 className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-accent-lux transition-colors leading-snug">
+                              {pkg.name}
+                            </h3>
+
+                            {pkg.subtitle && (
+                              <p className="text-[11px] font-semibold text-accent-lux mt-0.5 line-clamp-1">
+                                {pkg.subtitle}
+                              </p>
+                            )}
+
+                            {pkg.description && (
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed line-clamp-2">
+                                {pkg.description}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* Card Footer: Price & Actions */}
+                          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                             <div>
-                              <h3 className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-accent-lux transition-colors leading-snug">
-                                {pkg.name}
-                              </h3>
-
-                              {pkg.subtitle && (
-                                <p className="text-[11px] font-semibold text-accent-lux mt-0.5 line-clamp-1">
-                                  {pkg.subtitle}
-                                </p>
-                              )}
-
-                              {pkg.description && (
-                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed line-clamp-2">
-                                  {pkg.description}
-                                </p>
-                              )}
-
-                              {/* Service Action details */}
-                              {item.serviceAction?.name && (
-                                <div className="mt-2.5 flex items-center gap-1">
-                                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Action:</span>
-                                  <span className="text-[9px] font-extrabold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
-                                    {item.serviceAction.name}
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="text-base font-black text-slate-900 dark:text-white font-sans">
+                                  ₹{pkg.price}
+                                </span>
+                                {pkg.originalPrice && pkg.originalPrice > pkg.price && (
+                                  <span className="text-[11px] font-normal text-slate-400 line-through font-sans">
+                                    ₹{pkg.originalPrice}
                                   </span>
-                                </div>
-                              )}
-
-                              {/* Addons List */}
-                              {item.addons && item.addons.length > 0 && (
-                                <div className="mt-2.5 flex flex-wrap gap-1">
-                                  {item.addons.slice(0, 2).map((addon) => (
-                                    <span key={addon._id} className="text-[8px] font-bold bg-accent-lux/10 text-accent-lux px-2 py-0.5 rounded-full">
-                                      +{addon.addonName} (₹{addon.price})
-                                    </span>
-                                  ))}
-                                  {item.addons.length > 2 && (
-                                    <span className="text-[8px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
-                                      +{item.addons.length - 2} more
-                                    </span>
-                                  )}
-                                </div>
-                              )}
+                                )}
+                              </div>
+                              <span className="text-[9px] text-amber-500 font-bold block">
+                                ★ Top Seller This Week
+                              </span>
                             </div>
 
-                            {/* Card Footer: Price & Both Actions (Add to Cart & Book Now) */}
-                            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
-                              <div>
-                                <div className="flex items-baseline gap-1.5">
-                                  <span className="text-base font-black text-slate-900 dark:text-white font-sans">
-                                    ₹{pkg.price}
-                                  </span>
-                                  {pkg.originalPrice && pkg.originalPrice > pkg.price && (
-                                    <span className="text-[11px] font-normal text-slate-400 line-through font-sans">
-                                      ₹{pkg.originalPrice}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[9px] text-emerald-600 dark:text-emerald-450 font-bold block">
-                                  ✓ Verified Pro Service
-                                </span>
-                              </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button
+                                onClick={(e) => handleAddToCart(e, item)}
+                                disabled={isCartAdded}
+                                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer ${
+                                  isCartAdded
+                                    ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 cursor-not-allowed opacity-90"
+                                    : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                                }`}
+                              >
+                                {isCartAdded ? "Added ✓" : "+ Cart"}
+                              </button>
 
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                {/* Add to Cart Button */}
-                                <button
-                                  onClick={(e) => handleAddToCart(e, item)}
-                                  disabled={isCartAdded}
-                                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer ${isCartAdded
-                                      ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 cursor-not-allowed opacity-90"
-                                      : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
-                                    }`}
-                                >
-                                  {isCartAdded ? "Added ✓" : "+ Cart"}
-                                </button>
-
-                                {/* Book Now Button -> opens 4-step booking flow at /booking */}
-                                <button
-                                  onClick={(e) => handleBookNow(e, item)}
-                                  className="px-3.5 py-1.5 rounded-xl text-[11px] font-bold bg-accent-lux hover:bg-accent-lux/90 text-white active:scale-95 transition-all shadow-md flex items-center gap-1 cursor-pointer"
-                                >
-                                  <span>Book Now</span> <ChevronRight className="w-3 h-3" />
-                                </button>
-                              </div>
+                              <button
+                                onClick={(e) => handleBookNow(e, item)}
+                                className="px-3.5 py-1.5 rounded-xl text-[11px] font-bold bg-accent-lux hover:bg-accent-lux/90 text-white active:scale-95 transition-all shadow-md flex items-center gap-1 cursor-pointer"
+                              >
+                                <span>Book Now</span> <ChevronRight className="w-3 h-3" />
+                              </button>
                             </div>
                           </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Pagination Controls */}
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
-                      <button
-                        disabled={currentPage <= 1}
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        className="px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                      >
-                        Previous
-                      </button>
-                      <span className="text-xs font-bold text-slate-500 font-sans">
-                        {currentPage} / {totalPages}
-                      </span>
-                      <button
-                        disabled={currentPage >= totalPages}
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        className="px-4 py-2 rounded-full bg-accent-lux text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent-lux/90 transition-colors cursor-pointer"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  )}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
               )}
             </div>
+          )}
 
-          </div>
+          {/* VIEW MODE 3: SHOW ALL PACKAGES & CATALOG */}
+          {viewMode === "packages" && (
+            <div className="space-y-6 pt-4">
+
+              {/* Top Search Banner */}
+              <div className="py-4 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
+                <div ref={searchWrapperRef} className="flex-1 relative">
+                  <form onSubmit={(e) => { e.preventDefault(); router.push(`/search?view=packages&q=${encodeURIComponent(query)}`); setSearchSuggestions([]); }}>
+                    <input
+                      type="text"
+                      placeholder="What service can we clean, fix, or style today?"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-full py-3.5 pl-12 pr-12 text-sm focus:outline-none focus:border-accent-lux focus:ring-1 focus:ring-accent-lux text-foreground shadow-sm"
+                    />
+                  </form>
+                  <Search className="absolute left-4 top-4 w-5 h-5 text-slate-400" />
+
+                  {/* Voice Trigger */}
+                  <button
+                    onClick={startVoiceSearch}
+                    className="absolute right-4 top-3.5 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-accent-lux hover:text-white dark:hover:bg-accent-lux text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all duration-300 cursor-pointer"
+                    title="Voice Search"
+                  >
+                    <Mic className="w-4 h-4" />
+                  </button>
+
+                  {/* Auto Suggestions Dropdown from live API Packages */}
+                  <AnimatePresence>
+                    {searchSuggestions.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 15 }}
+                        className="absolute left-0 right-0 mt-2 p-2.5 glass-panel z-50 shadow-2xl text-left border border-slate-200/20 rounded-2xl bg-white dark:bg-slate-900"
+                      >
+                        <p className="text-[9px] uppercase font-bold text-slate-400 tracking-wider px-2.5 mb-1.5">Package Suggestions</p>
+                        <div className="space-y-0.5">
+                          {searchSuggestions.map((item) => {
+                            const pkg = item.package;
+                            const categorySlug = item.category?.name
+                              ? item.category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+                              : (item.category?.id || pkg.id);
+
+                            return (
+                              <button
+                                key={pkg.id}
+                                type="button"
+                                onClick={() => {
+                                  setSearchSuggestions([]);
+                                  router.push(`/services/${categorySlug}?item=${pkg.id}`);
+                                }}
+                                className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left transition-colors cursor-pointer"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  {pkg.imageUrl ? (
+                                    <img src={formatImageUrl(pkg.imageUrl)} alt={pkg.name} className="w-8 h-8 rounded-lg object-cover" />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                                      <Package className="w-4 h-4" />
+                                    </div>
+                                  )}
+                                  <div>
+                                    <p className="text-[11px] font-bold text-foreground line-clamp-1">{pkg.name}</p>
+                                    <p className="text-[9px] text-slate-400 capitalize">{item.category?.name || "Service"} • {pkg.duration || 60} mins</p>
+                                  </div>
+                                </div>
+                                <span className="text-[11px] font-bold text-accent-lux shrink-0">₹{pkg.price}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Mobile Filters Trigger */}
+                <button
+                  onClick={() => setShowFiltersMobile(!showFiltersMobile)}
+                  className="md:hidden flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
+                >
+                  <SlidersHorizontal className="w-4 h-4 text-accent-lux" /> Filters
+                </button>
+              </div>
+
+              {/* Dynamic Category Quick-Chips */}
+              {dynamicCategories.length > 0 && (
+                <div className="py-2 flex flex-wrap gap-2 items-center">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5 mr-1">
+                    <TrendingUp className="w-3.5 h-3.5 text-accent-lux" /> Categories:
+                  </span>
+                  {dynamicCategories.map((cat) => {
+                    const isActive = selectedCat === cat._id;
+                    return (
+                      <button
+                        key={cat._id}
+                        onClick={() => {
+                          if (isActive) {
+                            setSelectedCat("");
+                            setSelectedSubCat("");
+                          } else {
+                            setSelectedCat(cat._id);
+                            setSelectedSubCat("");
+                          }
+                          setCurrentPage(1);
+                        }}
+                        className={`text-[11px] font-semibold px-3.5 py-1.5 rounded-full border transition-all cursor-pointer shadow-sm ${isActive
+                            ? "bg-[#48073d] text-white dark:bg-accent-lux border-[#48073d] dark:border-accent-lux"
+                            : "bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-accent-lux"
+                          }`}
+                      >
+                        {cat.categoryName}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Core Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mt-4">
+
+                {/* Left Filter Sidebar */}
+                <aside className={`md:block md:col-span-3 glass-panel p-6 border border-slate-200/10 space-y-6 ${showFiltersMobile ? "block" : "hidden"}`}>
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <span className="text-xs font-bold text-foreground">Filter Catalog</span>
+                    <button
+                      onClick={() => {
+                        setQuery("");
+                        setSelectedCat("");
+                        setSelectedSubCat("");
+                        setMinRating(null);
+                        setMaxPrice(10000);
+                        setIsBudgetApplied(false);
+                        setCurrentPage(1);
+                      }}
+                      className="text-[10px] text-accent-lux font-bold hover:underline cursor-pointer"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+
+                  {/* Categories */}
+                  <div className="space-y-3">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Service Category</span>
+                    <div className="space-y-1 max-h-56 overflow-y-auto pr-1">
+                      <button
+                        onClick={() => {
+                          setSelectedCat("");
+                          setSelectedSubCat("");
+                          setCurrentPage(1);
+                        }}
+                        className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all cursor-pointer ${selectedCat === ""
+                            ? "bg-accent-lux/10 text-accent-lux"
+                            : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                          }`}
+                      >
+                        All Categories
+                      </button>
+
+                      {dynamicCategories.map((cat) => {
+                        const isSelected = selectedCat === cat._id;
+                        return (
+                          <button
+                            key={cat._id}
+                            onClick={() => {
+                              setSelectedCat(isSelected ? "" : cat._id);
+                              setSelectedSubCat("");
+                              setCurrentPage(1);
+                            }}
+                            className={`w-full text-left text-xs py-1.5 px-2.5 rounded-lg font-bold transition-all capitalize cursor-pointer ${isSelected
+                                ? "bg-accent-lux/10 text-accent-lux"
+                                : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              }`}
+                          >
+                            {cat.categoryName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Subcategories (Dynamic when category selected) */}
+                  {activeSubCategories.length > 0 && (
+                    <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-[10px] uppercase font-bold text-accent-lux tracking-wider">Subcategories</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {activeSubCategories.map((subCat) => {
+                          const isActive = selectedSubCat === subCat._id || selectedSubCat === subCat.name;
+                          return (
+                            <button
+                              key={subCat._id}
+                              onClick={() => {
+                                if (isActive) {
+                                  setSelectedSubCat("");
+                                } else {
+                                  setSelectedSubCat(subCat._id);
+                                }
+                                setCurrentPage(1);
+                              }}
+                              className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${isActive
+                                  ? "bg-accent-lux text-white border-accent-lux"
+                                  : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-accent-lux"
+                                }`}
+                            >
+                              {subCat.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price range */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                      <span>Max Budget {isBudgetApplied ? "(Applied)" : "(Off)"}</span>
+                      <span className="text-foreground font-sans font-bold">₹{maxPrice}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="6"
+                      max="10000"
+                      step="50"
+                      value={maxPrice}
+                      onChange={(e) => {
+                        setMaxPrice(Number(e.target.value));
+                        setIsBudgetApplied(true);
+                      }}
+                      className="w-full h-1 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-accent-lux"
+                    />
+                    {isBudgetApplied && (
+                      <button
+                        onClick={() => {
+                          setIsBudgetApplied(false);
+                          setMaxPrice(10000);
+                        }}
+                        className="text-[9px] text-accent-lux font-bold hover:underline block"
+                      >
+                        Remove budget filter
+                      </button>
+                    )}
+                  </div>
+                </aside>
+
+                {/* Right Search Grid */}
+                <div className="md:col-span-9 space-y-6">
+
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-slate-500 font-medium">
+                      Showing <span className="font-bold text-foreground font-sans">{totalItems || apiPackages.length}</span> verified packages
+                    </p>
+                    {totalPages > 1 && (
+                      <p className="text-xs text-slate-400 font-semibold font-sans">
+                        Page {currentPage} of {totalPages}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Loading Skeleton */}
+                  {isLoadingPackages ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {[1, 2, 3, 4, 5, 6].map((n) => (
+                        <div key={n} className="bg-white dark:bg-slate-900/60 rounded-2xl p-4 space-y-4 border border-slate-100 dark:border-slate-800 animate-pulse">
+                          <div className="h-44 bg-slate-200 dark:bg-slate-800 rounded-xl" />
+                          <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-3/4" />
+                          <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-1/2" />
+                          <div className="h-3 bg-slate-200 dark:bg-slate-800 rounded w-full" />
+                          <div className="flex justify-between items-center pt-2">
+                            <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded w-1/3" />
+                            <div className="h-8 bg-slate-200 dark:bg-slate-800 rounded-xl w-1/3" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : apiPackages.length === 0 ? (
+                    <div className="glass-panel p-12 text-center flex flex-col items-center max-w-lg mx-auto border border-slate-200/10 rounded-3xl">
+                      <Package className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-4" />
+                      <h3 className="font-bold text-base text-foreground">No Packages Found</h3>
+                      <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
+                        We couldn't find matching packages for this selection. Try clearing your filters or selecting another category.
+                      </p>
+                      <button
+                        onClick={() => {
+                          setQuery("");
+                          setSelectedCat("");
+                          setSelectedSubCat("");
+                          setMinRating(null);
+                          setMaxPrice(10000);
+                          setIsBudgetApplied(false);
+                          setCurrentPage(1);
+                        }}
+                        className="mt-6 px-6 py-2.5 rounded-full bg-[#48073d] text-white dark:bg-accent-lux text-xs font-bold shadow-md cursor-pointer hover:brightness-110"
+                      >
+                        Reset Filter View
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-8">
+                      {/* Dynamic API Package Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {apiPackages.map((item, idx) => {
+                          const pkg = item.package;
+                          const isFavorited = wishlist.includes(pkg.id);
+                          const isCartAdded = cart.some(c => c.id === pkg.id || c.itemId === pkg.id);
+                          const categorySlug = item.category?.name
+                            ? item.category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
+                            : (item.category?.id || pkg.id);
+
+                          return (
+                            <motion.div
+                              key={pkg.id}
+                              initial={{ opacity: 0, y: 16 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.3, delay: idx * 0.04 }}
+                              onClick={() => router.push(`/services/${categorySlug}?item=${pkg.id}`)}
+                              className="group relative bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800 hover:border-accent-lux/40 dark:hover:border-accent-lux/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden cursor-pointer hover:-translate-y-1"
+                            >
+                              {/* Card Top Banner / Media */}
+                              <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                {pkg.imageUrl ? (
+                                  <img
+                                    src={formatImageUrl(pkg.imageUrl)}
+                                    alt={pkg.name}
+                                    referrerPolicy="no-referrer"
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 bg-gradient-to-br from-purple-900/20 via-slate-900 to-slate-950">
+                                    <Package className="w-10 h-10 text-accent-lux/60 mb-1" />
+                                    <span className="text-xs font-bold text-slate-300 text-center">{pkg.name}</span>
+                                  </div>
+                                )}
+
+                                {/* Overlay Gradients */}
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20" />
+
+                                {/* Category & Subcategory Pills */}
+                                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10 max-w-[80%]">
+                                  {item.category?.name && (
+                                    <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-white/90 dark:bg-slate-900/90 text-slate-850 dark:text-slate-100 backdrop-blur-md shadow-sm">
+                                      {item.category.name}
+                                    </span>
+                                  )}
+                                  {item.subCategory?.name && (
+                                    <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#48073d]/90 text-white backdrop-blur-md shadow-sm">
+                                      {item.subCategory.name}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Wishlist / Bookmark Toggle */}
+                                <button
+                                  onClick={(e) => handleWishlistToggle(e, pkg.id, pkg.name)}
+                                  className={`absolute top-3 right-3 w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center transition-all shadow-sm z-10 ${isFavorited || pkg.isBookmarked
+                                      ? "bg-rose-500 text-white"
+                                      : "bg-white/80 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 hover:text-rose-500 hover:bg-white"
+                                    }`}
+                                >
+                                  <Heart className={`w-3.5 h-3.5 ${isFavorited || pkg.isBookmarked ? "fill-white" : ""}`} />
+                                </button>
+
+                                {/* Discount Badge */}
+                                {pkg.discountPercentage && pkg.discountPercentage > 0 ? (
+                                  <span className="absolute bottom-3 left-3 bg-emerald-500 text-white text-[9px] font-extrabold px-2.5 py-0.5 rounded-full shadow-md tracking-wider">
+                                    {pkg.discountPercentage}% OFF
+                                  </span>
+                                ) : null}
+
+                                {/* Duration Badge */}
+                                {pkg.duration && (
+                                  <span className="absolute bottom-3 right-3 text-[9px] font-bold text-slate-200 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md flex items-center gap-1 font-sans">
+                                    <Clock className="w-3 h-3 text-amber-400" /> {pkg.duration} mins
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Card Body */}
+                              <div className="p-5 flex-1 flex flex-col justify-between space-y-3">
+                                <div>
+                                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white group-hover:text-accent-lux transition-colors leading-snug">
+                                    {pkg.name}
+                                  </h3>
+
+                                  {pkg.subtitle && (
+                                    <p className="text-[11px] font-semibold text-accent-lux mt-0.5 line-clamp-1">
+                                      {pkg.subtitle}
+                                    </p>
+                                  )}
+
+                                  {pkg.description && (
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed line-clamp-2">
+                                      {pkg.description}
+                                    </p>
+                                  )}
+
+                                  {/* Service Action details */}
+                                  {item.serviceAction?.name && (
+                                    <div className="mt-2.5 flex items-center gap-1">
+                                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Action:</span>
+                                      <span className="text-[9px] font-extrabold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                                        {item.serviceAction.name}
+                                      </span>
+                                    </div>
+                                  )}
+
+                                  {/* Addons List */}
+                                  {item.addons && item.addons.length > 0 && (
+                                    <div className="mt-2.5 flex flex-wrap gap-1">
+                                      {item.addons.slice(0, 2).map((addon) => (
+                                        <span key={addon._id} className="text-[8px] font-bold bg-accent-lux/10 text-accent-lux px-2 py-0.5 rounded-full">
+                                          +{addon.addonName} (₹{addon.price})
+                                        </span>
+                                      ))}
+                                      {item.addons.length > 2 && (
+                                        <span className="text-[8px] font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full">
+                                          +{item.addons.length - 2} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Card Footer: Price & Both Actions (Add to Cart & Book Now) */}
+                                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+                                  <div>
+                                    <div className="flex items-baseline gap-1.5">
+                                      <span className="text-base font-black text-slate-900 dark:text-white font-sans">
+                                        ₹{pkg.price}
+                                      </span>
+                                      {pkg.originalPrice && pkg.originalPrice > pkg.price && (
+                                        <span className="text-[11px] font-normal text-slate-400 line-through font-sans">
+                                          ₹{pkg.originalPrice}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[9px] text-emerald-600 dark:text-emerald-450 font-bold block">
+                                      ✓ Verified Pro Service
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {/* Add to Cart Button */}
+                                    <button
+                                      onClick={(e) => handleAddToCart(e, item)}
+                                      disabled={isCartAdded}
+                                      className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-sm flex items-center gap-1 cursor-pointer ${isCartAdded
+                                          ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 cursor-not-allowed opacity-90"
+                                          : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200"
+                                        }`}
+                                    >
+                                      {isCartAdded ? "Added ✓" : "+ Cart"}
+                                    </button>
+
+                                    {/* Book Now Button -> opens 4-step booking flow at /booking */}
+                                    <button
+                                      onClick={(e) => handleBookNow(e, item)}
+                                      className="px-3.5 py-1.5 rounded-xl text-[11px] font-bold bg-accent-lux hover:bg-accent-lux/90 text-white active:scale-95 transition-all shadow-md flex items-center gap-1 cursor-pointer"
+                                    >
+                                      <span>Book Now</span> <ChevronRight className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </motion.div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Pagination Controls */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-center gap-3 pt-6 border-t border-slate-100 dark:border-slate-800">
+                          <button
+                            disabled={currentPage <= 1}
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            className="px-4 py-2 rounded-full border border-slate-200 dark:border-slate-800 text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                          >
+                            Previous
+                          </button>
+                          <span className="text-xs font-bold text-slate-500 font-sans">
+                            {currentPage} / {totalPages}
+                          </span>
+                          <button
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            className="px-4 py-2 rounded-full bg-accent-lux text-white text-xs font-bold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent-lux/90 transition-colors cursor-pointer"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+              </div>
+            </div>
+          )}
+
         </div>
       </main>
 
