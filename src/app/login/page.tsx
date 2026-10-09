@@ -143,9 +143,17 @@ function LoginContent() {
 
           {/* Password Field */}
           <div>
-            <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block mb-1.5">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">
+                Password
+              </label>
+              <Link
+                href="/forgot-password"
+                className="text-[11px] font-bold text-accent-lux hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock className="w-4 h-4 text-slate-400 absolute left-4 top-3.5" />
               <input

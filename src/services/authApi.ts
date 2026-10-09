@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export interface RegisterPayload {
   fullName: string;
@@ -125,3 +125,135 @@ export async function getCurrentCustomerApi(token: string): Promise<CurrentCusto
     };
   }
 }
+
+export interface ForgotPasswordPayload {
+  mobile: string;
+}
+
+export interface ForgotPasswordResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+export interface VerifyForgotPasswordOtpPayload {
+  mobile: string;
+  otp: string;
+}
+
+export interface VerifyForgotPasswordOtpResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    resetToken?: string;
+    [key: string]: any;
+  };
+  resetToken?: string;
+}
+
+export interface ResetPasswordPayload {
+  resetToken: string;
+  newPassword: string;
+}
+
+export interface ResetPasswordResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+/**
+ * Initiate Forgot Password - Sends OTP to customer's mobile
+ * POST /api/customer/auth/forgot-password
+ */
+export async function forgotPasswordApi(payload: ForgotPasswordPayload): Promise<ForgotPasswordResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/customer/auth/forgot-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        message: data.message || "Failed to send OTP for password reset.",
+      };
+    }
+
+    return data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Network error. Unable to request password reset.",
+    };
+  }
+}
+
+/**
+ * Verify Forgot Password OTP - Validates OTP & receives resetToken
+ * POST /api/customer/auth/verify-forgot-password-otp
+ */
+export async function verifyForgotPasswordOtpApi(
+  payload: VerifyForgotPasswordOtpPayload
+): Promise<VerifyForgotPasswordOtpResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/customer/auth/verify-forgot-password-otp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        message: data.message || "Invalid or expired OTP. Please try again.",
+      };
+    }
+
+    return data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Network error. Unable to verify OTP.",
+    };
+  }
+}
+
+/**
+ * Reset Password - Sets new password using resetToken
+ * POST /api/customer/auth/reset-password
+ */
+export async function resetPasswordApi(payload: ResetPasswordPayload): Promise<ResetPasswordResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/customer/auth/reset-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        message: data.message || "Failed to reset password. Please request a new OTP.",
+      };
+    }
+
+    return data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Network error. Unable to reset password.",
+    };
+  }
+}
+

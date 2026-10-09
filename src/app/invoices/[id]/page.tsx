@@ -7,13 +7,9 @@ import {
   Printer,
   Download,
   FileText,
-  MapPin,
-  User,
-  Phone,
   ArrowLeft,
   ChevronRight,
   AlertCircle,
-  ShieldCheck,
   Sparkles,
   RefreshCw
 } from "lucide-react";
@@ -81,6 +77,19 @@ export default function InvoiceDetailsPage() {
     }
   };
 
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    try {
+      return new Date(dateStr).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      });
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <>
       <div className="print:hidden">
@@ -95,15 +104,15 @@ export default function InvoiceDetailsPage() {
             <button
               type="button"
               onClick={() => router.back()}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-extrabold shadow-sm transition-all cursor-pointer hover:border-accent-lux/40 active:scale-95"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-extrabold shadow-sm transition-all cursor-pointer hover:border-purple-300 active:scale-95"
             >
-              <ArrowLeft className="w-4 h-4 text-accent-lux" />
+              <ArrowLeft className="w-4 h-4 text-[#581c4f]" />
               <span>Back</span>
             </button>
             <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold">
-              <Link href="/" className="hover:text-accent-lux transition-colors">Home</Link>
+              <Link href="/" className="hover:text-[#581c4f] transition-colors">Home</Link>
               <ChevronRight className="w-3.5 h-3.5" />
-              <Link href="/profile?tab=bookings" className="hover:text-accent-lux transition-colors">Bookings</Link>
+              <Link href="/profile?tab=bookings" className="hover:text-[#581c4f] transition-colors">Bookings</Link>
               <ChevronRight className="w-3.5 h-3.5" />
               <span className="text-foreground font-bold">Tax Invoice</span>
             </div>
@@ -113,7 +122,7 @@ export default function InvoiceDetailsPage() {
           {invoice && (
             <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm print:hidden">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-accent-lux/10 text-accent-lux flex items-center justify-center">
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-[#581c4f] flex items-center justify-center">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>
@@ -128,14 +137,14 @@ export default function InvoiceDetailsPage() {
                   onClick={() => window.print()}
                   className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
                 >
-                  <Printer className="w-4 h-4 text-accent-lux" />
+                  <Printer className="w-4 h-4 text-[#581c4f]" />
                   <span>Print</span>
                 </button>
                 <button
                   type="button"
                   disabled={downloadingPdf}
                   onClick={handleDownloadPdf}
-                  className="px-4 py-2 rounded-xl bg-accent-lux hover:bg-accent-lux/90 text-white text-xs font-extrabold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-[#581c4f] hover:bg-[#4a0e4e] text-white text-xs font-extrabold shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {downloadingPdf ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
@@ -149,10 +158,10 @@ export default function InvoiceDetailsPage() {
           )}
 
           {/* Main Invoice Card */}
-          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-8 print:border-none print:shadow-none print:p-4 print:rounded-none">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-10 border border-slate-200/80 dark:border-slate-800 shadow-xl space-y-6 print:border-none print:shadow-none print:p-4 print:rounded-none">
             {loading ? (
               <div className="py-20 text-center space-y-3">
-                <RefreshCw className="w-8 h-8 text-accent-lux animate-spin mx-auto" />
+                <RefreshCw className="w-8 h-8 text-[#581c4f] animate-spin mx-auto" />
                 <p className="text-xs font-bold text-slate-500">Fetching official invoice...</p>
               </div>
             ) : error ? (
@@ -167,200 +176,219 @@ export default function InvoiceDetailsPage() {
                 <button
                   type="button"
                   onClick={loadInvoice}
-                  className="px-5 py-2.5 bg-accent-lux text-white text-xs font-bold rounded-xl shadow-md hover:bg-accent-lux/90 transition-all cursor-pointer"
+                  className="px-5 py-2.5 bg-[#581c4f] text-white text-xs font-bold rounded-xl shadow-md hover:bg-[#4a0e4e] transition-all cursor-pointer"
                 >
                   Retry Loading
                 </button>
               </div>
             ) : invoice ? (
-              <div className="space-y-6">
+              <div className="space-y-6 printable-invoice-content" id="printable-invoice">
                 
-                {/* Header Banner */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-6 border-b border-slate-200 dark:border-slate-800 gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-black tracking-tight text-foreground">
-                        Help<span className="text-accent-lux">Mate</span>
-                      </span>
-                      <span className="text-[9px] font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
-                        Tax Invoice
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
-                      HelpMate Professional Home &amp; Vehicle Care Services
-                    </p>
+                {/* Top Header Banner matching reference image */}
+                <div className="bg-[#fcf5fa] dark:bg-purple-950/20 p-6 sm:p-8 rounded-2xl border border-purple-100/60 dark:border-purple-900/30 flex items-center justify-between gap-4">
+                  {/* Brand Logo Box */}
+                  <div className="bg-white dark:bg-slate-950 p-3 rounded-xl border border-purple-100 dark:border-slate-800 shadow-xs">
+                    <img
+                      src="/logo.png"
+                      alt="HELP MATE"
+                      className="h-14 sm:h-16 w-auto object-contain"
+                    />
                   </div>
 
-                  <div className="text-left sm:text-right">
-                    <span className="text-[10px] font-extrabold uppercase text-slate-400 tracking-wider block">Invoice Number</span>
-                    <h2 className="text-xl font-black text-foreground font-mono">{invoice.invoiceNumber}</h2>
-                    <div className="flex items-center sm:justify-end gap-2 mt-1">
-                      <span className="text-xs text-slate-500">
-                        Date: {new Date(invoice.generatedAt || Date.now()).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric"
-                        })}
-                      </span>
-                      <span className="text-slate-300">•</span>
-                      <span className="text-xs font-bold text-accent-lux">
-                        Booking #{invoice.bookingNumber}
+                  {/* Right Header Status & Title */}
+                  <div className="text-right space-y-1">
+                    <h1 className="text-2xl sm:text-4xl font-black tracking-wide text-[#4e0e47] dark:text-purple-300">
+                      INVOICE
+                    </h1>
+                    <div>
+                      <span className="bg-[#e6f7f0] dark:bg-emerald-950/60 text-[#10b981] dark:text-emerald-400 font-extrabold text-xs uppercase tracking-wider px-4 py-1.5 rounded-full inline-block border border-emerald-500/20">
+                        {invoice.invoiceStatus || "GENERATED"}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Customer Details & Location */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-5 rounded-2xl bg-slate-50/80 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800">
-                  <div className="space-y-1 text-left">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">Billed To</span>
-                    <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                      <User className="w-4 h-4 text-accent-lux" />
+                {/* BILL TO & INVOICE DETAILS Section */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Left Card: BILL TO */}
+                  <div className="p-5 sm:p-6 rounded-2xl border border-purple-100/80 dark:border-slate-800 bg-white dark:bg-slate-900/80 shadow-xs space-y-2 text-left">
+                    <span className="text-xs font-black uppercase text-[#8a1562] dark:text-purple-400 tracking-wider block">
+                      BILL TO
+                    </span>
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
                       {invoice.customer.name}
-                    </h4>
-                    <p className="text-xs text-slate-500 flex items-center gap-1.5">
-                      <Phone className="w-3.5 h-3.5 text-slate-400" />
-                      +91 {invoice.customer.mobile}
+                    </h3>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                      {invoice.customer.mobile}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                      {invoice.address.serviceAddress}
+                      {invoice.address.landmark ? `, ${invoice.address.landmark}` : ""}
+                      {invoice.address.localityName ? `, ${invoice.address.localityName}` : ""}
+                      {invoice.address.pincode ? `, ${invoice.address.pincode}` : ""}
                     </p>
                   </div>
 
-                  <div className="space-y-1 text-left">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">Service Address</span>
-                    <p className="text-xs font-semibold text-foreground flex items-start gap-1.5">
-                      <MapPin className="w-4 h-4 text-accent-lux shrink-0 mt-0.5" />
-                      <span>
-                        {invoice.address.serviceAddress}
-                        {invoice.address.landmark ? `, ${invoice.address.landmark}` : ""},{" "}
-                        {invoice.address.localityName}, {invoice.address.pincode}
-                      </span>
-                    </p>
+                  {/* Right Card: INVOICE DETAILS */}
+                  <div className="p-5 sm:p-6 rounded-2xl border border-purple-100/80 dark:border-slate-800 bg-white dark:bg-slate-900/80 shadow-xs space-y-2 text-left">
+                    <span className="text-xs font-black uppercase text-[#8a1562] dark:text-purple-400 tracking-wider block">
+                      INVOICE DETAILS
+                    </span>
+                    <div className="space-y-2.5 pt-1 text-xs sm:text-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 dark:text-slate-400">Invoice no.</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white font-mono">
+                          {invoice.invoiceNumber}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 dark:text-slate-400">Booking no.</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white font-mono">
+                          {invoice.bookingNumber}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500 dark:text-slate-400">Date</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white">
+                          {formatDate(invoice.generatedAt || invoice.createdAt)}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Services Table */}
-                <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-100/80 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200 dark:border-slate-800">
-                      <tr>
-                        <th className="py-3.5 px-4">Service Description</th>
-                        <th className="py-3.5 px-4 text-center">Qty</th>
-                        <th className="py-3.5 px-4 text-right">Unit Price</th>
-                        <th className="py-3.5 px-4 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
-                      {invoice.items.map((item, idx) => (
-                        <React.Fragment key={idx}>
-                          <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-900/40">
-                            <td className="py-4 px-4 space-y-0.5">
-                              <span className="font-bold text-foreground text-xs block">
-                                {item.packageName}
-                              </span>
-                              {item.serviceActionName && (
-                                <span className="text-[10px] text-slate-400 block">
-                                  {item.serviceActionName} {item.categoryName ? `• ${item.categoryName}` : ""}
+                {/* ORDER ITEMS Section */}
+                <div className="space-y-3 pt-2">
+                  <h3 className="text-xs sm:text-sm font-black uppercase text-slate-900 dark:text-white tracking-wider text-left">
+                    ORDER ITEMS
+                  </h3>
+
+                  <div className="rounded-2xl border border-purple-100/80 dark:border-slate-800 overflow-hidden bg-white dark:bg-slate-900">
+                    <table className="w-full text-left text-xs sm:text-sm border-collapse">
+                      <thead>
+                        <tr className="bg-[#f6eaf3] dark:bg-purple-950/40 text-[#581c4f] dark:text-purple-300 uppercase text-[10px] sm:text-xs font-black tracking-wider">
+                          <th className="py-4 px-5 text-left">SERVICE DETAILS</th>
+                          <th className="py-4 px-5 text-center">QTY</th>
+                          <th className="py-4 px-5 text-right">UNIT PRICE</th>
+                          <th className="py-4 px-5 text-right">AMOUNT</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {invoice.items.map((item, idx) => (
+                          <React.Fragment key={idx}>
+                            <tr>
+                              <td className="py-4.5 px-5 space-y-0.5 text-left">
+                                <span className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm block">
+                                  {item.packageName}
                                 </span>
-                              )}
-                            </td>
-                            <td className="py-4 px-4 text-center font-bold text-slate-700 dark:text-slate-300">
-                              {item.quantity}
-                            </td>
-                            <td className="py-4 px-4 text-right text-slate-600 dark:text-slate-400">
-                              ₹{item.unitPrice}
-                            </td>
-                            <td className="py-4 px-4 text-right font-extrabold text-foreground">
-                              ₹{item.totalPrice}
-                            </td>
-                          </tr>
+                                <span className="text-[11px] sm:text-xs text-slate-400 block">
+                                  {item.categoryName || item.subCategoryName || "Service"}
+                                  {item.serviceActionName ? ` / ${item.serviceActionName}` : ""}
+                                </span>
+                              </td>
+                              <td className="py-4.5 px-5 text-center font-bold text-slate-700 dark:text-slate-300">
+                                {item.quantity}
+                              </td>
+                              <td className="py-4.5 px-5 text-right text-slate-600 dark:text-slate-400">
+                                Rs. {Number(item.unitPrice || 0).toFixed(2)}
+                              </td>
+                              <td className="py-4.5 px-5 text-right font-extrabold text-slate-900 dark:text-white">
+                                Rs. {Number(item.totalPrice || item.unitPrice * item.quantity || 0).toFixed(2)}
+                              </td>
+                            </tr>
 
-                          {/* Selected Addons */}
-                          {item.selectedAddons && item.selectedAddons.length > 0 && (
-                            item.selectedAddons.map((addon, aIdx) => (
-                              <tr key={`addon-${idx}-${aIdx}`} className="bg-amber-500/[0.03] dark:bg-amber-500/[0.05]">
-                                <td className="py-2.5 px-4 pl-8 space-y-0.5">
-                                  <span className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
-                                    <Sparkles className="w-3 h-3 text-amber-500" /> + Add-on: {addon.name}
-                                  </span>
-                                </td>
-                                <td className="py-2.5 px-4 text-center text-[11px] text-slate-600 dark:text-slate-400">
-                                  {addon.quantity}
-                                </td>
-                                <td className="py-2.5 px-4 text-right text-[11px] text-slate-600 dark:text-slate-400">
-                                  ₹{addon.unitPrice}
-                                </td>
-                                <td className="py-2.5 px-4 text-right text-[11px] font-bold text-amber-700 dark:text-amber-400">
-                                  ₹{addon.totalPrice}
-                                </td>
-                              </tr>
-                            ))
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Billing Summary Box */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-end pt-2">
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950/50 border border-slate-100 dark:border-slate-800 space-y-2 text-left">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">Payment Summary</span>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Method:</span>
-                      <span className="font-bold text-foreground uppercase">
-                        {invoice.billing.paymentMethod?.replace(/_/g, " ") || "Pay After Service"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Status:</span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                        invoice.billing.paymentStatus === "paid"
-                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                          : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-                      }`}>
-                        {invoice.billing.paymentStatus || "pending"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-right">
-                    <div className="flex justify-between items-center text-xs text-slate-500">
-                      <span>Subtotal / MRP:</span>
-                      <span className="font-semibold text-foreground">₹{invoice.billing.mrp}</span>
-                    </div>
-                    {invoice.billing.discount > 0 && (
-                      <div className="flex justify-between items-center text-xs text-emerald-600 dark:text-emerald-400">
-                        <span>Discount Savings:</span>
-                        <span className="font-bold">-₹{invoice.billing.discount}</span>
-                      </div>
-                    )}
-                    {invoice.billing.platformFee > 0 && (
-                      <div className="flex justify-between items-center text-xs text-slate-500">
-                        <span>Platform / Convenience Fee:</span>
-                        <span className="font-semibold text-foreground">₹{invoice.billing.platformFee}</span>
-                      </div>
-                    )}
-                    {invoice.billing.gst > 0 && (
-                      <div className="flex justify-between items-center text-xs text-slate-500">
-                        <span>Taxes &amp; GST:</span>
-                        <span className="font-semibold text-foreground">₹{invoice.billing.gst}</span>
-                      </div>
-                    )}
-                    <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center">
-                      <span className="text-xs font-black uppercase text-foreground">Total Amount Paid</span>
-                      <span className="text-2xl font-black text-accent-lux">₹{invoice.billing.totalAmount}</span>
-                    </div>
+                            {/* Selected Addons */}
+                            {item.selectedAddons && item.selectedAddons.length > 0 && (
+                              item.selectedAddons.map((addon, aIdx) => (
+                                <tr key={`addon-${idx}-${aIdx}`} className="bg-amber-500/[0.03]">
+                                  <td className="py-3 px-5 pl-10 text-left">
+                                    <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                                      <Sparkles className="w-3.5 h-3.5 text-amber-500" /> + {addon.name}
+                                    </span>
+                                  </td>
+                                  <td className="py-3 px-5 text-center text-xs text-slate-600">
+                                    {addon.quantity}
+                                  </td>
+                                  <td className="py-3 px-5 text-right text-xs text-slate-600">
+                                    Rs. {Number(addon.unitPrice || 0).toFixed(2)}
+                                  </td>
+                                  <td className="py-3 px-5 text-right text-xs font-bold text-amber-700">
+                                    Rs. {Number(addon.totalPrice || 0).toFixed(2)}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </React.Fragment>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
-                {/* Footer Note */}
-                <div className="pt-6 border-t border-slate-200 dark:border-slate-800 text-center space-y-1">
-                  <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300">
-                    <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                    <span>Thank you for choosing HelpMate Services!</span>
+                {/* PAYMENT & FINANCIAL SUMMARY Section */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start pt-4 border-t border-slate-100 dark:border-slate-800">
+                  {/* Left Column: PAYMENT Status */}
+                  <div className="space-y-3 text-left">
+                    <h4 className="text-xs font-black uppercase text-slate-800 dark:text-slate-200 tracking-wider">
+                      PAYMENT
+                    </h4>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`font-black text-xs uppercase px-4.5 py-2 rounded-full ${
+                          invoice.billing.paymentStatus?.toLowerCase() === "paid"
+                            ? "bg-[#e8f7f0] text-[#10b981]"
+                            : "bg-[#fde8ef] text-[#e11d48]"
+                        }`}
+                      >
+                        {invoice.billing.paymentStatus?.toUpperCase() || "PENDING"}
+                      </span>
+                      <span className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 font-medium capitalize">
+                        Paid via {invoice.billing.paymentMethod?.replace(/_/g, " ") || "upi"}
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-[10px] text-slate-400">
-                    This is a computer-generated tax invoice and requires no physical signature. For support, email support@helpmate.com
-                  </p>
+
+                  {/* Right Column: Amount Breakdown & GRAND TOTAL */}
+                  <div className="space-y-2.5 text-right">
+                    <div className="flex justify-between items-center text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                      <span>MRP</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        Rs. {Number(invoice.billing.mrp || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                      <span>Service price</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        Rs. {Number(invoice.billing.sellingPrice || invoice.billing.mrp || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs sm:text-sm text-emerald-600 font-medium">
+                      <span>Discount</span>
+                      <span>- Rs. {Number(invoice.billing.discount || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs sm:text-sm text-slate-600 dark:text-slate-400">
+                      <span>Platform fee</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        Rs. {Number(invoice.billing.platformFee || 0).toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs sm:text-sm text-slate-600 dark:text-slate-400 pb-1">
+                      <span>GST</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        Rs. {Number(invoice.billing.gst || 0).toFixed(2)}
+                      </span>
+                    </div>
+
+                    {/* GRAND TOTAL Banner Box matching image */}
+                    <div className="bg-[#4e0e47] text-white p-4 sm:p-5 rounded-2xl flex items-center justify-between shadow-md">
+                      <span className="font-black text-xs sm:text-sm uppercase tracking-wider text-white">
+                        GRAND TOTAL
+                      </span>
+                      <span className="text-xl sm:text-2xl font-black text-white">
+                        Rs. {Number(invoice.billing.totalAmount || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
               </div>
