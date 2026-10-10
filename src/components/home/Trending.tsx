@@ -6,7 +6,47 @@ import { Star, Heart, Clock, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
 import { fetchCustomerTrendingApi, TrendingPackageItem } from "@/services/trendingApi";
-import { formatImageUrl } from "@/utils/image";
+import { formatImageUrl, getNameInitials } from "@/utils/image";
+
+function TrendingPackageImageDisplay({
+  imageUrl,
+  name,
+}: {
+  imageUrl?: string;
+  name: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [imageUrl]);
+
+  const formattedUrl = formatImageUrl(imageUrl);
+  const initials = getNameInitials(name, "P");
+
+  if (formattedUrl && !imgError) {
+    return (
+      <img
+        src={formattedUrl}
+        alt={name}
+        referrerPolicy="no-referrer"
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-[#4a0e4e] via-slate-900 to-slate-950 text-white select-none">
+      <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-2xl sm:text-3xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform tracking-tight">
+        {initials}
+      </div>
+      <span className="text-xs font-bold text-slate-200 mt-2 text-center line-clamp-1 max-w-[85%]">
+        {name}
+      </span>
+    </div>
+  );
+}
 
 export default function Trending() {
   const router = useRouter();
@@ -179,12 +219,7 @@ export default function Trending() {
                   >
                     {/* Image & Badges */}
                     <div className="relative h-48 overflow-hidden">
-                      <img
-                        src={formatImageUrl(service.image)}
-                        alt={service.name}
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                      />
+                      <TrendingPackageImageDisplay imageUrl={service.image} name={service.name} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-60" />
 
                       {/* Discount Badge */}

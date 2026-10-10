@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { services } from "@/utils/mockData";
 import { fetchCustomerSearchSuggestionsApi } from "@/services/searchApi";
 import { formatImageUrl } from "@/utils/image";
+import QuickServices from "@/components/home/QuickServices";
+import BetaBanner from "@/components/common/BetaBanner";
 
 export default function Hero() {
   const router = useRouter();
@@ -124,7 +126,7 @@ export default function Hero() {
   };
 
   return (
-    <section className="relative min-h-[90vh] flex flex-col items-center justify-center py-20 px-6">
+    <section className="relative flex flex-col items-center pt-3 sm:pt-5 pb-16 sm:pb-20 px-4 sm:px-6">
 
       {/* Background Animated Blobs */}
       <div className="blob-container absolute inset-0 overflow-hidden pointer-events-none">
@@ -132,7 +134,17 @@ export default function Hero() {
         <div className="blob bg-secondary-lux w-[400px] h-[400px] bottom-10 right-10" style={{ animationDelay: "4s" }} />
       </div>
 
-      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center z-10 font-sans mt-8">
+      {/* Beta Notice Strip - Below Header & Above Quick Services */}
+      <div className="max-w-7xl mx-auto w-full z-20 mb-3 sm:mb-3.5">
+        <BetaBanner />
+      </div>
+
+      {/* Quick Services Strip - On top below header */}
+      <div className="max-w-7xl mx-auto w-full z-20 mb-5 sm:mb-8">
+        <QuickServices />
+      </div>
+
+      <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center z-10 font-sans">
 
         {/* Left Column: Text Content & Controls */}
         <div className="lg:col-span-7 text-left space-y-6 relative z-30">

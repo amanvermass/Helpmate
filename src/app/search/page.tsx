@@ -27,7 +27,7 @@ import {
 import { motion, AnimatePresence, Variants } from "framer-motion";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
-import { formatImageUrl } from "@/utils/image";
+import { formatImageUrl, getNameInitials } from "@/utils/image";
 import { useStore } from "@/store/useStore";
 import {
   fetchCustomerCategoriesApi,
@@ -45,7 +45,7 @@ import {
 } from "@/services/trendingApi";
 import { startTopLoader, stopTopLoader } from "@/utils/loader";
 
-// Category Image Display Component
+// Category Image Display Component with Initials Fallback (2 letters if 2+ words)
 function CategoryImageDisplay({
   iconUrl,
   name,
@@ -60,13 +60,14 @@ function CategoryImageDisplay({
   }, [iconUrl]);
 
   const formattedUrl = formatImageUrl(iconUrl);
+  const initials = getNameInitials(name, "C");
 
   if (formattedUrl && !imgError) {
     return (
       <img
         src={formattedUrl}
         alt={name || "Category Icon"}
-        className="w-full h-full object-contain"
+        className="w-6 h-6 sm:w-7 sm:h-7 object-contain"
         referrerPolicy="no-referrer"
         onError={() => setImgError(true)}
       />
@@ -74,8 +75,87 @@ function CategoryImageDisplay({
   }
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-400 font-bold text-xs">
-      <Layers className="w-8 h-8 text-slate-400" />
+    <span className="font-black text-xs sm:text-sm uppercase text-accent-lux select-none tracking-tight">
+      {initials}
+    </span>
+  );
+}
+
+// Package Image Display Component with Initials Fallback (2 letters if 2+ words)
+function PackageImageDisplay({
+  imageUrl,
+  name,
+  className = "w-full h-full object-cover group-hover:scale-105 transition-transform duration-500",
+}: {
+  imageUrl?: string;
+  name: string;
+  className?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [imageUrl]);
+
+  const formattedUrl = formatImageUrl(imageUrl);
+  const initials = getNameInitials(name, "P");
+
+  if (formattedUrl && !imgError) {
+    return (
+      <img
+        src={formattedUrl}
+        alt={name}
+        referrerPolicy="no-referrer"
+        className={className}
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-gradient-to-br from-[#4a0e4e] via-slate-900 to-slate-950 text-white select-none relative">
+      <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-2xl sm:text-3xl flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform tracking-tight">
+        {initials}
+      </div>
+      <span className="text-xs font-bold text-slate-200 mt-2 text-center line-clamp-1 max-w-[85%]">
+        {name}
+      </span>
+    </div>
+  );
+}
+
+// Package Thumbnail for Search Suggestions with Initials Fallback
+function PackageThumbnailDisplay({
+  imageUrl,
+  name,
+}: {
+  imageUrl?: string;
+  name: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [imageUrl]);
+
+  const formattedUrl = formatImageUrl(imageUrl);
+  const initials = getNameInitials(name, "P");
+
+  if (formattedUrl && !imgError) {
+    return (
+      <img
+        src={formattedUrl}
+        alt={name}
+        className="w-8 h-8 rounded-lg object-cover"
+        referrerPolicy="no-referrer"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/80 text-accent-lux font-black text-[11px] flex items-center justify-center uppercase select-none border border-purple-200/50 dark:border-purple-800/50 shrink-0 tracking-tight">
+      {initials}
     </div>
   );
 }
@@ -588,7 +668,7 @@ function SearchPageContent() {
                   variants={containerVariants}
                   initial="hidden"
                   animate="show"
-                  className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4"
                 >
                   <AnimatePresence mode="popLayout">
                     {filteredCategories.map((cat) => (
@@ -600,32 +680,21 @@ function SearchPageContent() {
                         exit="hidden"
                         layout
                         onClick={() => handleCategoryClick(cat)}
-                        className="bg-white dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-800 hover:border-accent-lux/60 dark:hover:border-accent-lux/60 rounded-3xl p-5 flex flex-col justify-between hover:shadow-xl transition-all duration-300 group cursor-pointer h-full relative select-none hover:-translate-y-1"
+                        className="bg-white dark:bg-slate-900/80 border border-slate-200/80 dark:border-slate-800 hover:border-accent-lux/50 dark:hover:border-accent-lux/50 rounded-2xl p-3.5 flex items-center gap-3 hover:shadow-md transition-all duration-300 group cursor-pointer relative select-none"
                       >
-                        <div>
-                          {/* Icon/Illustration container */}
-                          <div className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl aspect-[4/3] flex items-center justify-center p-4 overflow-hidden group-hover:bg-accent-lux/5 transition-colors">
-                            <div className="w-20 h-20 transition-transform duration-500 group-hover:scale-110 flex items-center justify-center">
-                              <CategoryImageDisplay iconUrl={cat.iconUrl} name={cat.categoryName} />
-                            </div>
-                          </div>
-
-                          {/* Category Title */}
-                          <h3 className="mt-4 font-extrabold text-sm sm:text-base text-slate-900 dark:text-slate-100 leading-tight group-hover:text-accent-lux transition-colors">
-                            {cat.categoryName}
-                          </h3>
-                          <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                            Explore step-by-step options →
-                          </p>
+                        {/* Small Icon Badge */}
+                        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-purple-50 dark:bg-purple-950/50 border border-purple-100/60 dark:border-purple-900/40 flex items-center justify-center p-2 shrink-0 group-hover:scale-105 group-hover:bg-purple-100/80 transition-all text-accent-lux">
+                          <CategoryImageDisplay iconUrl={cat.iconUrl} name={cat.categoryName} />
                         </div>
 
-                        {/* Arrow indicator at bottom right */}
-                        <div className="flex items-center justify-between mt-6 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-                          <span className="text-[10px] uppercase font-bold text-accent-lux tracking-wider">
-                            View Steps
-                          </span>
-                          <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-slate-800 group-hover:bg-accent-lux group-hover:text-white flex items-center justify-center transition-all">
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                        {/* Category Title & Micro Arrow */}
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-xs sm:text-[13px] text-slate-800 dark:text-slate-100 leading-tight truncate group-hover:text-accent-lux transition-colors">
+                            {cat.categoryName}
+                          </h3>
+                          <div className="flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5">
+                            <span>Explore</span>
+                            <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:text-accent-lux transition-transform" />
                           </div>
                         </div>
                       </motion.div>
@@ -737,19 +806,7 @@ function SearchPageContent() {
                       >
                         {/* Card Top Banner / Media */}
                         <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                          {pkg.imageUrl ? (
-                            <img
-                              src={formatImageUrl(pkg.imageUrl)}
-                              alt={pkg.name}
-                              referrerPolicy="no-referrer"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 bg-gradient-to-br from-purple-900/20 via-slate-900 to-slate-950">
-                              <Package className="w-10 h-10 text-accent-lux/60 mb-1" />
-                              <span className="text-xs font-bold text-slate-300 text-center">{pkg.name}</span>
-                            </div>
-                          )}
+                          <PackageImageDisplay imageUrl={pkg.imageUrl} name={pkg.name} />
 
                           {/* Overlay Gradients */}
                           <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20" />
@@ -916,13 +973,7 @@ function SearchPageContent() {
                                 className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left transition-colors cursor-pointer"
                               >
                                 <div className="flex items-center gap-2.5">
-                                  {pkg.imageUrl ? (
-                                    <img src={formatImageUrl(pkg.imageUrl)} alt={pkg.name} className="w-8 h-8 rounded-lg object-cover" />
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-lg bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-                                      <Package className="w-4 h-4" />
-                                    </div>
-                                  )}
+                                  <PackageThumbnailDisplay imageUrl={pkg.imageUrl} name={pkg.name} />
                                   <div>
                                     <p className="text-[11px] font-bold text-foreground line-clamp-1">{pkg.name}</p>
                                     <p className="text-[9px] text-slate-400 capitalize">{item.category?.name || "Service"} • {pkg.duration || 60} mins</p>
@@ -1181,19 +1232,7 @@ function SearchPageContent() {
                             >
                               {/* Card Top Banner / Media */}
                               <div className="relative h-48 sm:h-52 w-full overflow-hidden bg-slate-100 dark:bg-slate-800">
-                                {pkg.imageUrl ? (
-                                  <img
-                                    src={formatImageUrl(pkg.imageUrl)}
-                                    alt={pkg.name}
-                                    referrerPolicy="no-referrer"
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-4 bg-gradient-to-br from-purple-900/20 via-slate-900 to-slate-950">
-                                    <Package className="w-10 h-10 text-accent-lux/60 mb-1" />
-                                    <span className="text-xs font-bold text-slate-300 text-center">{pkg.name}</span>
-                                  </div>
-                                )}
+                                <PackageImageDisplay imageUrl={pkg.imageUrl} name={pkg.name} />
 
                                 {/* Overlay Gradients */}
                                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-black/20" />

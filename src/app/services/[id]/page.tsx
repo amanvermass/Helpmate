@@ -17,14 +17,15 @@ import {
   Bookmark,
   Users,
   Sparkles,
-  X
+  X,
+  Layers
 } from "lucide-react";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { services } from "@/utils/mockData";
 import { useStore, getItemAddonTotal } from "@/store/useStore";
 import confetti from "canvas-confetti";
-import { formatImageUrl } from "@/utils/image";
+import { formatImageUrl, getNameInitials } from "@/utils/image";
 import { fetchCustomerCategoriesApi, fetchCustomerSubCategoriesApi, SubCategoryItem } from "@/services/categoryApi";
 import {
   fetchCustomerServiceActionsApi,
@@ -38,6 +39,55 @@ import {
 } from "@/services/packageApi";
 import { fetchCustomerReviewsApi } from "@/services/reviewApi";
 import { fetchCustomerTrendingApi } from "@/services/trendingApi";
+
+function ServicePackageImageItem({
+  src,
+  name,
+  pkgId,
+}: {
+  src?: string;
+  name: string;
+  pkgId?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(src);
+
+  useEffect(() => {
+    setImgError(false);
+    setCurrentSrc(src);
+  }, [src]);
+
+  const initials = getNameInitials(name, "P");
+
+  if (currentSrc && !imgError) {
+    return (
+      <img
+        src={currentSrc}
+        alt={name}
+        referrerPolicy="no-referrer"
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        onError={() => {
+          if (pkgId && !currentSrc.includes(`/api/media/package/${pkgId}/image`)) {
+            setCurrentSrc(`/api/media/package/${pkgId}/image`);
+          } else {
+            setImgError(true);
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-[#4a0e4e] via-slate-900 to-slate-950 text-white select-none">
+      <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-xl sm:text-2xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform tracking-tight">
+        {initials}
+      </div>
+      <span className="text-[10px] font-bold text-slate-300 mt-1 px-1 text-center line-clamp-1 max-w-[90%]">
+        {name}
+      </span>
+    </div>
+  );
+}
 
 // Stepper Interface Config for CRM manageability
 export interface ServiceWizardItem {
@@ -355,6 +405,11 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   const [selectedSub, setSelectedSub] = useState<string | null>(subParam);
   const [selectedAct, setSelectedAct] = useState<string | null>(actParam);
+  const [stepView, setStepView] = useState<"subcategory" | "action" | "packages">(() => {
+    if (itemParam || actParam) return "packages";
+    if (subParam) return "action";
+    return "subcategory";
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [packageReviews, setPackageReviews] = useState<any[]>([]);
@@ -463,9 +518,18 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   // Sync state values with query parameters on load
   useEffect(() => {
-    if (subParam) setSelectedSub(subParam);
-    if (actParam) setSelectedAct(actParam);
-  }, [subParam, actParam]);
+    if (subParam) {
+      setSelectedSub(subParam);
+      if (!actParam && !itemParam) setStepView("action");
+    }
+    if (actParam) {
+      setSelectedAct(actParam);
+      setStepView("packages");
+    }
+    if (itemParam) {
+      setStepView("packages");
+    }
+  }, [subParam, actParam, itemParam]);
 
   // Fetch individual package detail when itemParam query is present or serviceId is a valid package ObjectId
   useEffect(() => {
@@ -516,6 +580,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
           if (pData.serviceAction?.id && !actParam) {
             setSelectedAct(pData.serviceAction.id);
           }
+          setStepView("packages");
           if (pData.reviews?.items && Array.isArray(pData.reviews.items) && pData.reviews.items.length > 0) {
             setPackageReviews(pData.reviews.items);
           }
@@ -685,6 +750,13 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   // Fetch live service actions when subcategory is selected (or immediately if category has no subcategories)
   const hasSubCategories = apiSubCategories.length > 0;
+
+  const effectiveStepView: "subcategory" | "action" | "packages" = React.useMemo(() => {
+    if (!loadingSubCategories && !hasSubCategories) {
+      return stepView === "subcategory" ? "action" : stepView;
+    }
+    return stepView;
+  }, [hasSubCategories, loadingSubCategories, stepView]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -901,6 +973,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
             onClick={() => {
               setSelectedSub(null);
               setSelectedAct(null);
+              setStepView("subcategory");
             }}
             className="hover:text-accent-lux transition-colors font-semibold"
           >
@@ -920,6 +993,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                 href={`/services/${service?.category}?sub=${selectedSub}`}
                 onClick={() => {
                   setSelectedAct(null);
+                  setStepView("action");
                 }}
                 className="hover:text-accent-lux transition-colors font-semibold"
               >
@@ -1479,8 +1553,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
                             <div key={rev._id || rev.id || idx} className="bg-white dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-800/60 p-6 rounded-[24px] space-y-3 shadow-sm hover:border-accent-lux/30 transition-colors text-left">
                               <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-full bg-accent-lux/10 text-accent-lux font-bold flex items-center justify-center text-sm border border-accent-lux/20">
-                                    {revUser.charAt(0).toUpperCase()}
+                                  <div className="w-10 h-10 rounded-full bg-accent-lux/10 text-accent-lux font-bold flex items-center justify-center text-xs sm:text-sm border border-accent-lux/20 tracking-tight">
+                                    {getNameInitials(revUser, "U")}
                                   </div>
                                   <div>
                                     <span className="font-bold text-xs block text-foreground">{revUser}</span>
@@ -1641,54 +1715,178 @@ function ServiceDetailPageContent({ params }: PageProps) {
                 <div className="glass-panel p-6 sm:p-8 border border-slate-200/10 space-y-6 text-left">
 
 
-                  {/* Progress Tracker Stepper circles */}
-                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+                  {/* Progress Tracker Stepper circles with labels & click to navigate */}
+                  <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
                     {hasSubCategories ? (
-                      <div className="flex items-center gap-1.5 w-full font-sans">
-                        <div className="w-6 h-6 rounded-full bg-accent-lux text-white flex items-center justify-center text-[10px] font-bold transition-colors">
-                          {selectedSub !== null ? "✓" : "1"}
-                        </div>
-                        <div className={`h-0.5 flex-1 transition-colors ${selectedSub !== null ? "bg-accent-lux" : "bg-slate-100 dark:bg-slate-850"}`} />
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${selectedSub !== null ? "bg-accent-lux text-white" : "bg-slate-100 dark:bg-slate-850 text-slate-400"
-                          }`}>
-                          {selectedAct !== null ? "✓" : "2"}
-                        </div>
-                        <div className={`h-0.5 flex-1 transition-colors ${selectedAct !== null ? "bg-accent-lux" : "bg-slate-100 dark:bg-slate-850"}`} />
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${selectedSub !== null && selectedAct !== null ? "bg-accent-lux text-white" : "bg-slate-100 dark:bg-slate-850 text-slate-400"
-                          }`}>
-                          3
-                        </div>
+                      <div className="flex items-center gap-1.5 sm:gap-3 w-full font-sans">
+                        {/* Step 1: Type */}
+                        <button
+                          type="button"
+                          onClick={() => setStepView("subcategory")}
+                          className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group text-left transition-all"
+                        >
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                              effectiveStepView === "subcategory"
+                                ? "bg-accent-lux text-white ring-4 ring-accent-lux/20 shadow-md"
+                                : selectedSub !== null
+                                ? "bg-emerald-500 text-white shadow-xs"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                            }`}
+                          >
+                            {selectedSub !== null && effectiveStepView !== "subcategory" ? "✓" : "1"}
+                          </div>
+                          <div className="hidden sm:block">
+                            <span className="text-[9px] font-black uppercase tracking-wider block text-slate-400">Step 1</span>
+                            <span className={`text-xs font-bold leading-tight block truncate max-w-[100px] ${effectiveStepView === "subcategory" ? "text-accent-lux" : "text-slate-700 dark:text-slate-200"}`}>
+                              {currentSub?.name || "Service Type"}
+                            </span>
+                          </div>
+                        </button>
+
+                        <div className={`h-0.5 flex-1 transition-colors ${selectedSub !== null ? "bg-emerald-500/70" : "bg-slate-200 dark:bg-slate-800"}`} />
+
+                        {/* Step 2: Action */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedSub !== null) setStepView("action");
+                          }}
+                          disabled={selectedSub === null}
+                          className={`flex items-center gap-1.5 sm:gap-2 text-left transition-all ${selectedSub !== null ? "cursor-pointer group" : "cursor-not-allowed opacity-50"}`}
+                        >
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                              effectiveStepView === "action"
+                                ? "bg-accent-lux text-white ring-4 ring-accent-lux/20 shadow-md"
+                                : selectedAct !== null
+                                ? "bg-emerald-500 text-white shadow-xs"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                            }`}
+                          >
+                            {selectedAct !== null && effectiveStepView === "packages" ? "✓" : "2"}
+                          </div>
+                          <div className="hidden sm:block">
+                            <span className="text-[9px] font-black uppercase tracking-wider block text-slate-400">Step 2</span>
+                            <span className={`text-xs font-bold leading-tight block truncate max-w-[100px] ${effectiveStepView === "action" ? "text-accent-lux" : "text-slate-700 dark:text-slate-200"}`}>
+                              {currentAct?.name || "Action"}
+                            </span>
+                          </div>
+                        </button>
+
+                        <div className={`h-0.5 flex-1 transition-colors ${selectedAct !== null ? "bg-emerald-500/70" : "bg-slate-200 dark:bg-slate-800"}`} />
+
+                        {/* Step 3: Packages */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedAct !== null) setStepView("packages");
+                          }}
+                          disabled={selectedAct === null}
+                          className={`flex items-center gap-1.5 sm:gap-2 text-left transition-all ${selectedAct !== null ? "cursor-pointer group" : "cursor-not-allowed opacity-50"}`}
+                        >
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                              effectiveStepView === "packages"
+                                ? "bg-accent-lux text-white ring-4 ring-accent-lux/20 shadow-md"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                            }`}
+                          >
+                            3
+                          </div>
+                          <div className="hidden sm:block">
+                            <span className="text-[9px] font-black uppercase tracking-wider block text-slate-400">Step 3</span>
+                            <span className={`text-xs font-bold leading-tight block ${effectiveStepView === "packages" ? "text-accent-lux" : "text-slate-700 dark:text-slate-200"}`}>
+                              Packages
+                            </span>
+                          </div>
+                        </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 w-full font-sans">
-                        <div className="w-6 h-6 rounded-full bg-accent-lux text-white flex items-center justify-center text-[10px] font-bold transition-colors">
-                          {selectedAct !== null ? "✓" : "1"}
-                        </div>
-                        <div className={`h-0.5 flex-1 transition-colors ${selectedAct !== null ? "bg-accent-lux" : "bg-slate-100 dark:bg-slate-850"}`} />
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-colors ${selectedAct !== null ? "bg-accent-lux text-white" : "bg-slate-100 dark:bg-slate-850 text-slate-400"
-                          }`}>
-                          2
-                        </div>
+                      <div className="flex items-center gap-1.5 sm:gap-3 w-full font-sans">
+                        {/* Step 1: Action */}
+                        <button
+                          type="button"
+                          onClick={() => setStepView("action")}
+                          className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group text-left transition-all"
+                        >
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                              effectiveStepView === "action"
+                                ? "bg-accent-lux text-white ring-4 ring-accent-lux/20 shadow-md"
+                                : selectedAct !== null
+                                ? "bg-emerald-500 text-white shadow-xs"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                            }`}
+                          >
+                            {selectedAct !== null && effectiveStepView === "packages" ? "✓" : "1"}
+                          </div>
+                          <div className="hidden sm:block">
+                            <span className="text-[9px] font-black uppercase tracking-wider block text-slate-400">Step 1</span>
+                            <span className={`text-xs font-bold leading-tight block ${effectiveStepView === "action" ? "text-accent-lux" : "text-slate-700 dark:text-slate-200"}`}>
+                              {currentAct?.name || "Action"}
+                            </span>
+                          </div>
+                        </button>
+
+                        <div className={`h-0.5 flex-1 transition-colors ${selectedAct !== null ? "bg-emerald-500/70" : "bg-slate-200 dark:bg-slate-800"}`} />
+
+                        {/* Step 2: Packages */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (selectedAct !== null) setStepView("packages");
+                          }}
+                          disabled={selectedAct === null}
+                          className={`flex items-center gap-1.5 sm:gap-2 text-left transition-all ${selectedAct !== null ? "cursor-pointer group" : "cursor-not-allowed opacity-50"}`}
+                        >
+                          <div
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                              effectiveStepView === "packages"
+                                ? "bg-accent-lux text-white ring-4 ring-accent-lux/20 shadow-md"
+                                : "bg-slate-100 dark:bg-slate-800 text-slate-400"
+                            }`}
+                          >
+                            2
+                          </div>
+                          <div className="hidden sm:block">
+                            <span className="text-[9px] font-black uppercase tracking-wider block text-slate-400">Step 2</span>
+                            <span className={`text-xs font-bold leading-tight block ${effectiveStepView === "packages" ? "text-accent-lux" : "text-slate-700 dark:text-slate-200"}`}>
+                              Packages
+                            </span>
+                          </div>
+                        </button>
                       </div>
                     )}
                   </div>
 
-                  {/* Inline Stepper Workflow Layout */}
+                  {/* Step-by-Step Stepper Workflow Layout (Switches View per Step) */}
                   <div className="space-y-6">
-                    {/* Step 1: SubCategory / Service Type Selector (only shown if category has subcategories) */}
-                    {hasSubCategories && (
-                      <div className="space-y-3">
-                        <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
-                          SELECT SERVICE TYPE
-                        </span>
+                    {/* Step 1: SubCategory / Service Type Selector (only shown when active) */}
+                    {effectiveStepView === "subcategory" && hasSubCategories && (
+                      <div className="space-y-4 animate-fadeIn">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-slate-800">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-accent-lux tracking-wider block">
+                              Step 1 of 3
+                            </span>
+                            <h3 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white">
+                              Select Service Type
+                            </h3>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              Choose your appliance or system type to customize your service
+                            </p>
+                          </div>
+                        </div>
+
                         {loadingSubCategories ? (
                           <div className="grid grid-cols-2 gap-3">
                             {[1, 2, 3, 4].map((n) => (
-                              <div key={n} className="h-12 rounded-xl bg-slate-200/70 dark:bg-slate-800/70 relative overflow-hidden animate-pulse" />
+                              <div key={n} className="h-14 rounded-2xl bg-slate-200/70 dark:bg-slate-800/70 relative overflow-hidden animate-pulse" />
                             ))}
                           </div>
                         ) : apiSubCategories.length > 0 ? (
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             {apiSubCategories.map((sub) => {
                               const isActive = selectedSub === sub._id || selectedSub === sub.name;
                               return (
@@ -1698,13 +1896,21 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     setSelectedSub(sub._id);
                                     setSelectedAct(null);
                                     setApiPackages([]);
+                                    setStepView("action");
                                   }}
-                                  className={`py-3 px-4 rounded-xl text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${isActive
-                                    ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/10"
-                                    : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md"
-                                    }`}
+                                  className={`p-4 rounded-2xl text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.02] flex flex-col items-center justify-center gap-2 group shadow-sm hover:shadow-md ${
+                                    isActive
+                                      ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/20 ring-2 ring-accent-lux"
+                                      : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-accent-lux/40 border border-slate-200/60 dark:border-slate-800"
+                                  }`}
                                 >
-                                  {sub.name}
+                                  <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 flex items-center justify-center text-accent-lux group-hover:scale-110 transition-transform">
+                                    <Layers className="w-5 h-5" />
+                                  </div>
+                                  <span>{sub.name}</span>
+                                  <span className="text-[10px] font-semibold text-slate-400 group-hover:text-accent-lux transition-colors">
+                                    Select →
+                                  </span>
                                 </button>
                               );
                             })}
@@ -1713,16 +1919,39 @@ function ServiceDetailPageContent({ params }: PageProps) {
                       </div>
                     )}
 
-                    {/* Step 2 (or Step 1 if no subcategories): Action Type Selector */}
-                    {(!hasSubCategories || selectedSub) && (
-                      <div className={`space-y-3 ${hasSubCategories ? "border-t border-slate-100 dark:border-slate-850 pt-5" : ""} animate-fadeIn`}>
-                        <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
-                          SELECT SERVICE ACTION
-                        </span>
+                    {/* Step 2 (or Step 1 if no subcategories): Action Type Selector (only shown when active) */}
+                    {effectiveStepView === "action" && (
+                      <div className="space-y-4 animate-fadeIn">
+                        {/* Step Header with Back Button */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-accent-lux tracking-wider block">
+                              {hasSubCategories ? "Step 2 of 3" : "Step 1 of 2"}
+                            </span>
+                            <h3 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white">
+                              Select Service Action
+                            </h3>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              What type of service do you need for {currentSub?.name || "your home"}?
+                            </p>
+                          </div>
+
+                          {hasSubCategories && (
+                            <button
+                              type="button"
+                              onClick={() => setStepView("subcategory")}
+                              className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 text-xs font-bold text-accent-lux border border-purple-200/50 dark:border-purple-800/50 transition-all cursor-pointer"
+                            >
+                              <ArrowLeft className="w-3.5 h-3.5" />
+                              <span>Back to Types ({currentSub?.name})</span>
+                            </button>
+                          )}
+                        </div>
+
                         {loadingServiceActions ? (
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             {[1, 2, 3, 4].map((n) => (
-                              <div key={n} className="h-12 rounded-xl bg-slate-200/70 dark:bg-slate-800/70 relative overflow-hidden animate-pulse" />
+                              <div key={n} className="h-14 rounded-2xl bg-slate-200/70 dark:bg-slate-800/70 relative overflow-hidden animate-pulse" />
                             ))}
                           </div>
                         ) : apiServiceActions.length > 0 ? (
@@ -1732,28 +1961,76 @@ function ServiceDetailPageContent({ params }: PageProps) {
                               return (
                                 <button
                                   key={act._id}
-                                  onClick={() => setSelectedAct(act._id)}
-                                  className={`py-3.5 px-2 rounded-xl text-[11px] sm:text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.01] ${isActive
-                                    ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/10"
-                                    : "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 shadow-sm hover:shadow-md"
-                                    }`}
+                                  onClick={() => {
+                                    setSelectedAct(act._id);
+                                    setStepView("packages");
+                                  }}
+                                  className={`p-4 rounded-2xl text-[11px] sm:text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.02] flex flex-col items-center justify-center gap-2 group shadow-sm hover:shadow-md ${
+                                    isActive
+                                      ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/20 ring-2 ring-accent-lux"
+                                      : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-accent-lux/40 border border-slate-200/60 dark:border-slate-800"
+                                  }`}
                                 >
-                                  {act.serviceAction}
+                                  <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 flex items-center justify-center text-accent-lux group-hover:scale-110 transition-transform">
+                                    <Sparkles className="w-5 h-5" />
+                                  </div>
+                                  <span>{act.serviceAction}</span>
+                                  <span className="text-[10px] font-semibold text-slate-400 group-hover:text-accent-lux transition-colors">
+                                    View Packages →
+                                  </span>
                                 </button>
                               );
                             })}
                           </div>
                         ) : (
-                          <div className="p-4 rounded-xl bg-slate-100 dark:bg-slate-900/50 text-slate-400 text-xs text-center font-medium">
+                          <div className="p-8 rounded-2xl bg-slate-100 dark:bg-slate-900/50 text-slate-400 text-xs text-center font-medium">
                             No service actions available.
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* Step 3 (or Step 2 if no subcategories): Available Services & Rates */}
-                    {selectedAct && (
-                      <div className="space-y-4 border-t border-slate-100 dark:border-slate-850 pt-5 animate-fadeIn">
+                    {/* Step 3 (or Step 2 if no subcategories): Available Services & Rates (only shown when active) */}
+                    {effectiveStepView === "packages" && (
+                      <div className="space-y-4 animate-fadeIn">
+                        {/* Step Header with Back Button and Summary Chips */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                          <div>
+                            <span className="text-[10px] uppercase font-bold text-accent-lux tracking-wider block">
+                              {hasSubCategories ? "Step 3 of 3" : "Step 2 of 2"}
+                            </span>
+                            <h3 className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-white">
+                              Available Service Packages
+                            </h3>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              Packages for {currentAct?.name || "selected action"} {currentSub?.name && `(${currentSub.name})`}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {hasSubCategories && (
+                              <button
+                                type="button"
+                                onClick={() => setStepView("subcategory")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                                title="Change Service Type"
+                              >
+                                <span>Type: {currentSub?.name}</span>
+                                <span className="text-accent-lux">✎</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => setStepView("action")}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 text-xs font-bold text-accent-lux border border-purple-200/50 dark:border-purple-800/50 transition-all cursor-pointer"
+                            >
+                              <ArrowLeft className="w-3.5 h-3.5" />
+                              <span>Back to Actions ({currentAct?.name})</span>
+                            </button>
+                          </div>
+                        </div>
+
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
                             AVAILABLE SERVICE PACKAGES
@@ -1881,18 +2158,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     >
                                       {/* Left Side: Image */}
                                       <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 relative group/image">
-                                        <img
-                                          src={finalImgSrc}
-                                          alt={item.name}
-                                          referrerPolicy="no-referrer"
-                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                          onError={(e) => {
-                                            const target = e.currentTarget;
-                                            if (pkgId && !target.src.includes(`/api/media/package/${pkgId}/image`)) {
-                                              target.src = `/api/media/package/${pkgId}/image`;
-                                            }
-                                          }}
-                                        />
+                                        <ServicePackageImageItem src={finalImgSrc} name={item.name} pkgId={pkgId} />
                                         <button
                                           onClick={(e) => {
                                             e.stopPropagation();

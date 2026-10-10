@@ -60,3 +60,21 @@ export function formatImageUrl(imgUrl?: string): string {
     return trimmed;
   }
 }
+
+/**
+ * Returns initials from a name (two letters if two or more words available, otherwise single letter).
+ * e.g., "Home Cleaning" -> "HC", "AC Repair" -> "AR", "Plumber" -> "P"
+ */
+export function getNameInitials(name?: string, fallback: string = "P"): string {
+  if (!name || typeof name !== "string") return fallback;
+  const words = name
+    .trim()
+    .split(/[\s\-_/]+/)
+    .filter(Boolean);
+  if (words.length >= 2) {
+    const first = words[0].charAt(0);
+    const second = words[1].charAt(0);
+    return (first + second).toUpperCase();
+  }
+  return (words[0]?.charAt(0) || fallback).toUpperCase();
+}
