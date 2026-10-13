@@ -164,7 +164,7 @@ function HeaderContent() {
         {/* LOGO */}
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 group">
-            <img src="/logo.png" alt="HelpMate Logo" className="h-13 sm:h-14 w-auto object-contain" />
+            <img src="/logo-transparent.png" alt="HelpMate Logo" className="h-13 sm:h-14 w-auto object-contain" />
           </Link>
 
           {/* Location Picker */}

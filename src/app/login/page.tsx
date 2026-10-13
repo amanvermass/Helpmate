@@ -82,7 +82,7 @@ function LoginContent() {
         <div className="text-center space-y-2">
           <Link href="/" className="inline-block">
             <img
-              src="/logo.png"
+              src="/logo-white.png"
               alt="HelpMate Logo"
               className="h-12 sm:h-14 w-auto object-contain mx-auto mb-1 cursor-pointer hover:opacity-90 transition-opacity"
             />

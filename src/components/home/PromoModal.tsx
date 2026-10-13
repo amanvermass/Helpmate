@@ -87,7 +87,7 @@ export default function PromoModal() {
               {/* Company Logo overlay at bottom */}
               <div className="absolute bottom-4 left-6 text-left flex flex-col gap-1.5">
                 <div className="bg-white px-3 py-1.5 rounded-xl shadow-sm w-fit flex items-center justify-center">
-                  <img src="/logo.png" alt="HelpMate Logo" className="h-7 w-auto object-contain" />
+                  <img src="/logo-white.png" alt="HelpMate Logo" className="h-7 w-auto object-contain" />
                 </div>
                 <p className="text-[10px] text-slate-300 font-semibold tracking-wider italic">Helpmate for your home care</p>
               </div>

@@ -47,8 +47,10 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
         {/* Brand Column */}
         <div className="flex flex-col gap-5">
-          <Link href="/" className="flex items-center gap-2 self-start">
-            <img src="/logo.png" alt="HelpMate Logo" className="h-10 w-auto object-contain" />
+          <Link href="/" className="flex items-center gap-2 self-start group">
+            <div className="bg-white p-1.5 rounded-xl shadow-xs inline-flex items-center justify-center transition-transform group-hover:scale-105">
+              <img src="/logo-white.png" alt="HelpMate Logo" className="h-9 sm:h-10 w-auto object-contain" />
+            </div>
           </Link>
           <p className="text-[12px] text-slate-400 leading-relaxed max-w-xs">
             Connecting selective clients with Varanasi's most experienced, background-verified on-demand technicians and therapists. Guaranteed premium satisfaction.

@@ -154,39 +154,6 @@ export const services: Service[] = [
     ]
   },
   {
-    id: "premium-salon-women",
-    name: "Luxury Facial & Hair Spa Combo",
-    category: "beauty",
-    rating: 4.96,
-    reviewsCount: 2310,
-    price: 2499,
-    originalPrice: 3499,
-    discountText: "28% OFF",
-    duration: 120,
-    description: "Pamper yourself with our flagship beauty combo. Includes an organic deep-glow facial massage, premium L'Oreal hair spa treatment, and shoulder massage in the comfort of your home.",
-    image: "https://images.unsplash.com/photo-1560750588-73207b1ef5b8?auto=format&fit=crop&w=800&q=80",
-    features: [
-      "L'Oreal & O3+ Premium Products Only",
-      "Disposable single-use hygiene kits",
-      "Calming spa music and aromatic diffuser setup",
-      "Post-session clean up guaranteed"
-    ],
-    inclusions: [
-      "O3+ Cleansing, Scrub, Steam & Clay Mask",
-      "Relaxing 20-min facial massage",
-      "L'Oreal Hair Spa cream application, steam & wash",
-      "15-min hand and neck massage"
-    ],
-    exclusions: [
-      "Pedicure / Manicure (available as add-ons)",
-      "Blow drying with complex styling"
-    ],
-    faqs: [
-      { question: "Do you bring your own towels and sheets?", answer: "Yes, our beauty professionals bring 100% sanitized, disposable sheets, towels, and single-use kits." },
-      { question: "Can I customize the facial?", answer: "Yes! Our professional will analyze your skin type and choose the appropriate product variant." }
-    ]
-  },
-  {
     id: "plumbing-smart-inspection",
     name: "Smart Water Leakage Detection & Fix",
     category: "plumbing",
@@ -557,16 +524,6 @@ export const reviews: Review[] = [
     avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=120&h=120&q=80",
     date: "1 week ago"
   },
-  {
-    id: "rev-3",
-    name: "Priya Sharma",
-    rating: 5,
-    serviceName: "Luxury Facial & Hair Spa Combo",
-    comment: "This was as premium as any high-end salon in Bandra, Mumbai. The therapist brought a diffuse light, soothing nature sound system, and organic oils. I fell asleep during the face massage!",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80",
-    image: "https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?auto=format&fit=crop&w=300&h=200&q=80",
-    date: "3 days ago"
-  }
 ];
 
 export const professionals: Professional[] = [
@@ -668,24 +625,6 @@ export const videoReviews: VideoReview[] = [
     commentsCount: "24",
     location: "Cantonment, Varanasi",
     date: "2 days ago",
-    audioTrack: "Verified Service Video"
-  },
-  {
-    id: "v-rev-3",
-    handle: "Priya Singh",
-    name: "Priya Singh",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&h=120&q=80",
-    serviceId: "facial-spa-combo",
-    serviceName: "Luxury Facial & Hair Spa",
-    rating: 5.0,
-    comment: "Salon experience right inside my home! Soft ambient music, organic oils & the best facial massage ever.",
-    videoUrl: "https://assets.mixkit.co/videos/preview/mixkit-young-woman-applying-facial-cream-42790-large.mp4",
-    poster: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?auto=format&fit=crop&w=600&q=80",
-    views: "2.1k plays",
-    likes: "640",
-    commentsCount: "48",
-    location: "Lanka, Varanasi",
-    date: "3 days ago",
     audioTrack: "Verified Service Video"
   },
   {

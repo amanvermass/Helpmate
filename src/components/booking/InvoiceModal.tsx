@@ -200,9 +200,9 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                   {/* Top Header Banner matching reference image */}
                   <div className="bg-[#fcf5fa] dark:bg-purple-950/20 p-6 rounded-2xl border border-purple-100/60 dark:border-purple-900/30 flex items-center justify-between gap-4">
                     {/* Brand Logo Box */}
-                    <div className="bg-white dark:bg-slate-950 p-2.5 rounded-xl border border-purple-100 dark:border-slate-800 shadow-xs">
+                    <div className="bg-white p-2.5 rounded-xl border border-purple-100 shadow-xs">
                       <img
-                        src="/logo.png"
+                        src="/logo-white.png"
                         alt="HELP MATE"
                         className="h-12 sm:h-14 w-auto object-contain"
                       />
