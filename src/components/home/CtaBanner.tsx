@@ -1,39 +1,8 @@
 "use client";
 
 import React from "react";
-
-// Clean, custom SVG icons for Play Store and Apple Store
-const PlayStoreBadge: React.FC = () => (
-  <a 
-    href="https://play.google.com/store" 
-    target="_blank" 
-    rel="noopener noreferrer"
-    className="flex items-center gap-1.5 sm:gap-3 px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-black text-white hover:bg-slate-900 transition-all hover:scale-[1.03] active:scale-[0.98] shadow-md border border-white/10 shrink-0"
-  >
-    <img src="/play-store.svg" alt="Google Play Icon" className="w-4.5 h-4.5 sm:w-6 sm:h-6 shrink-0" />
-    <div className="flex flex-col text-left">
-      <span className="text-[6px] sm:text-[8px] text-slate-350 uppercase tracking-wider font-semibold leading-none font-sans">GET IT ON</span>
-      <span className="text-[9px] sm:text-xs md:text-sm font-bold mt-0.5 leading-none font-sans">Google Play</span>
-    </div>
-  </a>
-);
-
-const AppStoreBadge: React.FC = () => (
-  <a 
-    href="https://www.apple.com/app-store/" 
-    target="_blank" 
-    rel="noopener noreferrer"
-    className="flex items-center gap-1.5 sm:gap-3 px-2.5 sm:px-5 py-1.5 sm:py-2.5 rounded-lg sm:rounded-xl bg-black text-white hover:bg-slate-900 transition-all hover:scale-[1.03] active:scale-[0.98] shadow-md border border-white/10 shrink-0"
-  >
-    <svg viewBox="0 0 24 24" className="w-4.5 h-4.5 sm:w-6 sm:h-6 fill-current text-white shrink-0" xmlns="http://www.w3.org/2000/svg">
-      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.82M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.22.67-2.94 1.5-.62.71-1.16 1.85-1.01 2.96 1.1.09 2.23-.55 2.96-1.4z" />
-    </svg>
-    <div className="flex flex-col text-left">
-      <span className="text-[6px] sm:text-[8px] text-slate-350 uppercase tracking-wider font-semibold leading-none font-sans">Download on the</span>
-      <span className="text-[9px] sm:text-xs md:text-sm font-bold mt-0.5 leading-none font-sans">App Store</span>
-    </div>
-  </a>
-);
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 export default function CtaBanner() {
   return (
@@ -76,10 +45,15 @@ export default function CtaBanner() {
           </div>
         </div>
 
-        {/* Download Badges */}
-        <div className="mt-3 sm:mt-6 md:mt-8 flex justify-center gap-1.5 sm:gap-4 w-full">
-          <PlayStoreBadge />
-          <AppStoreBadge />
+        {/* Action Button: Book Now */}
+        <div className="mt-2.5 sm:mt-5 md:mt-6 flex flex-col items-center gap-1 sm:gap-2">
+          <Link
+            href="/search?view=categories"
+            className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-8 md:px-10 py-1.5 sm:py-3 rounded-full bg-gradient-to-r from-accent-lux to-[#6b1257] hover:from-accent-lux/95 hover:to-[#570e46] text-white font-bold sm:font-extrabold text-[9px] sm:text-sm md:text-base shadow-lg sm:shadow-xl shadow-purple-950/20 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 cursor-pointer group"
+          >
+            <span>Book Now</span>
+            <ArrowRight className="w-2.5 h-2.5 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform" />
+          </Link>
         </div>
 
       </div>
