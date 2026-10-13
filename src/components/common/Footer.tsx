@@ -7,12 +7,8 @@ import * as zod from "zod";
 import {
   Crown,
   Instagram,
-  Twitter,
-  Facebook,
-  Linkedin,
   ShieldCheck,
-  Send,
-  Download
+  Send
 } from "lucide-react";
 import { useStore } from "@/store/useStore";
 
@@ -90,11 +86,17 @@ export default function Footer() {
               <span className="block text-[9px] uppercase font-black text-slate-500 tracking-wider mb-0.5">Email Support</span>
               <a href="mailto:info@helpmate.net.in" className="hover:text-white transition-colors block font-bold text-white">info@helpmate.net.in</a>
             </li>
-            <li className="pt-2 flex gap-4 text-slate-400">
-              <a href="#" aria-label="Instagram" className="hover:text-white transition-all hover:scale-115"><Instagram className="w-4 h-4" /></a>
-              <a href="#" aria-label="Twitter" className="hover:text-white transition-all hover:scale-115"><Twitter className="w-4 h-4" /></a>
-              <a href="#" aria-label="Facebook" className="hover:text-white transition-all hover:scale-115"><Facebook className="w-4 h-4" /></a>
-              <a href="#" aria-label="LinkedIn" className="hover:text-white transition-all hover:scale-115"><Linkedin className="w-4 h-4" /></a>
+            <li className="pt-2 flex items-center gap-2">
+              <a
+                href="https://www.instagram.com/helpmate_varanasi/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram @helpmate_varanasi"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:text-white hover:bg-white/10 hover:border-pink-500/30 transition-all text-xs font-semibold group cursor-pointer"
+              >
+                <Instagram className="w-4 h-4 text-pink-400 group-hover:scale-110 transition-transform" />
+                <span>@helpmate_varanasi</span>
+              </a>
             </li>
           </ul>
         </div>
@@ -126,28 +128,6 @@ export default function Footer() {
             {errors.email && (
               <p className="text-[10px] text-red-400 mt-2 pl-2">{errors.email.message}</p>
             )}
-          </div>
-
-          <div className="pt-2 border-t border-white/5 flex flex-col gap-3">
-            <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Download App</span>
-            <div className="flex gap-3">
-              <a href="https://www.apple.com/app-store/" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-left transition-colors cursor-pointer">
-                <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current text-white shrink-0" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.82M15.97 4.17c.66-.81 1.11-1.93.99-3.06-1 .04-2.22.67-2.94 1.5-.62.71-1.16 1.85-1.01 2.96 1.1.09 2.23-.55 2.96-1.4z" />
-                </svg>
-                <div>
-                  <div className="text-[8px] text-slate-400 uppercase font-sans">App Store</div>
-                  <div className="text-[10px] font-bold leading-none mt-0.5 font-sans">iOS Apple</div>
-                </div>
-              </a>
-              <a href="https://play.google.com/store" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-left transition-colors cursor-pointer">
-                <img src="/play-store.svg" alt="Google Play Icon" className="w-4 h-4 shrink-0" />
-                <div>
-                  <div className="text-[8px] text-slate-400 uppercase font-sans">Google Play</div>
-                  <div className="text-[10px] font-bold leading-none mt-0.5 font-sans">Android APK</div>
-                </div>
-              </a>
-            </div>
           </div>
         </div>
       </div>
