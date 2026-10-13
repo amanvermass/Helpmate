@@ -13,6 +13,7 @@ export interface CategoryItem {
 export interface SubCategoryItem {
   _id: string;
   name: string;
+  iconUrl?: string;
 }
 
 export interface CategoriesResponse {

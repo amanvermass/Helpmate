@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const API_BACKEND = process.env.NEXT_PUBLIC_API_URL || "https://helpmate-api.kvtmedia.com";
+
 const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
@@ -8,17 +10,21 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "helpmate-api.kvtmedia.com",
       },
+      {
+        protocol: "http",
+        hostname: "localhost",
+      },
     ],
   },
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "https://helpmate-api.kvtmedia.com/api/:path*",
+        destination: `${API_BACKEND}/api/:path*`,
       },
       {
         source: "/backend/:path*",
-        destination: "https://helpmate-api.kvtmedia.com/api/:path*",
+        destination: `${API_BACKEND}/api/:path*`,
       },
     ];
   },

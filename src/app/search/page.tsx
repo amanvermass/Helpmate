@@ -495,7 +495,8 @@ function SearchPageContent() {
   // Category click handler -> Navigate directly to step-by-step wizard page
   const handleCategoryClick = (cat: CategoryItem) => {
     const categorySlug = cat.categoryName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
-    router.push(`/services/${categorySlug}`);
+    const catId = cat._id;
+    router.push(`/services/${categorySlug}?categoryId=${encodeURIComponent(catId)}`);
   };
 
   // Filter categories by local search query in categories view
@@ -795,13 +796,15 @@ function SearchPageContent() {
                       ? item.category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
                       : (item.category?.id || pkg.id);
 
+                    const catId = item.category?.id || (item.category as any)?._id;
+
                     return (
                       <motion.div
                         key={pkg.id}
                         initial={{ opacity: 0, y: 16 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.3, delay: idx * 0.04 }}
-                        onClick={() => router.push(`/services/${categorySlug}?item=${pkg.id}`)}
+                        onClick={() => router.push(`/services/${categorySlug}?${catId ? `categoryId=${encodeURIComponent(catId)}&` : ""}item=${pkg.id}`)}
                         className="group relative bg-white dark:bg-slate-900/80 rounded-2xl border border-amber-500/20 dark:border-slate-800 hover:border-amber-500/50 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden cursor-pointer hover:-translate-y-1"
                       >
                         {/* Card Top Banner / Media */}
@@ -962,13 +965,15 @@ function SearchPageContent() {
                               ? item.category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
                               : (item.category?.id || pkg.id);
 
+                            const catId = item.category?.id || (item.category as any)?._id;
+
                             return (
                               <button
                                 key={pkg.id}
                                 type="button"
                                 onClick={() => {
                                   setSearchSuggestions([]);
-                                  router.push(`/services/${categorySlug}?item=${pkg.id}`);
+                                  router.push(`/services/${categorySlug}?${catId ? `categoryId=${encodeURIComponent(catId)}&` : ""}item=${pkg.id}`);
                                 }}
                                 className="w-full flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 text-left transition-colors cursor-pointer"
                               >
@@ -1221,13 +1226,15 @@ function SearchPageContent() {
                             ? item.category.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")
                             : (item.category?.id || pkg.id);
 
+                          const catId = item.category?.id || (item.category as any)?._id;
+
                           return (
                             <motion.div
                               key={pkg.id}
                               initial={{ opacity: 0, y: 16 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.3, delay: idx * 0.04 }}
-                              onClick={() => router.push(`/services/${categorySlug}?item=${pkg.id}`)}
+                              onClick={() => router.push(`/services/${categorySlug}?${catId ? `categoryId=${encodeURIComponent(catId)}&` : ""}item=${pkg.id}`)}
                               className="group relative bg-white dark:bg-slate-900/80 rounded-2xl border border-slate-200/60 dark:border-slate-800 hover:border-accent-lux/40 dark:hover:border-accent-lux/40 shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col overflow-hidden cursor-pointer hover:-translate-y-1"
                             >
                               {/* Card Top Banner / Media */}

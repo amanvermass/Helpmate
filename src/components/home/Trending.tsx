@@ -115,12 +115,14 @@ export default function Trending() {
   const displayServices = trendingItems.map((item) => {
     const catName = item.category?.name || "Service";
     const catSlug = catName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const catId = item.category?.id || (item.category as any)?._id;
     const discountText = item.discountPercentage ? `${item.discountPercentage}% OFF` : "Best Deal";
     return {
       id: item.packageId,
       name: item.packageName,
       category: catName,
       categorySlug: catSlug,
+      categoryId: catId,
       duration: item.duration || 60,
       price: item.price,
       originalPrice: item.originalPrice || item.price,
@@ -214,7 +216,7 @@ export default function Trending() {
                   className="w-[280px] sm:w-[320px] shrink-0"
                 >
                   <Link
-                    href={`/services/${service.categorySlug || service.id}?item=${service.id}`}
+                    href={`/services/${service.categorySlug || service.id}?${service.categoryId ? `categoryId=${encodeURIComponent(service.categoryId)}&` : ""}item=${service.id}`}
                     className="glass-panel overflow-hidden group flex flex-col h-full border border-slate-200/10 hover:shadow-lg transition-all duration-300 cursor-pointer block text-left"
                   >
                     {/* Image & Badges */}

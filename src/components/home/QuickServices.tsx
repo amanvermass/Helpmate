@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Zap, ArrowDown, ChevronRight, Sparkles } from "lucide-react";
 import { formatImageUrl, getNameInitials } from "@/utils/image";
 import { useStore } from "@/store/useStore";
+import { fetchCustomerQuickServicesApi } from "@/services/quickServiceApi";
 import { fetchCustomerTrendingApi } from "@/services/trendingApi";
 import { fetchCustomerPackagesApi } from "@/services/packageApi";
 
@@ -13,6 +14,7 @@ export interface QuickPackage {
   name: string;
   category: string;
   categorySlug: string;
+  categoryId?: string;
   price: number;
   originalPrice?: number;
   duration?: number;
@@ -133,8 +135,7 @@ export default function QuickServices({
   onExploreAll?: () => void;
 }) {
   const router = useRouter();
-  const { token } = useStore();
-  const [packages, setPackages] = useState<QuickPackage[]>(FALLBACK_QUICK_PACKAGES);
+  const [packages, setPackages] = useState<QuickPackage[]>([]);
 
   // Smooth scroll down to #categories
   const handleScrollToCategories = () => {
@@ -155,23 +156,28 @@ export default function QuickServices({
 
     async function loadPackages() {
       try {
-        const trendingRes = await fetchCustomerTrendingApi(token);
+        const res = await fetchCustomerQuickServicesApi();
         if (
           isMounted &&
-          trendingRes.success &&
-          trendingRes.data &&
-          Array.isArray(trendingRes.data) &&
-          trendingRes.data.length > 0
+          res.success &&
+          res.data &&
+          Array.isArray(res.data) &&
+          res.data.length > 0
         ) {
-          const list: QuickPackage[] = trendingRes.data.slice(0, 6).map((item) => {
-            const catName = item.category?.name || "Service";
+          const list: QuickPackage[] = res.data.slice(0, 6).map((item, idx) => {
+            const pkgName = item.packageName || (item as any).name || `Quick Service ${idx + 1}`;
+            const rawCat = typeof item.category === "object" ? item.category?.name : (item.category || item.categoryName);
+            const catName = rawCat || "Quick Service";
             const catSlug = catName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+            const rawCatId = typeof item.category === "object" ? item.category?.id : (item.categoryId || (item.category as any)?._id);
+            const pkgId = item.id || item._id || item.packageId || `quick-${idx}`;
             return {
-              id: item.packageId,
-              name: item.packageName,
+              id: pkgId,
+              name: pkgName,
               category: catName,
               categorySlug: catSlug,
-              price: item.price,
+              categoryId: rawCatId,
+              price: item.price ?? 0,
               originalPrice: item.originalPrice,
               duration: item.duration || 60,
               imageUrl: item.imageUrl || item.thumbnailUrl,
@@ -179,36 +185,13 @@ export default function QuickServices({
             };
           });
           setPackages(list);
-          return;
-        }
-
-        const pkgRes = await fetchCustomerPackagesApi({ limit: 6 }, token);
-        if (
-          isMounted &&
-          pkgRes.success &&
-          pkgRes.data &&
-          Array.isArray(pkgRes.data) &&
-          pkgRes.data.length > 0
-        ) {
-          const list: QuickPackage[] = pkgRes.data.slice(0, 6).map((item) => {
-            const catName = item.category?.name || "Service";
-            const catSlug = catName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
-            return {
-              id: item.package.id,
-              name: item.package.name,
-              category: catName,
-              categorySlug: catSlug,
-              price: item.package.price,
-              originalPrice: item.package.originalPrice,
-              duration: item.package.duration || 60,
-              imageUrl: item.package.imageUrl || item.package.thumbnailUrl,
-              rating: 4.9,
-            };
-          });
-          setPackages(list);
+        } else if (isMounted) {
+          setPackages([]);
         }
       } catch (err) {
-        // Fallback default packages are used
+        if (isMounted) {
+          setPackages([]);
+        }
       }
     }
 
@@ -217,14 +200,25 @@ export default function QuickServices({
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, []);
 
   const handleCardClick = (pkg: QuickPackage) => {
-    router.push(`/services/${pkg.categorySlug}?item=${pkg.id}`);
+    if (pkg.id && !pkg.id.startsWith("quick-")) {
+      router.push(`/services/${pkg.categorySlug}?${pkg.categoryId ? `categoryId=${encodeURIComponent(pkg.categoryId)}&` : ""}item=${pkg.id}`);
+    } else if (pkg.name) {
+      router.push(`/search?q=${encodeURIComponent(pkg.name)}`);
+    } else {
+      handleScrollToCategories();
+    }
   };
 
+  // When no data from API, do not show the bar at all
+  if (packages.length === 0) {
+    return null;
+  }
+
   return (
-    <div className="w-full">
+    <div className="max-w-7xl mx-auto w-full z-20 mb-5 sm:mb-8 animate-fadeIn">
       {/* Sleek, Low-Profile Quick Services Strip */}
       <div className="rounded-2xl sm:rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/80 dark:border-slate-800 shadow-md shadow-purple-950/5 py-1.5 px-2.5 sm:px-3 flex items-center justify-between gap-2 sm:gap-3 transition-all">
         

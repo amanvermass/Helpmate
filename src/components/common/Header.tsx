@@ -208,10 +208,11 @@ function HeaderContent() {
                     const catSlug = item.category?.name
                       ? item.category.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-")
                       : "service";
+                    const catId = item.category?.id || (item.category as any)?._id;
                     const subId = item.subCategory?.id;
                     const actId = item.serviceAction?.id;
                     const pkgId = item.package.id;
-                    const targetUrl = `/services/${catSlug}?${subId ? `sub=${encodeURIComponent(subId)}&` : ""}${actId ? `act=${encodeURIComponent(actId)}&` : ""}item=${encodeURIComponent(pkgId)}`;
+                    const targetUrl = `/services/${catSlug}?${catId ? `categoryId=${encodeURIComponent(catId)}&` : ""}${subId ? `sub=${encodeURIComponent(subId)}&` : ""}${actId ? `act=${encodeURIComponent(actId)}&` : ""}item=${encodeURIComponent(pkgId)}`;
 
                     return (
                       <button

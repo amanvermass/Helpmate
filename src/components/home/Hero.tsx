@@ -67,11 +67,13 @@ export default function Hero() {
           const formatted = res.data.map((item) => {
             const catName = item.category?.name || "Service";
             const catSlug = catName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+            const catId = item.category?.id || (item.category as any)?._id;
             return {
               id: item.packageId,
               name: item.packageName,
               category: catName,
               categorySlug: catSlug,
+              categoryId: catId,
               price: item.price,
               duration: item.duration || 60,
               image: formatImageUrl(item.imageUrl || ""),
@@ -119,7 +121,7 @@ export default function Hero() {
 
   const handleSuggestionClick = (item: any) => {
     if (item.categorySlug && item.id) {
-      router.push(`/services/${item.categorySlug}?item=${item.id}`);
+      router.push(`/services/${item.categorySlug}?${item.categoryId ? `categoryId=${encodeURIComponent(item.categoryId)}&` : ""}item=${item.id}`);
     } else {
       router.push(`/services/${item.id}`);
     }
@@ -139,10 +141,8 @@ export default function Hero() {
         <BetaBanner />
       </div>
 
-      {/* Quick Services Strip - On top below header */}
-      <div className="max-w-7xl mx-auto w-full z-20 mb-5 sm:mb-8">
-        <QuickServices />
-      </div>
+      {/* Quick Services Strip - On top below header (only shows if API returns data) */}
+      <QuickServices />
 
       <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 items-center z-10 font-sans">
 

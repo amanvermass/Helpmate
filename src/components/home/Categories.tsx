@@ -99,7 +99,8 @@ export default function Categories() {
 
   const handleCategoryClick = (cat: UnifiedCategory) => {
     const categorySlug = cat.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
-    router.push(`/services/${categorySlug}`);
+    const catId = cat._id || cat.id;
+    router.push(`/services/${categorySlug}?categoryId=${encodeURIComponent(catId)}`);
   };
 
   const visibleCategories = isExpanded ? categoriesList : categoriesList.slice(0, 12);

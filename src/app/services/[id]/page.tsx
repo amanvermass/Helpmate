@@ -26,7 +26,7 @@ import { services } from "@/utils/mockData";
 import { useStore, getItemAddonTotal } from "@/store/useStore";
 import confetti from "canvas-confetti";
 import { formatImageUrl, getNameInitials } from "@/utils/image";
-import { fetchCustomerCategoriesApi, fetchCustomerSubCategoriesApi, SubCategoryItem } from "@/services/categoryApi";
+import { fetchCustomerCategoriesApi, fetchCustomerSubCategoriesApi, SubCategoryItem, CategoryItem } from "@/services/categoryApi";
 import {
   fetchCustomerServiceActionsApi,
   fetchCustomerPackagesApi as fetchCustomerPackagesByActionApi,
@@ -84,6 +84,56 @@ function ServicePackageImageItem({
       </div>
       <span className="text-[10px] font-bold text-slate-300 mt-1 px-1 text-center line-clamp-1 max-w-[90%]">
         {name}
+      </span>
+    </div>
+  );
+}
+
+function TileIconDisplay({
+  iconUrl,
+  name,
+  fallbackChar = "S",
+  isActive = false,
+}: {
+  iconUrl?: string;
+  name: string;
+  fallbackChar?: string;
+  isActive?: boolean;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [iconUrl]);
+
+  const formattedUrl = formatImageUrl(iconUrl);
+
+  const containerClasses = `w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center p-2 shrink-0 group-hover:scale-110 transition-all select-none overflow-hidden ${
+    isActive
+      ? "bg-white/20 text-white border border-white/30"
+      : "bg-purple-50 dark:bg-purple-950/60 text-accent-lux border border-purple-100/60 dark:border-purple-900/40"
+  }`;
+
+  if (formattedUrl && !imgError) {
+    return (
+      <div className={containerClasses}>
+        <img
+          src={formattedUrl}
+          alt={name || "Icon"}
+          className="w-full h-full object-contain"
+          referrerPolicy="no-referrer"
+          onError={() => setImgError(true)}
+        />
+      </div>
+    );
+  }
+
+  const initials = getNameInitials(name, fallbackChar);
+
+  return (
+    <div className={containerClasses}>
+      <span className="font-black text-xs sm:text-sm uppercase tracking-tight">
+        {initials}
       </span>
     </div>
   );
@@ -463,6 +513,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
   }, [foundService, serviceId, formattedName]);
 
   const [resolvedCategoryId, setResolvedCategoryId] = useState<string | null>(categoryIdParam);
+  const [activeCategory, setActiveCategory] = useState<CategoryItem | null>(null);
   const [apiSubCategories, setApiSubCategories] = useState<SubCategoryItem[]>([]);
   const [apiServiceActions, setApiServiceActions] = useState<ServiceActionItem[]>([]);
   const [apiPackages, setApiPackages] = useState<PackageItem[]>([]);
@@ -478,7 +529,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
     return /^[0-9a-fA-F]{24}$/.test(id);
   };
 
-  const activePackageId = itemParam || (fetchedItemPackage as any)?._id || fetchedItemPackage?.id || (isPackageId(serviceId) ? serviceId : null);
+  const isServiceIdCategory = (categoryIdParam && serviceId === categoryIdParam) || (resolvedCategoryId && serviceId === resolvedCategoryId);
+  const activePackageId = itemParam || (fetchedItemPackage as any)?._id || fetchedItemPackage?.id || (!isServiceIdCategory && isPackageId(serviceId) ? serviceId : null);
 
   useEffect(() => {
     let isCancelled = false;
@@ -518,6 +570,9 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
   // Sync state values with query parameters on load
   useEffect(() => {
+    if (categoryIdParam) {
+      setResolvedCategoryId(categoryIdParam);
+    }
     if (subParam) {
       setSelectedSub(subParam);
       if (!actParam && !itemParam) setStepView("action");
@@ -529,13 +584,14 @@ function ServiceDetailPageContent({ params }: PageProps) {
     if (itemParam) {
       setStepView("packages");
     }
-  }, [subParam, actParam, itemParam]);
+  }, [categoryIdParam, subParam, actParam, itemParam]);
 
   // Fetch individual package detail when itemParam query is present or serviceId is a valid package ObjectId
   useEffect(() => {
     let isCancelled = false;
     async function loadItemPackage() {
-      const targetId = itemParam || (isPackageId(serviceId) ? serviceId : null);
+      const isServiceIdCat = (categoryIdParam && serviceId === categoryIdParam) || (resolvedCategoryId && serviceId === resolvedCategoryId);
+      const targetId = itemParam || (!isServiceIdCat && isPackageId(serviceId) ? serviceId : null);
       if (!targetId || !isPackageId(targetId)) {
         setFetchedItemPackage(null);
         setLoadingItemPackage(false);
@@ -709,19 +765,21 @@ function ServiceDetailPageContent({ params }: PageProps) {
     async function loadSubCategories() {
       setLoadingSubCategories(true);
       let targetCatId = categoryIdParam;
+      let matchedCategory: CategoryItem | null = null;
 
-      if (!targetCatId) {
-        const catRes = await fetchCustomerCategoriesApi();
-        if (catRes.success && catRes.data && !isCancelled) {
-          const matched = catRes.data.find(
-            (c) =>
-              c._id === serviceId ||
-              c.categoryName.toLowerCase().replace(/[^a-z0-9]+/g, "-") === normalizedSlug ||
-              normalizedSlug.includes(c.categoryName.toLowerCase().slice(0, 4))
-          );
-          if (matched) {
-            targetCatId = matched._id;
-          }
+      const catRes = await fetchCustomerCategoriesApi();
+      if (catRes.success && catRes.data && !isCancelled) {
+        matchedCategory = catRes.data.find(
+          (c) =>
+            (targetCatId && c._id === targetCatId) ||
+            c._id === serviceId ||
+            c.categoryName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-") === normalizedSlug ||
+            c.categoryName.toLowerCase().replace(/[^a-z0-9]/g, "") === normalizedSlug.replace(/[^a-z0-9]/g, "")
+        ) || null;
+
+        if (matchedCategory) {
+          targetCatId = matchedCategory._id;
+          setActiveCategory(matchedCategory);
         }
       }
 
@@ -734,6 +792,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
           setApiSubCategories([]);
         }
       } else if (!isCancelled) {
+        setResolvedCategoryId(null);
         setApiSubCategories([]);
       }
 
@@ -778,31 +837,18 @@ function ServiceDetailPageContent({ params }: PageProps) {
         }
       }
 
-      let catId = resolvedCategoryId;
+      const catId = resolvedCategoryId || categoryIdParam;
       if (!catId) {
-        const catRes = await fetchCustomerCategoriesApi();
-        if (catRes.success && catRes.data && catRes.data.length > 0) {
-          const matched = catRes.data.find(
-            (c) =>
-              c._id === serviceId ||
-              c.categoryName.toLowerCase().replace(/[^a-z0-9]+/g, "-") === normalizedSlug ||
-              normalizedSlug.includes(c.categoryName.toLowerCase().slice(0, 4))
-          );
-          if (matched) {
-            catId = matched._id;
-          } else {
-            catId = catRes.data[0]._id;
-          }
+        if (!isCancelled) {
+          setApiServiceActions([]);
+          setLoadingServiceActions(false);
         }
+        return;
       }
 
-      if (catId) {
-        const res = await fetchCustomerServiceActionsApi(catId, subCatId);
-        if (res.success && res.data && !isCancelled) {
-          setApiServiceActions(res.data);
-        } else if (!isCancelled) {
-          setApiServiceActions([]);
-        }
+      const res = await fetchCustomerServiceActionsApi(catId, subCatId);
+      if (res.success && res.data && !isCancelled) {
+        setApiServiceActions(res.data);
       } else if (!isCancelled) {
         setApiServiceActions([]);
       }
@@ -818,7 +864,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
     return () => {
       isCancelled = true;
     };
-  }, [selectedSub, resolvedCategoryId, apiSubCategories, loadingSubCategories, hasSubCategories, serviceId, normalizedSlug]);
+  }, [selectedSub, resolvedCategoryId, categoryIdParam, apiSubCategories, loadingSubCategories, hasSubCategories]);
 
   // Fetch live packages when service action is selected
   useEffect(() => {
@@ -949,7 +995,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
   const activeDiscount = selectedItem?.discountPercentage || (selectedItem?.originalPrice && selectedItem?.price && selectedItem.originalPrice > selectedItem.price ? Math.round(((selectedItem.originalPrice - selectedItem.price) / selectedItem.originalPrice) * 100) : null);
   const activeDuration = selectedItem ? selectedItem.duration : service.duration;
   const activeSubtitle = selectedItem?.subtitle || "";
-  const activeCategoryName = selectedItem?.category?.name || getCategoryDisplayName(service?.category || "");
+  const activeCategoryName = selectedItem?.category?.name || activeCategory?.categoryName || getCategoryDisplayName(service?.category || "");
   const activeSubCategoryName = selectedItem?.subCategory?.name || currentSub?.name;
   const activeServiceActionName = selectedItem?.serviceAction?.name || currentAct?.name;
   const activeRating = selectedItem?.reviews?.averageRating || selectedItem?.rating || service.rating || 4.9;
@@ -958,6 +1004,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
   const itemDetails = selectedItem
     ? { description: selectedItem.description, image: selectedItem.image }
     : { description: service.description, image: service.image };
+
+  const currentCategoryQuery = resolvedCategoryId || categoryIdParam ? `categoryId=${encodeURIComponent(resolvedCategoryId || categoryIdParam || "")}` : "";
 
   const renderBreadcrumbs = (isDetailsView: boolean) => {
     return (
@@ -969,7 +1017,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
         {isDetailsView || selectedSub ? (
           <Link
-            href={`/services/${service?.category}`}
+            href={`/services/${service?.category}${currentCategoryQuery ? `?${currentCategoryQuery}` : ""}`}
             onClick={() => {
               setSelectedSub(null);
               setSelectedAct(null);
@@ -977,11 +1025,11 @@ function ServiceDetailPageContent({ params }: PageProps) {
             }}
             className="hover:text-accent-lux transition-colors font-semibold"
           >
-            {getCategoryDisplayName(service?.category || "")}
+            {activeCategory?.categoryName || getCategoryDisplayName(service?.category || "")}
           </Link>
         ) : (
           <span className="text-accent-lux font-extrabold">
-            {getCategoryDisplayName(service?.category || "")}
+            {activeCategory?.categoryName || getCategoryDisplayName(service?.category || "")}
           </span>
         )}
 
@@ -990,7 +1038,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
             <span className="text-slate-400">/</span>
             {isDetailsView || selectedAct ? (
               <Link
-                href={`/services/${service?.category}?sub=${selectedSub}`}
+                href={`/services/${service?.category}?${currentCategoryQuery ? `${currentCategoryQuery}&` : ""}sub=${selectedSub}`}
                 onClick={() => {
                   setSelectedAct(null);
                   setStepView("action");
@@ -1012,7 +1060,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
             <span className="text-slate-400">/</span>
             {isDetailsView ? (
               <Link
-                href={`/services/${service?.category}?${selectedSub ? `sub=${selectedSub}&` : ""}act=${selectedAct}`}
+                href={`/services/${service?.category}?${currentCategoryQuery ? `${currentCategoryQuery}&` : ""}${selectedSub ? `sub=${selectedSub}&` : ""}act=${selectedAct}`}
                 className="hover:text-accent-lux transition-colors font-semibold"
               >
                 {currentAct?.name}
@@ -1089,7 +1137,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
       id: packageId,
       name: pkgName,
       price: item.price,
-      category: service?.category || "Service",
+      category: activeCategory?.categoryName || service?.category || "Service",
       duration: item.duration || 30
     });
   };
@@ -1102,7 +1150,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
       id: packageId,
       name: pkgName,
       price: item.price,
-      category: service?.category || "Service",
+      category: activeCategory?.categoryName || service?.category || "Service",
       duration: item.duration || 30
     });
 
@@ -1701,7 +1749,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                 Service Category
               </span>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight leading-tight">
-                {getCategoryDisplayName(service.category)}
+                {activeCategory?.categoryName || getCategoryDisplayName(service.category)}
               </h1>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed mt-2.5 max-w-2xl">
                 Varanasi's custom interactive luxury wizard. Choose your device system parameters below to see active service packages and prices.
@@ -1904,11 +1952,14 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                       : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-accent-lux/40 border border-slate-200/60 dark:border-slate-800"
                                   }`}
                                 >
-                                  <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 flex items-center justify-center text-accent-lux group-hover:scale-110 transition-transform">
-                                    <Layers className="w-5 h-5" />
-                                  </div>
-                                  <span>{sub.name}</span>
-                                  <span className="text-[10px] font-semibold text-slate-400 group-hover:text-accent-lux transition-colors">
+                                  <TileIconDisplay
+                                    iconUrl={sub.iconUrl}
+                                    name={sub.name}
+                                    fallbackChar="S"
+                                    isActive={isActive}
+                                  />
+                                  <span className="line-clamp-1 max-w-full">{sub.name}</span>
+                                  <span className={`text-[10px] font-semibold transition-colors ${isActive ? "text-white/80" : "text-slate-400 group-hover:text-accent-lux"}`}>
                                     Select →
                                   </span>
                                 </button>
@@ -1971,11 +2022,14 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                       : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-accent-lux/40 border border-slate-200/60 dark:border-slate-800"
                                   }`}
                                 >
-                                  <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 flex items-center justify-center text-accent-lux group-hover:scale-110 transition-transform">
-                                    <Sparkles className="w-5 h-5" />
-                                  </div>
-                                  <span>{act.serviceAction}</span>
-                                  <span className="text-[10px] font-semibold text-slate-400 group-hover:text-accent-lux transition-colors">
+                                  <TileIconDisplay
+                                    iconUrl={act.iconUrl}
+                                    name={act.serviceAction}
+                                    fallbackChar="A"
+                                    isActive={isActive}
+                                  />
+                                  <span className="line-clamp-1 max-w-full">{act.serviceAction}</span>
+                                  <span className={`text-[10px] font-semibold transition-colors ${isActive ? "text-white/80" : "text-slate-400 group-hover:text-accent-lux"}`}>
                                     View Packages →
                                   </span>
                                 </button>
@@ -2152,7 +2206,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     <div
                                       key={item.id}
                                       onClick={() => {
-                                        router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
+                                        const catQuery = resolvedCategoryId || categoryIdParam ? `&categoryId=${encodeURIComponent(resolvedCategoryId || categoryIdParam || "")}` : "";
+                                        router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}${catQuery}`);
                                       }}
                                       className="bg-white dark:bg-slate-900/60 p-4 rounded-2xl flex flex-col sm:flex-row gap-4 transition-all duration-300 hover:scale-[1.01] hover:shadow-md group text-left shadow-sm relative overflow-hidden cursor-pointer hover:border hover:border-accent-lux/30"
                                     >
@@ -2245,7 +2300,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                           <button
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}`);
+                                              const catQuery = resolvedCategoryId || categoryIdParam ? `&categoryId=${encodeURIComponent(resolvedCategoryId || categoryIdParam || "")}` : "";
+                                              router.push(`/services/${service?.category || serviceId}?sub=${selectedSub}&act=${selectedAct}&item=${item.id}${catQuery}`);
                                             }}
                                             className="px-2.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[9px] sm:text-[10px] transition-colors cursor-pointer"
                                           >
