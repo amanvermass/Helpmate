@@ -131,11 +131,15 @@ function StripThumbnail({
 
 export default function QuickServices({
   onExploreAll,
+  onBookPackage,
 }: {
   onExploreAll?: () => void;
+  onBookPackage?: (pkg: QuickPackage) => void;
 }) {
   const router = useRouter();
+  const { addToCart, cart, addNotification } = useStore();
   const [packages, setPackages] = useState<QuickPackage[]>([]);
+  const [bookingPkgId, setBookingPkgId] = useState<string | null>(null);
 
   // Smooth scroll down to #categories
   const handleScrollToCategories = () => {
@@ -202,13 +206,43 @@ export default function QuickServices({
     };
   }, []);
 
-  const handleCardClick = (pkg: QuickPackage) => {
-    if (pkg.id && !pkg.id.startsWith("quick-")) {
-      router.push(`/services/${pkg.categorySlug}?${pkg.categoryId ? `categoryId=${encodeURIComponent(pkg.categoryId)}&` : ""}item=${pkg.id}`);
-    } else if (pkg.name) {
-      router.push(`/search?q=${encodeURIComponent(pkg.name)}`);
-    } else {
-      handleScrollToCategories();
+  const handleCardClick = async (pkg: QuickPackage) => {
+    if (onBookPackage) {
+      onBookPackage(pkg);
+      return;
+    }
+
+    try {
+      setBookingPkgId(pkg.id);
+      const targetId = pkg.id || `quick-${pkg.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+
+      const isAlreadyInCart = cart.some(
+        (c) => String(c.id) === String(targetId) || String(c.itemId) === String(targetId)
+      );
+
+      if (!isAlreadyInCart) {
+        await addToCart({
+          id: targetId,
+          itemId: targetId,
+          packageId: targetId,
+          name: pkg.name,
+          price: pkg.price,
+          category: pkg.category || "Quick Service",
+          duration: pkg.duration || 60,
+        });
+      }
+
+      addNotification(
+        "Package Added to Cart",
+        `${pkg.name} added to cart. Opening booking stepper...`,
+        "success"
+      );
+
+      router.push("/booking");
+    } catch {
+      router.push("/booking");
+    } finally {
+      setBookingPkgId(null);
     }
   };
 
@@ -234,30 +268,42 @@ export default function QuickServices({
 
         {/* Center: 5-6 Compact Package Chips (Horizontal Scroll on Mobile) */}
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar flex-1 py-0.5">
-          {packages.slice(0, 6).map((item, idx) => (
-            <button
-              key={item.id || idx}
-              type="button"
-              onClick={() => handleCardClick(item)}
-              className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl sm:rounded-full bg-slate-100/80 hover:bg-purple-50 dark:bg-slate-800/60 dark:hover:bg-purple-950/60 border border-slate-200/60 dark:border-slate-700/60 hover:border-accent-lux/60 transition-all duration-200 shrink-0 group cursor-pointer shadow-2xs hover:shadow-xs"
-              title={`View ${item.name} (₹${item.price})`}
-            >
-              {/* Micro Thumbnail with initials fallback */}
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-full overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 relative">
-                <StripThumbnail imageUrl={item.imageUrl} name={item.name} />
-              </div>
+          {packages.slice(0, 6).map((item, idx) => {
+            const isLoading = bookingPkgId === item.id;
+            return (
+              <button
+                key={item.id || idx}
+                type="button"
+                disabled={isLoading}
+                onClick={() => handleCardClick(item)}
+                className={`flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl sm:rounded-full bg-slate-100/80 hover:bg-purple-50 dark:bg-slate-800/60 dark:hover:bg-purple-950/60 border border-slate-200/60 dark:border-slate-700/60 hover:border-accent-lux/60 transition-all duration-200 shrink-0 group cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 ${
+                  isLoading ? "opacity-60 pointer-events-none" : ""
+                }`}
+                title={`Book ${item.name} (₹${item.price})`}
+              >
+                {/* Micro Thumbnail with initials fallback */}
+                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-full overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 relative">
+                  {isLoading ? (
+                    <div className="w-full h-full flex items-center justify-center bg-accent-lux text-white">
+                      <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    </div>
+                  ) : (
+                    <StripThumbnail imageUrl={item.imageUrl} name={item.name} />
+                  )}
+                </div>
 
-              {/* Package Name */}
-              <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-accent-lux transition-colors whitespace-nowrap max-w-[95px] sm:max-w-[125px] truncate">
-                {item.name}
-              </span>
+                {/* Package Name */}
+                <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-accent-lux transition-colors whitespace-nowrap max-w-[95px] sm:max-w-[125px] truncate">
+                  {item.name}
+                </span>
 
-              {/* Price */}
-              <span className="text-[11px] font-black text-accent-lux shrink-0">
-                ₹{item.price}
-              </span>
-            </button>
-          ))}
+                {/* Price */}
+                <span className="text-[11px] font-black text-accent-lux shrink-0">
+                  ₹{item.price}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Right: Explore All Categories Button (Scrolls Down) */}

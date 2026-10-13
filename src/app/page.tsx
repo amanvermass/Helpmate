@@ -44,7 +44,7 @@ export default function Home() {
       <PromoModal />
       <Header />
       
-      <main className="flex-1 pt-20">
+      <main className="flex-1 pt-24 sm:pt-28">
         {/* Hero Section */}
         <Hero />
 

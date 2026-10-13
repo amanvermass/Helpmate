@@ -19,11 +19,11 @@ export default function BetaBanner() {
   useEffect(() => {
     setIsMounted(true);
     try {
-      const savedDismissed = sessionStorage.getItem("helpmate_beta_dismissed");
+      const savedDismissed = sessionStorage.getItem("helpmate_top_beta_dismissed");
       if (savedDismissed === "true") {
         setIsDismissed(true);
       }
-      const savedCollapsed = sessionStorage.getItem("helpmate_beta_collapsed");
+      const savedCollapsed = sessionStorage.getItem("helpmate_top_beta_collapsed");
       if (savedCollapsed === "true") {
         setIsCollapsed(true);
       }
@@ -36,7 +36,7 @@ export default function BetaBanner() {
     const nextState = !isCollapsed;
     setIsCollapsed(nextState);
     try {
-      sessionStorage.setItem("helpmate_beta_collapsed", String(nextState));
+      sessionStorage.setItem("helpmate_top_beta_collapsed", String(nextState));
     } catch {
       // Ignore storage access errors
     }
@@ -45,7 +45,7 @@ export default function BetaBanner() {
   const handleDismiss = () => {
     setIsDismissed(true);
     try {
-      sessionStorage.setItem("helpmate_beta_dismissed", "true");
+      sessionStorage.setItem("helpmate_top_beta_dismissed", "true");
     } catch {
       // Ignore storage access errors
     }
@@ -56,8 +56,8 @@ export default function BetaBanner() {
   }
 
   return (
-    <div className="w-full">
-      <div className="rounded-2xl sm:rounded-full bg-gradient-to-r from-amber-500/15 via-purple-500/10 to-amber-500/15 dark:from-amber-500/20 dark:via-purple-950/50 dark:to-amber-500/15 backdrop-blur-xl border border-amber-500/30 dark:border-amber-500/25 shadow-sm text-slate-800 dark:text-slate-100 font-sans transition-all px-3 sm:px-4 select-none">
+    <aside className="w-full bg-gradient-to-r from-amber-500/15 via-purple-500/10 to-amber-500/15 dark:from-amber-500/20 dark:via-purple-950/40 dark:to-amber-500/15 border-b border-amber-500/25 backdrop-blur-xl text-slate-800 dark:text-slate-100 font-sans transition-all select-none">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <AnimatePresence initial={false} mode="wait">
           {!isCollapsed ? (
             /* EXPANDED FULL BETA STRIP */
@@ -67,7 +67,7 @@ export default function BetaBanner() {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.25, ease: "easeInOut" }}
-              className="py-2 flex items-center justify-between gap-3 overflow-hidden text-xs"
+              className="py-1.5 sm:py-2 flex items-center justify-between gap-3 overflow-hidden text-xs"
             >
               {/* Left Side: Badge + Description Message */}
               <div className="flex items-center gap-2.5 flex-1 min-w-0 flex-wrap sm:flex-nowrap">
@@ -157,6 +157,6 @@ export default function BetaBanner() {
           )}
         </AnimatePresence>
       </div>
-    </div>
+    </aside>
   );
 }

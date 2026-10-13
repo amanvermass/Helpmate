@@ -27,6 +27,7 @@ import { useStore, getItemAddonTotal } from "@/store/useStore";
 import { formatImageUrl } from "@/utils/image";
 import { citiesServed, services } from "@/utils/mockData";
 import LocationModal from "./LocationModal";
+import BetaBanner from "./BetaBanner";
 import { fetchCustomerPackagesApi, CustomerPackageItem } from "@/services/packageApi";
 
 function HeaderContent() {
@@ -154,12 +155,16 @@ function HeaderContent() {
 
   return (
     <header
-      className={`fixed top-0 left-0 w-full z-40 transition-all duration-500 font-sans ${scrolled
-        ? "bg-background/80 dark:bg-background/80 backdrop-blur-xl py-3 shadow-sm"
-        : "bg-transparent py-5"
+      className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 font-sans ${scrolled
+        ? "bg-background/90 dark:bg-background/90 backdrop-blur-xl shadow-xs"
+        : "bg-background/70 dark:bg-background/75 backdrop-blur-md"
         }`}
     >
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6">
+      {/* Top Beta Notice Strip - Above Header Navigation */}
+      <BetaBanner />
+
+      <div className={`transition-all duration-300 ${scrolled ? "py-2 sm:py-2.5" : "py-3 sm:py-3.5"}`}>
+        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between gap-6">
 
         {/* LOGO */}
         <div className="flex items-center gap-6">
@@ -574,6 +579,7 @@ function HeaderContent() {
           )}
         </div>
       </div>
+    </div>
 
       {/* Location Selector Modal with Geolocation & Manual Fallback */}
       <LocationModal

@@ -8,7 +8,6 @@ import { services } from "@/utils/mockData";
 import { fetchCustomerSearchSuggestionsApi } from "@/services/searchApi";
 import { formatImageUrl } from "@/utils/image";
 import QuickServices from "@/components/home/QuickServices";
-import BetaBanner from "@/components/common/BetaBanner";
 
 export default function Hero() {
   const router = useRouter();
@@ -134,11 +133,6 @@ export default function Hero() {
       <div className="blob-container absolute inset-0 overflow-hidden pointer-events-none">
         <div className="blob bg-accent-lux w-[400px] h-[400px] -top-20 -left-20 animate-float-blob" />
         <div className="blob bg-secondary-lux w-[400px] h-[400px] bottom-10 right-10" style={{ animationDelay: "4s" }} />
-      </div>
-
-      {/* Beta Notice Strip - Below Header & Above Quick Services */}
-      <div className="max-w-7xl mx-auto w-full z-20 mb-3 sm:mb-3.5">
-        <BetaBanner />
       </div>
 
       {/* Quick Services Strip - On top below header (only shows if API returns data) */}
