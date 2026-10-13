@@ -55,7 +55,7 @@ export default function Home() {
         <Trending />
 
         {/* Dynamic Pricing Calculator Widget */}
-        <PricingCalculator onBook={handleBookFromCalculator} />
+        {/* <PricingCalculator onBook={handleBookFromCalculator} /> */}
 
         {/* Vetting Vow (Why Choose Us) */}
         <WhyChooseUs />
