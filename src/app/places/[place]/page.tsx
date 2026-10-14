@@ -145,7 +145,10 @@ export default function PlaceLandingPage({ params }: PlaceProps) {
     <>
       <Header />
 
-      <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background relative overflow-visible pb-12">
+      <main 
+        style={{ paddingTop: "var(--header-total-height, 8.5rem)" }}
+        className="flex-1 pt-32 sm:pt-36 font-sans bg-slate-50/50 dark:bg-background relative overflow-visible pb-12"
+      >
         {/* Background ambient glowing circles */}
         <div className="absolute top-24 left-1/4 -translate-x-1/2 w-96 h-96 bg-accent-lux/5 rounded-full blur-[140px] pointer-events-none" />
         <div className="absolute bottom-48 right-1/4 translate-x-1/2 w-96 h-96 bg-accent-lux/[0.03] rounded-full blur-[140px] pointer-events-none" />
@@ -408,9 +411,6 @@ export default function PlaceLandingPage({ params }: PlaceProps) {
           {/* Neighborhood localized FAQs Accordion style (Full Width) */}
           <div className="space-y-4 pt-4 border-t border-slate-200/50 dark:border-slate-800/80 max-w-4xl mx-auto text-left">
             <div className="text-center mb-6">
-              <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest mb-1.5 block">
-                Clear Information
-              </span>
               <h3 className="font-extrabold text-lg text-foreground tracking-tight">FAQs for {placeName} Services</h3>
             </div>
             

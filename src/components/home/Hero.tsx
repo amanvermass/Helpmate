@@ -267,7 +267,7 @@ export default function Hero() {
           </motion.div>
 
           {/* Live Statistics Cards */}
-          <motion.div
+          {/* <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ type: "spring", damping: 20, stiffness: 100, delay: 0.5 }}
@@ -294,7 +294,7 @@ export default function Hero() {
               <span className="text-base sm:text-lg font-bold text-foreground tracking-tight">100%</span>
               <span className="text-[9px] text-slate-500 uppercase mt-0.5 tracking-wider font-semibold">Insured</span>
             </div>
-          </motion.div>
+          </motion.div> */}
         </div>
 
         {/* Right Column: Hero Image Showcase */}

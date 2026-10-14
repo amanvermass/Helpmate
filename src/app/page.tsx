@@ -5,6 +5,8 @@ import PromoModal from "@/components/home/PromoModal";
 import Hero from "@/components/home/Hero";
 import PricingCalculator from "@/components/home/PricingCalculator";
 import Categories from "@/components/home/Categories";
+import InTheSpotlight from "@/components/home/InTheSpotlight";
+import CategoryServiceSections from "@/components/home/CategoryServiceSections";
 import Trending from "@/components/home/Trending";
 import WhyChooseUs from "@/components/home/WhyChooseUs";
 import HowItWorks from "@/components/home/HowItWorks";
@@ -44,12 +46,21 @@ export default function Home() {
       <PromoModal />
       <Header />
       
-      <main className="flex-1 pt-24 sm:pt-28">
+      <main 
+        style={{ paddingTop: "var(--header-total-height, 7.5rem)" }}
+        className="flex-1 pt-28 sm:pt-32"
+      >
         {/* Hero Section */}
         <Hero />
 
         {/* Categories Grid */}
         <Categories />
+
+        {/* In The Spotlight - Flagship Curated Experiences */}
+        <InTheSpotlight />
+
+        {/* Category-Wise Service Sections (Urban Company Style: Image & Title Only) */}
+        <CategoryServiceSections />
 
         {/* Trending Packages */}
         <Trending />

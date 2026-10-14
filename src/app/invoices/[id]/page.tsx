@@ -96,7 +96,10 @@ export default function InvoiceDetailsPage() {
         <Header />
       </div>
 
-      <main className="flex-1 pt-24 pb-16 font-sans bg-slate-50/50 dark:bg-background print:pt-0 print:pb-0 print:bg-white">
+      <main 
+        style={{ paddingTop: "var(--header-total-height, 8.5rem)" }}
+        className="flex-1 pt-32 sm:pt-36 pb-16 font-sans bg-slate-50/50 dark:bg-background print:pt-0 print:pb-0 print:bg-white"
+      >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 space-y-6 print:px-0 print:max-w-none">
           
           {/* Top Bar Navigation (Hidden on Print) */}

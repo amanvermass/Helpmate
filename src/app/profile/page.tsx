@@ -409,7 +409,10 @@ function ProfilePageContent() {
     <>
       <Header />
 
-      <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background pb-16">
+      <main 
+        style={{ paddingTop: "var(--header-total-height, 8.5rem)" }}
+        className="flex-1 pt-32 sm:pt-36 font-sans bg-slate-50/50 dark:bg-background pb-16"
+      >
         <div className="max-w-7xl mx-auto px-6 space-y-6">
           {/* Top Bar Navigation: Back Button & Breadcrumbs */}
           <div className="flex items-center justify-between pt-2">

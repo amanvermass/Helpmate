@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const API_BACKEND = process.env.NEXT_PUBLIC_API_URL || "https://helpmate-api.kvtmedia.com";
+const API_BACKEND = process.env.NEXT_PUBLIC_API_URL;
 
 const nextConfig: NextConfig = {
   images: {

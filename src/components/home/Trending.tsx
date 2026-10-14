@@ -58,12 +58,20 @@ export default function Trending() {
     let isMounted = true;
     async function loadTrending() {
       setLoading(true);
-      const res = await fetchCustomerTrendingApi(token);
-      if (isMounted && res.success && res.data && res.data.length > 0) {
-        setTrendingItems(res.data);
-      }
-      if (isMounted) {
-        setLoading(false);
+      try {
+        const res = await fetchCustomerTrendingApi(token);
+        if (isMounted && res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+          setTrendingItems(res.data);
+        } else if (isMounted) {
+          setTrendingItems([]);
+        }
+      } catch (err) {
+        console.error("Failed to load trending items:", err);
+        if (isMounted) setTrendingItems([]);
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     }
     loadTrending();
@@ -71,6 +79,11 @@ export default function Trending() {
       isMounted = false;
     };
   }, [token]);
+
+  // Do not render this section if not loading and there are no trending services from API
+  if (!loading && trendingItems.length === 0) {
+    return null;
+  }
 
   const handleWishlistToggle = (e: React.MouseEvent, id: string, name: string) => {
     e.preventDefault();
@@ -158,11 +171,8 @@ export default function Trending() {
 
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-4">
         <div>
-          <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-3">
-            Best Sellers
-          </span>
           <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white mt-1">
-            Trending Services This Week
+            Trending Services
           </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-xs sm:text-sm">
             Our most popular deep cleaning and home repair bundles booked by Varanasi residents this week.

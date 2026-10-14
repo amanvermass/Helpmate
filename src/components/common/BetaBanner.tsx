@@ -3,29 +3,26 @@
 import React, { useState, useEffect } from "react";
 import { AlertTriangle, X } from "lucide-react";
 
+// In-memory dismissal tracking: resets to false on every page refresh/reload
+let inMemoryBetaDismissed = false;
+
 export default function BetaBanner() {
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(inMemoryBetaDismissed);
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    // Clear any previous persistent dismissal from sessionStorage so banner always shows on refresh
     try {
-      const savedDismissed = sessionStorage.getItem("helpmate_top_beta_dismissed");
-      if (savedDismissed === "true") {
-        setIsDismissed(true);
-      }
+      sessionStorage.removeItem("helpmate_top_beta_dismissed");
     } catch {
-      // Ignore storage access errors
+      // Ignore
     }
   }, []);
 
   const handleDismiss = () => {
+    inMemoryBetaDismissed = true;
     setIsDismissed(true);
-    try {
-      sessionStorage.setItem("helpmate_top_beta_dismissed", "true");
-    } catch {
-      // Ignore storage access errors
-    }
   };
 
   if (!isMounted || isDismissed) {

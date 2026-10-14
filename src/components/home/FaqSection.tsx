@@ -15,9 +15,6 @@ export default function FaqSection() {
   return (
     <section className="py-20 px-6 max-w-4xl mx-auto font-sans relative">
       <div className="text-center mb-16">
-        <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest mb-4 block">
-          Clear Information
-        </span>
         <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white">
           Frequently Asked Questions
         </h2>

@@ -2,12 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Zap, ArrowDown, ChevronRight, Sparkles } from "lucide-react";
+import { Zap, ArrowDown } from "lucide-react";
 import { formatImageUrl, getNameInitials } from "@/utils/image";
-import { useStore } from "@/store/useStore";
 import { fetchCustomerQuickServicesApi } from "@/services/quickServiceApi";
-import { fetchCustomerTrendingApi } from "@/services/trendingApi";
-import { fetchCustomerPackagesApi } from "@/services/packageApi";
 
 export interface QuickPackage {
   id: string;
@@ -97,17 +94,25 @@ const FALLBACK_QUICK_PACKAGES: QuickPackage[] = [
 function StripThumbnail({
   imageUrl,
   name,
+  pkgId,
 }: {
   imageUrl?: string;
   name: string;
+  pkgId?: string;
 }) {
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     setImgError(false);
-  }, [imageUrl]);
+  }, [imageUrl, pkgId]);
 
-  const formattedUrl = formatImageUrl(imageUrl);
+  let targetUrl = imageUrl?.trim() || "";
+  if (!targetUrl && pkgId && /^[0-9a-fA-F]{24}$/.test(pkgId)) {
+    // If no direct URL was resolved, try the package media route
+    targetUrl = `/api/media/package/${pkgId}/image`;
+  }
+
+  const formattedUrl = formatImageUrl(targetUrl);
   const initials = getNameInitials(name, "P");
 
   if (formattedUrl && !imgError) {
@@ -132,14 +137,15 @@ function StripThumbnail({
 export default function QuickServices({
   onExploreAll,
   onBookPackage,
+  onSelectPackage,
 }: {
   onExploreAll?: () => void;
   onBookPackage?: (pkg: QuickPackage) => void;
-}) {
+  onSelectPackage?: (pkg: QuickPackage) => void;
+} = {}) {
   const router = useRouter();
-  const { addToCart, cart, addNotification } = useStore();
   const [packages, setPackages] = useState<QuickPackage[]>([]);
-  const [bookingPkgId, setBookingPkgId] = useState<string | null>(null);
+  const [navigatingPkgId, setNavigatingPkgId] = useState<string | null>(null);
 
   // Smooth scroll down to #categories
   const handleScrollToCategories = () => {
@@ -170,11 +176,44 @@ export default function QuickServices({
         ) {
           const list: QuickPackage[] = res.data.slice(0, 6).map((item, idx) => {
             const pkgName = item.packageName || (item as any).name || `Quick Service ${idx + 1}`;
-            const rawCat = typeof item.category === "object" ? item.category?.name : (item.category || item.categoryName);
+            const rawCat =
+              typeof item.category === "object"
+                ? item.category?.name
+                : (item.category || item.categoryName || (item as any).serviceActionId?.categoryId?.name);
             const catName = rawCat || "Quick Service";
-            const catSlug = catName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
-            const rawCatId = typeof item.category === "object" ? item.category?.id : (item.categoryId || (item.category as any)?._id);
-            const pkgId = item.id || item._id || item.packageId || `quick-${idx}`;
+            const catSlug =
+              (item as any).categorySlug ||
+              (item as any).serviceActionId?.categoryId?.slug ||
+              (catName !== "Quick Service" ? catName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-") : "");
+            const rawCatId =
+              typeof item.category === "object"
+                ? item.category?.id || (item.category as any)?._id
+                : (item.categoryId ||
+                   (item as any)?.serviceActionId?.categoryId?._id ||
+                   (item as any)?.serviceActionId?.categoryId?.id);
+            const pkgId = String(item.packageId || item._id || item.id || `quick-${idx}`);
+
+            // Image URL resolution:
+            // 1) Full URL (http, https, data:, blob:) -> use directly
+            // 2) MinIO bucket key or relative path -> route to /api/media/package/${pkgId}/image
+            // 3) Empty or no image -> leave empty so StripThumbnail immediately shows letter initials
+            const rawImg = (item.imageUrl || item.thumbnailUrl || "").trim();
+            let resolvedImage = "";
+            if (rawImg) {
+              if (
+                rawImg.startsWith("http://") ||
+                rawImg.startsWith("https://") ||
+                rawImg.startsWith("data:") ||
+                rawImg.startsWith("blob:")
+              ) {
+                resolvedImage = rawImg;
+              } else if (/^[0-9a-fA-F]{24}$/.test(pkgId)) {
+                resolvedImage = `/api/media/package/${pkgId}/image`;
+              } else {
+                resolvedImage = rawImg;
+              }
+            }
+
             return {
               id: pkgId,
               name: pkgName,
@@ -184,7 +223,7 @@ export default function QuickServices({
               price: item.price ?? 0,
               originalPrice: item.originalPrice,
               duration: item.duration || 60,
-              imageUrl: item.imageUrl || item.thumbnailUrl,
+              imageUrl: resolvedImage,
               rating: 4.9,
             };
           });
@@ -206,44 +245,32 @@ export default function QuickServices({
     };
   }, []);
 
-  const handleCardClick = async (pkg: QuickPackage) => {
+  const handleCardClick = (pkg: QuickPackage) => {
+    if (onSelectPackage) {
+      onSelectPackage(pkg);
+      return;
+    }
     if (onBookPackage) {
       onBookPackage(pkg);
       return;
     }
 
-    try {
-      setBookingPkgId(pkg.id);
-      const targetId = pkg.id || `quick-${pkg.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+    setNavigatingPkgId(pkg.id);
 
-      const isAlreadyInCart = cart.some(
-        (c) => String(c.id) === String(targetId) || String(c.itemId) === String(targetId)
-      );
+    const targetCategorySlug =
+      pkg.categorySlug && pkg.categorySlug !== "quick-service"
+        ? pkg.categorySlug
+        : pkg.categoryId
+        ? String(pkg.categoryId)
+        : "service";
 
-      if (!isAlreadyInCart) {
-        await addToCart({
-          id: targetId,
-          itemId: targetId,
-          packageId: targetId,
-          name: pkg.name,
-          price: pkg.price,
-          category: pkg.category || "Quick Service",
-          duration: pkg.duration || 60,
-        });
-      }
-
-      addNotification(
-        "Package Added to Cart",
-        `${pkg.name} added to cart. Opening booking stepper...`,
-        "success"
-      );
-
-      router.push("/booking");
-    } catch {
-      router.push("/booking");
-    } finally {
-      setBookingPkgId(null);
+    const queryParams = new URLSearchParams();
+    if (pkg.categoryId) {
+      queryParams.set("categoryId", String(pkg.categoryId));
     }
+    queryParams.set("item", String(pkg.id));
+
+    router.push(`/services/${targetCategorySlug}?${queryParams.toString()}`);
   };
 
   // When no data from API, do not show the bar at all
@@ -269,7 +296,7 @@ export default function QuickServices({
         {/* Center: 5-6 Compact Package Chips (Horizontal Scroll on Mobile) */}
         <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar flex-1 py-0.5">
           {packages.slice(0, 6).map((item, idx) => {
-            const isLoading = bookingPkgId === item.id;
+            const isLoading = navigatingPkgId === item.id;
             return (
               <button
                 key={item.id || idx}
@@ -279,7 +306,7 @@ export default function QuickServices({
                 className={`flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-xl sm:rounded-full bg-slate-100/80 hover:bg-purple-50 dark:bg-slate-800/60 dark:hover:bg-purple-950/60 border border-slate-200/60 dark:border-slate-700/60 hover:border-accent-lux/60 transition-all duration-200 shrink-0 group cursor-pointer shadow-2xs hover:shadow-xs active:scale-95 ${
                   isLoading ? "opacity-60 pointer-events-none" : ""
                 }`}
-                title={`Book ${item.name} (₹${item.price})`}
+                title={`View ${item.name} (₹${item.price})`}
               >
                 {/* Micro Thumbnail with initials fallback */}
                 <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-full overflow-hidden shrink-0 bg-slate-200 dark:bg-slate-700 relative">
@@ -288,7 +315,7 @@ export default function QuickServices({
                       <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     </div>
                   ) : (
-                    <StripThumbnail imageUrl={item.imageUrl} name={item.name} />
+                    <StripThumbnail imageUrl={item.imageUrl} name={item.name} pkgId={item.id} />
                   )}
                 </div>
 

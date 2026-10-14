@@ -106,26 +106,24 @@ export default function Categories() {
   const visibleCategories = isExpanded ? categoriesList : categoriesList.slice(0, 12);
 
   return (
-    <section id="categories" className="scroll-mt-24 py-16 px-4 sm:px-6 max-w-7xl mx-auto font-sans relative">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
-        <div>
-          <span className="text-[10px] uppercase font-bold text-accent-lux tracking-widest block mb-2">
-            Service Categories
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary-lux dark:text-white">
-            Explore Services
-          </h2>
-          <p className="text-slate-500 dark:text-slate-400 mt-1 text-xs sm:text-sm">
-            Browse through our verified service categories in Varanasi.
-          </p>
+    <section id="categories" className="scroll-mt-24 py-16 px-6 font-sans relative">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-4">
+          <div>
+            <h2 className="text-3xl font-bold tracking-tight text-primary-lux dark:text-white mt-1">
+              Explore Services
+            </h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-2 text-xs sm:text-sm">
+              Browse through our verified service categories in Varanasi.
+            </p>
+          </div>
+          <Link
+            href="/search?view=categories"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-lux hover:underline shrink-0 cursor-pointer"
+          >
+            View all categories <ArrowRight className="w-4 h-4" />
+          </Link>
         </div>
-        <Link
-          href="/search?view=categories"
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-lux hover:underline shrink-0 cursor-pointer"
-        >
-          View all services <ArrowRight className="w-4 h-4" />
-        </Link>
-      </div>
 
       {isLoadingCategories ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3.5 sm:gap-4">
@@ -206,6 +204,7 @@ export default function Categories() {
           </button>
         </div>
       )}
+      </div>
     </section>
   );
 }

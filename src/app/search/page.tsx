@@ -45,6 +45,15 @@ import {
 } from "@/services/trendingApi";
 import { startTopLoader, stopTopLoader } from "@/utils/loader";
 
+// Helper for matching category by ObjectId, exact name, or partial name
+function isCategoryMatch(catId: string, catName: string, selected: string) {
+  if (!selected) return false;
+  if (selected === catId) return true;
+  const s = selected.toLowerCase().trim();
+  const n = catName.toLowerCase().trim();
+  return s === n || n.includes(s) || s.includes(n);
+}
+
 // Category Image Display Component with Initials Fallback (2 letters if 2+ words)
 function CategoryImageDisplay({
   iconUrl,
@@ -167,7 +176,15 @@ function SearchPageContent() {
   const { wishlist, toggleWishlist, addNotification, addToCart, cart, token, isLoggedIn } = useStore();
 
   // View Mode: "categories" | "trending" | "packages"
-  const [viewMode, setViewMode] = useState<"categories" | "trending" | "packages">("categories");
+  const [viewMode, setViewMode] = useState<"categories" | "trending" | "packages">(() => {
+    const view = searchParams.get("view");
+    const type = searchParams.get("type");
+    const cat = searchParams.get("categoryId") || searchParams.get("category");
+    const q = searchParams.get("q");
+    if (type === "trending" || view === "trending") return "trending";
+    if (view === "packages" || cat || q) return "packages";
+    return "categories";
+  });
 
   // Dynamic API Categories & Subcategories State
   const [dynamicCategories, setDynamicCategories] = useState<CategoryItem[]>([]);
@@ -179,7 +196,9 @@ function SearchPageContent() {
 
   // Search & Filter queries for Packages view
   const [query, setQuery] = useState(searchParams.get("q") || "");
-  const [selectedCat, setSelectedCat] = useState(searchParams.get("category") || "");
+  const [selectedCat, setSelectedCat] = useState(
+    searchParams.get("categoryId") || searchParams.get("category") || ""
+  );
   const [minRating, setMinRating] = useState<number | null>(null);
   const [maxPrice, setMaxPrice] = useState<number>(10000);
   const [isBudgetApplied, setIsBudgetApplied] = useState<boolean>(false);
@@ -214,7 +233,15 @@ function SearchPageContent() {
     }
   }, [searchParams]);
 
-  // Fetch dynamic categories from backend API
+  // Normalize selectedCat to cat._id if passed by name/slug in URL
+  useEffect(() => {
+    if (selectedCat && dynamicCategories.length > 0) {
+      const match = dynamicCategories.find((c) => isCategoryMatch(c._id, c.categoryName, selectedCat));
+      if (match && selectedCat !== match._id) {
+        setSelectedCat(match._id);
+      }
+    }
+  }, [dynamicCategories, selectedCat]);
   useEffect(() => {
     async function loadCategories() {
       setIsLoadingCategories(true);
@@ -296,7 +323,7 @@ function SearchPageContent() {
       }
 
       const foundCat = dynamicCategories.find(
-        (c) => c._id === selectedCat || c.categoryName.toLowerCase().includes(selectedCat.toLowerCase())
+        (c) => isCategoryMatch(c._id, c.categoryName, selectedCat)
       );
 
       if (foundCat) {
@@ -322,7 +349,7 @@ function SearchPageContent() {
       try {
         const foundCat = selectedCat
           ? dynamicCategories.find(
-            (c) => c._id === selectedCat || c.categoryName.toLowerCase().includes(selectedCat.toLowerCase())
+            (c) => isCategoryMatch(c._id, c.categoryName, selectedCat)
           )
           : undefined;
 
@@ -349,10 +376,18 @@ function SearchPageContent() {
           if (res.pagination) {
             setTotalPages(res.pagination.totalPages);
             setTotalItems(res.pagination.total);
+          } else {
+            setTotalPages(1);
+            setTotalItems((res.data || []).length);
           }
         }
       } catch (err) {
         console.error("Error loading packages from API:", err);
+        if (isMounted) {
+          setApiPackages([]);
+          setTotalItems(0);
+          setTotalPages(1);
+        }
       } finally {
         if (isMounted) {
           setIsLoadingPackages(false);
@@ -535,7 +570,10 @@ function SearchPageContent() {
     <>
       <Header />
 
-      <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background pb-16">
+      <main 
+        style={{ paddingTop: "var(--header-total-height, 8.5rem)" }}
+        className="flex-1 pt-32 sm:pt-36 font-sans bg-slate-50/50 dark:bg-background pb-16"
+      >
         <div className="max-w-7xl mx-auto px-6">
 
           {/* Top View Switcher & Title */}
@@ -1010,7 +1048,7 @@ function SearchPageContent() {
                     <TrendingUp className="w-3.5 h-3.5 text-accent-lux" /> Categories:
                   </span>
                   {dynamicCategories.map((cat) => {
-                    const isActive = selectedCat === cat._id;
+                    const isActive = isCategoryMatch(cat._id, cat.categoryName, selectedCat);
                     return (
                       <button
                         key={cat._id}
@@ -1040,7 +1078,10 @@ function SearchPageContent() {
               <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start mt-4">
 
                 {/* Left Filter Sidebar */}
-                <aside className={`md:block md:col-span-3 glass-panel p-6 border border-slate-200/10 space-y-6 ${showFiltersMobile ? "block" : "hidden"}`}>
+                <aside
+                  style={{ top: "calc(var(--header-total-height, 8rem) + 1rem)" }}
+                  className={`md:block md:col-span-3 md:sticky md:max-h-[calc(100vh-var(--header-total-height,8rem)-2rem)] md:overflow-y-auto no-scrollbar glass-panel p-6 border border-slate-200/10 space-y-6 z-20 ${showFiltersMobile ? "block" : "hidden"}`}
+                >
                   <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
                     <span className="text-xs font-bold text-foreground">Filter Catalog</span>
                     <button
@@ -1078,7 +1119,7 @@ function SearchPageContent() {
                       </button>
 
                       {dynamicCategories.map((cat) => {
-                        const isSelected = selectedCat === cat._id;
+                        const isSelected = isCategoryMatch(cat._id, cat.categoryName, selectedCat);
                         return (
                           <button
                             key={cat._id}
@@ -1165,10 +1206,33 @@ function SearchPageContent() {
                 {/* Right Search Grid */}
                 <div className="md:col-span-9 space-y-6">
 
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs text-slate-500 font-medium">
-                      Showing <span className="font-bold text-foreground font-sans">{totalItems || apiPackages.length}</span> verified packages
-                    </p>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs text-slate-500 font-medium">
+                        Showing <span className="font-bold text-foreground font-sans">{totalItems || apiPackages.length}</span> verified packages
+                      </p>
+                      {(() => {
+                        const activeCatObj = dynamicCategories.find((c) => isCategoryMatch(c._id, c.categoryName, selectedCat));
+                        if (!activeCatObj) return null;
+                        return (
+                          <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[#48073d]/10 dark:bg-accent-lux/20 text-[#48073d] dark:text-accent-lux border border-[#48073d]/20 dark:border-accent-lux/30 flex items-center gap-1">
+                            Category: {activeCatObj.categoryName}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCat("");
+                                setSelectedSubCat("");
+                                setCurrentPage(1);
+                              }}
+                              className="hover:opacity-75 cursor-pointer ml-1 font-bold"
+                              title="Clear category filter"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        );
+                      })()}
+                    </div>
                     {totalPages > 1 && (
                       <p className="text-xs text-slate-400 font-semibold font-sans">
                         Page {currentPage} of {totalPages}

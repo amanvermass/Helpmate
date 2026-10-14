@@ -153,9 +153,47 @@ function HeaderContent() {
     setShowLocationModal(false);
   };
 
+  const headerRef = useRef<HTMLElement>(null);
+  const lastHeaderHeightRef = useRef<number>(0);
+
+  useEffect(() => {
+    const updateHeaderHeight = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        const diff = Math.abs(height - lastHeaderHeightRef.current);
+
+        // Update on initial load, when at top of page, or when height changes significantly (e.g. beta banner closed/resized)
+        if (lastHeaderHeightRef.current === 0 || window.scrollY <= 10 || diff > 15) {
+          lastHeaderHeightRef.current = height;
+          document.documentElement.style.setProperty("--header-total-height", `${height}px`);
+        }
+      }
+    };
+
+    updateHeaderHeight();
+
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined" && headerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        updateHeaderHeight();
+      });
+      resizeObserver.observe(headerRef.current);
+    }
+
+    window.addEventListener("resize", updateHeaderHeight);
+
+    return () => {
+      window.removeEventListener("resize", updateHeaderHeight);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, []);
+
   return (
     <>
       <header
+        ref={headerRef}
         className={`fixed top-0 left-0 w-full z-40 transition-all duration-300 font-sans ${scrolled
           ? "bg-background/90 dark:bg-background/90 backdrop-blur-xl shadow-xs"
           : "bg-background/70 dark:bg-background/75 backdrop-blur-md"

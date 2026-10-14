@@ -36,14 +36,6 @@ export default function CtaBanner() {
           On-demand home services to empower urban households
         </p>
 
-        {/* Rating and Stars */}
-        <div className="mt-1 sm:mt-3 flex flex-col items-center">
-          <div className="flex items-center gap-1 sm:gap-1.5 text-[8px] sm:text-xs md:text-sm">
-            <span className="text-[#EC4899] font-black tracking-wide text-[9px] sm:text-sm md:text-base">★★★★★</span>
-            <span className="font-extrabold text-[#1B0518] dark:text-white ml-0.5 font-sans">4.8</span>
-            <span className="text-[#6B5F6A] dark:text-slate-400 font-medium font-sans ml-1">- 74,712 Ratings Combined</span>
-          </div>
-        </div>
 
         {/* Action Button: Book Now */}
         <div className="mt-2.5 sm:mt-5 md:mt-6 flex flex-col items-center gap-1 sm:gap-2">

@@ -54,8 +54,12 @@ function ServicePackageImageItem({
 
   useEffect(() => {
     setImgError(false);
-    setCurrentSrc(src);
-  }, [src]);
+    let initialCandidate = src?.trim() || "";
+    if (!initialCandidate && pkgId && /^[0-9a-fA-F]{24}$/.test(pkgId)) {
+      initialCandidate = `/api/media/package/${pkgId}/image`;
+    }
+    setCurrentSrc(initialCandidate);
+  }, [src, pkgId]);
 
   const initials = getNameInitials(name, "P");
 
@@ -67,7 +71,7 @@ function ServicePackageImageItem({
         referrerPolicy="no-referrer"
         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         onError={() => {
-          if (pkgId && !currentSrc.includes(`/api/media/package/${pkgId}/image`)) {
+          if (pkgId && /^[0-9a-fA-F]{24}$/.test(pkgId) && !currentSrc.includes(`/api/media/package/${pkgId}/image`)) {
             setCurrentSrc(`/api/media/package/${pkgId}/image`);
           } else {
             setImgError(true);
@@ -78,11 +82,149 @@ function ServicePackageImageItem({
   }
 
   return (
-    <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-[#4a0e4e] via-slate-900 to-slate-950 text-white select-none">
+    <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-[#48073d] via-slate-900 to-slate-950 text-white select-none">
       <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-xl sm:text-2xl flex items-center justify-center shadow-md group-hover:scale-110 transition-transform tracking-tight">
         {initials}
       </div>
       <span className="text-[10px] font-bold text-slate-300 mt-1 px-1 text-center line-clamp-1 max-w-[90%]">
+        {name}
+      </span>
+    </div>
+  );
+}
+
+// Hero Image Display for Details Page with Initials Letter Fallback
+function ServiceDetailsHeroImage({
+  src,
+  name,
+  pkgId,
+}: {
+  src?: string;
+  name: string;
+  pkgId?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const [currentSrc, setCurrentSrc] = useState(src);
+
+  useEffect(() => {
+    setImgError(false);
+    let initialCandidate = src?.trim() || "";
+    if (!initialCandidate && pkgId && /^[0-9a-fA-F]{24}$/.test(pkgId)) {
+      initialCandidate = `/api/media/package/${pkgId}/image`;
+    }
+    setCurrentSrc(initialCandidate);
+  }, [src, pkgId]);
+
+  const initials = getNameInitials(name, "S");
+  const formattedUrl = currentSrc ? (currentSrc.startsWith("/") ? currentSrc : formatImageUrl(currentSrc)) : "";
+
+  if (formattedUrl && !imgError) {
+    return (
+      <div className="relative w-full h-full">
+        <img
+          src={formattedUrl}
+          alt={name}
+          referrerPolicy="no-referrer"
+          className="w-full h-full object-cover"
+          onError={() => {
+            if (pkgId && /^[0-9a-fA-F]{24}$/.test(pkgId) && !currentSrc?.includes(`/api/media/package/${pkgId}/image`)) {
+              setCurrentSrc(`/api/media/package/${pkgId}/image`);
+            } else {
+              setImgError(true);
+            }
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent pointer-events-none" />
+        <span className="absolute bottom-6 left-6 bg-black/65 backdrop-blur-md text-white text-[10px] uppercase font-bold tracking-widest px-4 py-2 border border-white/10 shadow-lg select-none">
+          Premium Vetted Service
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-full h-full flex flex-col items-center justify-center p-6 bg-gradient-to-br from-[#48073d] via-slate-900 to-slate-950 text-white select-none">
+      <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-4xl sm:text-6xl flex items-center justify-center shadow-2xl tracking-tight">
+        {initials}
+      </div>
+      <span className="text-base sm:text-2xl font-extrabold text-white mt-4 text-center px-4 line-clamp-2 max-w-lg">
+        {name}
+      </span>
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+      <span className="absolute bottom-6 left-6 bg-black/65 backdrop-blur-md text-white text-[10px] uppercase font-bold tracking-widest px-4 py-2 border border-white/10 shadow-lg select-none">
+        Premium Vetted Service
+      </span>
+    </div>
+  );
+}
+
+// Pro Avatar Display with Initials Fallback
+function ProAvatarDisplay({
+  src,
+  name,
+}: {
+  src?: string;
+  name: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
+  const initials = getNameInitials(name, "P");
+
+  if (src && !imgError) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className="w-14 h-14 rounded-full object-cover border-2 border-accent-lux shrink-0"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#48073d] to-accent-lux text-white font-extrabold text-lg flex items-center justify-center border-2 border-accent-lux shrink-0 shadow-md select-none tracking-tight">
+      {initials}
+    </div>
+  );
+}
+
+// Addon Thumbnail with Initials Fallback
+function AddonThumbnailDisplay({
+  src,
+  name,
+}: {
+  src?: string;
+  name: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [src]);
+
+  const initials = getNameInitials(name, "A");
+
+  if (src && !imgError) {
+    return (
+      <img
+        src={src}
+        alt={name}
+        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+        onError={() => setImgError(true)}
+      />
+    );
+  }
+
+  return (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-[#48073d] via-slate-900 to-slate-950 text-white select-none">
+      <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-base flex items-center justify-center shadow-md">
+        {initials}
+      </div>
+      <span className="text-[9px] font-bold text-slate-300 mt-1 px-1 text-center line-clamp-1 max-w-[85%]">
         {name}
       </span>
     </div>
@@ -1238,8 +1380,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
 
       {itemParam ? (
         loadingItemPackage || !selectedItem ? (
-          /* ================= DETAILS VIEW SHIMMER SKELETON ================= */
-          <main className="flex-1 pt-24 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative">
+          <main 
+            style={{ paddingTop: "var(--header-total-height, 8.5rem)" }}
+            className="flex-1 pt-32 sm:pt-36 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative"
+          >
             <div className="max-w-7xl mx-auto px-6 py-6 relative z-10">
               <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-48 mb-6 animate-pulse" />
 
@@ -1294,7 +1438,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
           </main>
         ) : (
           /* ================= DETAILS VIEW ================= */
-          <main className="flex-1 pt-24 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative">
+          <main 
+            style={{ paddingTop: "var(--header-total-height, 8.5rem)" }}
+            className="flex-1 pt-32 sm:pt-36 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative"
+          >
             {/* Background glows */}
             <div className="absolute top-24 left-1/4 -translate-x-1/2 w-96 h-96 bg-accent-lux/5 rounded-full blur-[140px] pointer-events-none" />
             <div className="absolute bottom-48 right-1/4 translate-x-1/2 w-96 h-96 bg-accent-lux/[0.03] rounded-full blur-[140px] pointer-events-none" />
@@ -1309,16 +1456,11 @@ function ServiceDetailPageContent({ params }: PageProps) {
                 <div className="lg:col-span-8 space-y-8">
                   {/* Image Frame */}
                   <div className="relative h-96 sm:h-[450px] rounded-[32px] overflow-hidden shadow-xl border border-slate-200/10">
-                    <img
-                      src={formatImageUrl(itemDetails.image)}
-                      alt={activeName}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
+                    <ServiceDetailsHeroImage
+                      src={itemDetails.image}
+                      name={activeName}
+                      pkgId={selectedItem?.id || (itemParam && /^[0-9a-fA-F]{24}$/.test(itemParam) ? itemParam : undefined)}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-                    <span className="absolute bottom-6 left-6 bg-black/65 backdrop-blur-md text-white text-[10px] uppercase font-bold tracking-widest px-4 py-2 border border-white/10 shadow-lg select-none">
-                      Premium Vetted Service
-                    </span>
                   </div>
 
                   {/* Title & Metadata */}
@@ -1382,7 +1524,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                   {/* Specialist Preview Card */}
                   <div className="bg-gradient-to-br from-slate-900/5 via-[#8D397E]/5 to-transparent dark:from-slate-900/60 dark:via-[#8D397E]/10 dark:to-slate-950/40 p-6 rounded-[28px] border border-accent-lux/15 flex flex-col sm:flex-row gap-5 items-center justify-between text-left shadow-sm">
                     <div className="flex items-center gap-4 text-left w-full">
-                      <img src={matchedPro.avatar} alt={matchedPro.name} className="w-14 h-14 rounded-full object-cover border-2 border-accent-lux shrink-0" />
+                      <ProAvatarDisplay src={matchedPro.avatar} name={matchedPro.name} />
                       <div>
                         <span className="inline-block bg-accent-lux/10 text-accent-lux text-[8px] font-extrabold uppercase px-2 py-0.5 rounded tracking-wider mb-1">
                           Assigned Specialist Preview
@@ -1514,11 +1656,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                             >
                               <div className="space-y-2.5">
                                 <div className="h-28 rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800 relative">
-                                  <img
-                                    src={addonImg}
-                                    alt={addonName}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                  />
+                                  <AddonThumbnailDisplay src={addonImg} name={addonName} />
                                   <span className="absolute top-2 left-2 text-[8px] uppercase font-bold text-accent-lux bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2 py-0.5 rounded-full shadow-sm">
                                     Add-on
                                   </span>
@@ -1734,7 +1872,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
         )
       ) : (
         /* ================= CATEGORY WIZARD VIEW ================= */
-        <main className="flex-1 pt-24 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative">
+        <main 
+          style={{ paddingTop: "var(--header-total-height, 8.5rem)" }}
+          className="flex-1 pt-32 sm:pt-36 pb-24 lg:pb-12 font-sans bg-slate-50/50 dark:bg-background relative"
+        >
           {/* Background glows */}
           <div className="absolute top-24 left-1/4 -translate-x-1/2 w-96 h-96 bg-accent-lux/5 rounded-full blur-[140px] pointer-events-none" />
           <div className="absolute bottom-48 right-1/4 translate-x-1/2 w-96 h-96 bg-accent-lux/[0.03] rounded-full blur-[140px] pointer-events-none" />
@@ -2085,7 +2226,10 @@ function ServiceDetailPageContent({ params }: PageProps) {
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-between">
+                        <div
+                          style={{ top: "calc(var(--header-total-height, 8rem) + 0.5rem)" }}
+                          className="sticky z-20 py-2.5 px-3 -mx-1 rounded-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/50 dark:border-slate-800/60 shadow-xs flex items-center justify-between transition-all"
+                        >
                           <span className="text-[10px] uppercase font-bold text-slate-455 tracking-wider block">
                             AVAILABLE SERVICE PACKAGES
                           </span>

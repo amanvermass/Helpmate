@@ -425,7 +425,10 @@ function BookingContent() {
     <>
       <Header />
 
-      <main className="flex-1 pt-24 font-sans bg-slate-50/50 dark:bg-background pb-20 relative overflow-hidden min-h-screen">
+      <main 
+        style={{ paddingTop: "var(--header-total-height, 8.5rem)" }}
+        className="flex-1 pt-32 sm:pt-36 font-sans bg-slate-50/50 dark:bg-background pb-20 relative overflow-hidden min-h-screen"
+      >
         {/* Glow Effects */}
         <div className="absolute top-24 left-1/4 -translate-x-1/2 w-96 h-96 bg-accent-lux/5 rounded-full blur-[140px] pointer-events-none" />
         <div className="absolute bottom-48 right-1/4 translate-x-1/2 w-96 h-96 bg-accent-lux/[0.03] rounded-full blur-[140px] pointer-events-none" />
