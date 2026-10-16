@@ -1,9 +1,53 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
+export interface SendSignupOtpPayload {
+  mobile: string;
+}
+
+export interface SendSignupOtpResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
 export interface RegisterPayload {
   fullName: string;
   mobile: string;
   password: string;
+  otp: string;
+}
+
+/**
+ * Send Customer Signup OTP
+ * POST /api/customer/auth/send-signup-otp
+ */
+export async function sendCustomerSignupOtpApi(
+  payload: SendSignupOtpPayload
+): Promise<SendSignupOtpResponse> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/customer/auth/send-signup-otp`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        message: data.message || "Failed to send signup OTP.",
+      };
+    }
+
+    return data;
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Network error. Unable to connect to server.",
+    };
+  }
 }
 
 export interface LoginPayload {

@@ -13,8 +13,19 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryRedirect = searchParams.get("redirect");
+  const queryMobile = searchParams.get("mobile");
   const [redirectPath, setRedirectPath] = useState<string>("/");
   const { setAuth } = useStore();
+
+  const [phone, setPhone] = useState(queryMobile ? queryMobile.replace(/\D/g, "").slice(0, 10) : "");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    if (queryMobile) {
+      setPhone(queryMobile.replace(/\D/g, "").slice(0, 10));
+    }
+  }, [queryMobile]);
 
   useEffect(() => {
     // 1. Direct query parameter in URL (highest priority)
@@ -51,10 +62,6 @@ function LoginContent() {
       } catch {}
     }
   }, [queryRedirect]);
-
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
 
   const [loginError, setLoginError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
