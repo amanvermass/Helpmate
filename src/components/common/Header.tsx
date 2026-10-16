@@ -25,6 +25,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore, getItemAddonTotal } from "@/store/useStore";
 import { formatImageUrl } from "@/utils/image";
+import { formatDuration } from "@/utils/dateTime";
 import { citiesServed, services } from "@/utils/mockData";
 import LocationModal from "./LocationModal";
 import BetaBanner from "./BetaBanner";
@@ -35,6 +36,12 @@ function HeaderContent() {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const isHomePage = pathname === "/";
+
+  const currentQuery = searchParams?.toString();
+  const currentUrl = pathname ? (currentQuery ? `${pathname}?${currentQuery}` : pathname) : "/";
+  const loginHref = pathname && pathname !== "/login" && pathname !== "/register"
+    ? `/login?redirect=${encodeURIComponent(currentUrl)}`
+    : "/login";
 
   const {
     theme,
@@ -281,7 +288,7 @@ function HeaderContent() {
                           <div>
                             <p className="text-[11px] font-bold text-foreground line-clamp-1">{item.package.name}</p>
                             <p className="text-[9px] text-slate-400 capitalize">
-                              {item.category?.name || "Service"} • {item.package.duration || 60} mins
+                              {item.category?.name || "Service"} • {formatDuration(item.package.duration || 60)}
                             </p>
                           </div>
                         </div>
@@ -371,7 +378,7 @@ function HeaderContent() {
                             <div className="flex items-center justify-between">
                               <div className="flex-1 min-w-0 pr-2">
                                 <h4 className="text-[11px] font-bold text-foreground truncate leading-tight">{item.name}</h4>
-                                <p className="text-[9px] text-slate-400 mt-0.5 capitalize">⏱ {item.duration} mins</p>
+                                <p className="text-[9px] text-slate-400 mt-0.5 capitalize">⏱ {formatDuration(item.duration)}</p>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 {/* Quantity Stepper */}
@@ -610,7 +617,14 @@ function HeaderContent() {
             </div>
           ) : (
             <Link
-              href="/login"
+              href={loginHref}
+              onClick={() => {
+                if (typeof window !== "undefined" && currentUrl && currentUrl !== "/login" && currentUrl !== "/register") {
+                  try {
+                    sessionStorage.setItem("helpmate_redirect", currentUrl);
+                  } catch {}
+                }
+              }}
               className="px-4.5 py-2 rounded-full bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs shadow-md shadow-accent-lux/20 transition-all cursor-pointer flex items-center gap-1.5"
             >
               <User className="w-3.5 h-3.5" />

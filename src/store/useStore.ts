@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { toast } from "@/components/common/Toast";
 import { getCurrentCustomerApi } from "@/services/authApi";
 import {
   addToCartApi,
@@ -244,8 +245,8 @@ interface AppState {
   seedMockBookings: () => void;
 
   // Notifications
-  notifications: { id: string; title: string; message: string; type: "info" | "success" | "warning"; date: string }[];
-  addNotification: (title: string, message: string, type?: "info" | "success" | "warning") => void;
+  notifications: { id: string; title: string; message: string; type: "info" | "success" | "warning" | "error"; date: string }[];
+  addNotification: (title: string, message: string, type?: "info" | "success" | "warning" | "error") => void;
   clearNotifications: () => void;
 
   // Live Chat
@@ -306,6 +307,7 @@ export const useStore = create<AppState>()(
         if (token) {
           get().addAddressAsync(address).catch((err) => {
             console.error("Async add address error:", err);
+            toast.error("Failed to Add Address", err?.message || "An unexpected error occurred.");
           });
         } else {
           const localId = Math.random().toString(36).substr(2, 9);
@@ -314,6 +316,7 @@ export const useStore = create<AppState>()(
             addresses: [newAddress, ...state.addresses],
             selectedAddressId: address.isDefault ? localId : (state.selectedAddressId || localId),
           }));
+          toast.success("Address Saved", "Address registered for current booking session.");
         }
       },
       addAddressAsync: async (newAddr) => {
@@ -324,23 +327,31 @@ export const useStore = create<AppState>()(
             relationshipType: mapRelationshipToBackend(newAddr.recipientType),
             recipientName: newAddr.recipientName,
             recipientMobile: newAddr.recipientMobile || newAddr.recipientPhone,
-            localityId: newAddr.localityId || "6a6b0d83dc4a5f2b04e35a90",
+            localityId: newAddr.localityId || "",
             pincode: newAddr.pincode || "221002",
             serviceAddress: newAddr.addressLine,
             landmark: newAddr.landmark || "",
             isPrimary: newAddr.isDefault || false,
           };
 
-          const res = await addCustomerAddressApi(token, payload);
-          if (res.success && res.data) {
-            const frontendAddr = mapBackendAddressToFrontend(res.data);
-            set((state) => ({
-              addresses: [frontendAddr, ...state.addresses.filter((a) => a.id !== frontendAddr.id)],
-              selectedAddressId: frontendAddr.isDefault ? frontendAddr.id : (state.selectedAddressId || frontendAddr.id),
-            }));
-            return true;
-          } else {
-            console.error("Error adding address:", res.message);
+          try {
+            const res = await addCustomerAddressApi(token, payload);
+            if (res.success && res.data) {
+              const frontendAddr = mapBackendAddressToFrontend(res.data);
+              set((state) => ({
+                addresses: [frontendAddr, ...state.addresses.filter((a) => a.id !== frontendAddr.id)],
+                selectedAddressId: frontendAddr.isDefault ? frontendAddr.id : (state.selectedAddressId || frontendAddr.id),
+              }));
+              toast.success("Address Saved", "Delivery address added successfully.");
+              return true;
+            } else {
+              console.error("Error adding address:", res.message);
+              toast.error("Failed to Save Address", res.message || "Please check address details.");
+              return false;
+            }
+          } catch (err: any) {
+            console.error("Error adding address:", err);
+            toast.error("Network Error", err.message || "Failed to reach server. Please try again.");
             return false;
           }
         } else {
@@ -350,6 +361,7 @@ export const useStore = create<AppState>()(
             addresses: [frontendAddr, ...state.addresses],
             selectedAddressId: frontendAddr.isDefault ? frontendAddr.id : (state.selectedAddressId || frontendAddr.id),
           }));
+          toast.success("Address Saved", "Delivery address saved for this session.");
           return true;
         }
       },
@@ -361,22 +373,30 @@ export const useStore = create<AppState>()(
             relationshipType: updatedData.recipientType ? mapRelationshipToBackend(updatedData.recipientType) : undefined,
             recipientName: updatedData.recipientName,
             recipientMobile: updatedData.recipientMobile || updatedData.recipientPhone,
-            localityId: updatedData.localityId || "6a6b0d83dc4a5f2b04e35a90",
+            localityId: updatedData.localityId || "",
             pincode: updatedData.pincode || "221002",
             serviceAddress: updatedData.addressLine,
             landmark: updatedData.landmark || "",
             isPrimary: updatedData.isDefault,
           };
 
-          const res = await updateCustomerAddressApi(token, id, payload);
-          if (res.success && res.data) {
-            const updatedFrontend = mapBackendAddressToFrontend(res.data);
-            set((state) => ({
-              addresses: [updatedFrontend, ...state.addresses.filter((a) => a.id !== id)],
-            }));
-            return true;
-          } else {
-            console.error("Error updating address:", res.message);
+          try {
+            const res = await updateCustomerAddressApi(token, id, payload);
+            if (res.success && res.data) {
+              const updatedFrontend = mapBackendAddressToFrontend(res.data);
+              set((state) => ({
+                addresses: [updatedFrontend, ...state.addresses.filter((a) => a.id !== id)],
+              }));
+              toast.success("Address Updated", "Delivery address updated successfully.");
+              return true;
+            } else {
+              console.error("Error updating address:", res.message);
+              toast.error("Failed to Update Address", res.message || "Unable to update address.");
+              return false;
+            }
+          } catch (err: any) {
+            console.error("Error updating address:", err);
+            toast.error("Network Error", err.message || "Failed to reach server. Please try again.");
             return false;
           }
         } else {
@@ -388,6 +408,7 @@ export const useStore = create<AppState>()(
               addresses: [updated, ...state.addresses.filter((a) => a.id !== id)],
             };
           });
+          toast.success("Address Updated", "Delivery address updated.");
           return true;
         }
       },
@@ -396,30 +417,41 @@ export const useStore = create<AppState>()(
         if (token) {
           get().removeAddressAsync(id).catch((err) => {
             console.error("Async remove address error:", err);
+            toast.error("Failed to Delete Address", err?.message || "Unable to delete address.");
           });
         } else {
           set((state) => ({
             addresses: state.addresses.filter((addr) => addr.id !== id),
           }));
+          toast.success("Address Removed", "Address removed.");
         }
       },
       removeAddressAsync: async (id) => {
         const token = get().token;
         if (token) {
-          const res = await deleteCustomerAddressApi(token, id);
-          if (res.success) {
-            set((state) => ({
-              addresses: state.addresses.filter((a) => a.id !== id),
-            }));
-            return true;
-          } else {
-            console.error("Error deleting address:", res.message);
+          try {
+            const res = await deleteCustomerAddressApi(token, id);
+            if (res.success) {
+              set((state) => ({
+                addresses: state.addresses.filter((a) => a.id !== id),
+              }));
+              toast.success("Address Removed", "Address removed from your account.");
+              return true;
+            } else {
+              console.error("Error deleting address:", res.message);
+              toast.error("Failed to Delete Address", res.message || "Unable to delete address.");
+              return false;
+            }
+          } catch (err: any) {
+            console.error("Error deleting address:", err);
+            toast.error("Network Error", err.message || "Failed to reach server.");
             return false;
           }
         } else {
           set((state) => ({
             addresses: state.addresses.filter((a) => a.id !== id),
           }));
+          toast.success("Address Removed", "Address removed.");
           return true;
         }
       },
@@ -1410,19 +1442,30 @@ export const useStore = create<AppState>()(
       notifications: [
         { id: "1", title: "Welcome to HelpMate", message: "Enjoy 15% off on your first order using code LUXURY50.", type: "info", date: "Just now" },
       ],
-      addNotification: (title, message, type = "info") =>
+      addNotification: (title, message, type = "info") => {
+        if (type === "error") {
+          toast.error(title, message);
+        } else if (type === "warning") {
+          toast.warning(title, message);
+        } else if (type === "success") {
+          toast.success(title, message);
+        } else {
+          toast.info(title, message);
+        }
+
         set((state) => ({
           notifications: [
             {
               id: Math.random().toString(),
               title,
               message,
-              type,
+              type: type as any,
               date: "Just now",
             },
             ...state.notifications,
           ],
-        })),
+        }));
+      },
       clearNotifications: () => set({ notifications: [] }),
 
       // Live Chat

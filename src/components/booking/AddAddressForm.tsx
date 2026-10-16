@@ -13,8 +13,9 @@ import {
   Sparkles,
   Loader2,
 } from "lucide-react";
-import { Address, AddressRecipientType, varanasiLocalities, useStore } from "@/store/useStore";
+import { Address, AddressRecipientType, useStore } from "@/store/useStore";
 import { getLocalitiesApi } from "@/services/addressApi";
+import { toast } from "@/components/common/Toast";
 
 interface AddAddressFormProps {
   onSave: (address: Omit<Address, "id"> & { localityId?: string }) => void;
@@ -52,19 +53,13 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
     initialData?.recipientPhone || (initialData?.recipientType === "Self" || !initialData?.recipientType ? currentUser.phone : "")
   );
 
-  // Dynamic Varanasi Active Zones API State
-  const [localities, setLocalities] = useState<{ id: string; name: string; pincode: string }[]>(varanasiLocalities);
+  // Dynamic Varanasi Active Zones API State (No hardcoded fallback)
+  const [localities, setLocalities] = useState<{ id: string; name: string; pincode: string }[]>([]);
   const [isLoadingLocalities, setIsLoadingLocalities] = useState<boolean>(true);
 
-  const [locality, setLocality] = useState<string>(
-    initialData?.locality || varanasiLocalities[0].name
-  );
-  const [localityId, setLocalityId] = useState<string>(
-    initialData?.localityId || "6a6b0d83dc4a5f2b04e35a90"
-  );
-  const [pincode, setPincode] = useState<string>(
-    initialData?.pincode || varanasiLocalities[0].pincode
-  );
+  const [locality, setLocality] = useState<string>(initialData?.locality || "");
+  const [localityId, setLocalityId] = useState<string>(initialData?.localityId || "");
+  const [pincode, setPincode] = useState<string>(initialData?.pincode || "");
   const [landmark, setLandmark] = useState<string>(initialData?.landmark || "");
   const [streetAddress, setStreetAddress] = useState<string>(
     initialData?.addressLine || initialData?.houseNo || ""
@@ -83,39 +78,57 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
 
         if (res && res.success) {
           const rawList: any[] = res.data?.localities || (Array.isArray(res.data) ? res.data : []) || (res as any).localities || [];
-          if (rawList.length > 0) {
-            const mapped = rawList
-              .filter((loc) => loc.status !== false)
-              .map((loc) => ({
-                id: loc._id || loc.id,
-                name: loc.localityName || loc.name || "Locality",
-                pincode: loc.pincode || "221002",
-              }));
+          const mapped = rawList
+            .filter((loc) => loc.status !== false)
+            .map((loc) => ({
+              id: String(loc._id || loc.id),
+              name: loc.localityName || loc.name || "Locality",
+              pincode: loc.pincode || "",
+            }));
 
-            if (mapped.length > 0) {
-              setLocalities(mapped);
-              if (!initialData?.locality) {
-                setLocality(mapped[0].name);
-                setLocalityId(mapped[0].id);
+          setLocalities(mapped);
+
+          if (mapped.length > 0) {
+            if (!initialData?.locality) {
+              setLocality(mapped[0].name);
+              setLocalityId(mapped[0].id);
+              if (!initialData?.pincode && mapped[0].pincode) {
                 setPincode(mapped[0].pincode);
-              } else {
-                const match = mapped.find(
-                  (m) => m.name.toLowerCase() === initialData.locality?.toLowerCase() || m.id === initialData.localityId
-                );
-                if (match) {
-                  setLocality(match.name);
-                  setLocalityId(match.id);
+              }
+            } else {
+              const match = mapped.find(
+                (m) => m.name.toLowerCase() === initialData.locality?.toLowerCase() || m.id === initialData.localityId
+              );
+              if (match) {
+                setLocality(match.name);
+                setLocalityId(match.id);
+                if (!initialData?.pincode && match.pincode) {
                   setPincode(match.pincode);
                 }
               }
             }
+          } else {
+            // No active zones returned from server
+            if (!initialData?.locality) {
+              setLocality("");
+              setLocalityId("");
+            }
           }
         } else {
-          addNotification("Active Zone Error", res.message || "Failed to load Varanasi active zones from server.", "warning");
+          setLocalities([]);
+          if (!initialData?.locality) {
+            setLocality("");
+            setLocalityId("");
+          }
         }
       } catch (err: any) {
         if (isMounted) {
-          addNotification("Network Error", err.message || "Unable to fetch active zones from server.", "warning");
+          setLocalities([]);
+          if (!initialData?.locality) {
+            setLocality("");
+            setLocalityId("");
+          }
+          console.error("Error loading localities:", err);
         }
       } finally {
         if (isMounted) setIsLoadingLocalities(false);
@@ -192,21 +205,53 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanPhone = (recipientPhone || "").trim().replace(/\D/g, "");
-    if (recipientType !== "Self" && cleanPhone.length !== 10) {
-      addNotification("Validation Error", "Please enter a valid 10-digit recipient mobile number.", "warning");
+    if (!streetAddress || !streetAddress.trim()) {
+      toast.error("Address Required", "Please enter flat/house no., building and street address.");
       return;
     }
 
+    if (!tag || !tag.trim()) {
+      toast.error("Tag Required", "Please enter an address title tag (e.g. Home, Work).");
+      return;
+    }
+
+    if (!locality || !locality.trim()) {
+      toast.error(
+        "Active Zone Required",
+        localities.length === 0
+          ? "No active localities are currently available. Please contact support or try again later."
+          : "Please select an active service locality."
+      );
+      return;
+    }
+
+    const cleanPin = (pincode || "").trim().replace(/\D/g, "");
+    if (!cleanPin || cleanPin.length !== 6) {
+      toast.error("Invalid Pincode", "Please enter a valid 6-digit postal pincode.");
+      return;
+    }
+
+    const cleanPhone = (recipientPhone || "").trim().replace(/\D/g, "");
+    if (recipientType !== "Self") {
+      if (!recipientName || !recipientName.trim()) {
+        toast.error("Recipient Name Required", "Please enter the recipient's full name.");
+        return;
+      }
+      if (cleanPhone.length !== 10) {
+        toast.error("Invalid Mobile Number", "Please enter a valid 10-digit recipient mobile number.");
+        return;
+      }
+    }
+
     onSave({
-      tag: tag || "Home",
+      tag: tag.trim() || "Home",
       recipientType,
-      recipientName: recipientName || currentUser.name,
+      recipientName: recipientName?.trim() || currentUser.name,
       recipientPhone: cleanPhone || currentUser.phone,
       recipientMobile: cleanPhone || currentUser.phone,
       locality,
-      localityId: localityId || "6a6b0d83dc4a5f2b04e35a90",
-      pincode,
+      localityId: localityId || "",
+      pincode: cleanPin,
       landmark: landmark.trim(),
       addressLine: streetAddress.trim(),
       city,
@@ -366,19 +411,29 @@ export const AddAddressForm: React.FC<AddAddressFormProps> = ({
             <select
               value={locality}
               onChange={handleLocalityChange}
-              disabled={isLoadingLocalities}
+              disabled={isLoadingLocalities || localities.length === 0}
               className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-3.5 py-2.5 rounded-xl text-xs text-foreground font-semibold focus:outline-none focus:border-emerald-500 cursor-pointer disabled:opacity-60"
             >
               {isLoadingLocalities ? (
                 <option value="">Loading active zones...</option>
+              ) : localities.length === 0 ? (
+                <option value="">No data available</option>
               ) : (
-                localities.map((loc) => (
-                  <option key={loc.id} value={loc.name}>
-                    {loc.name} ({loc.pincode})
-                  </option>
-                ))
+                <>
+                  <option value="" disabled>Select active locality</option>
+                  {localities.map((loc) => (
+                    <option key={loc.id} value={loc.name}>
+                      {loc.name} {loc.pincode ? `(${loc.pincode})` : ""}
+                    </option>
+                  ))}
+                </>
               )}
             </select>
+            {!isLoadingLocalities && localities.length === 0 && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium mt-1">
+                No data available.
+              </p>
+            )}
           </div>
 
           <div>

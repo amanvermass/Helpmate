@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { services } from "@/utils/mockData";
+import { formatDuration } from "@/utils/dateTime";
 
 interface PlaceProps {
   params: Promise<{ place: string }>;
@@ -299,7 +300,7 @@ export default function PlaceLandingPage({ params }: PlaceProps) {
                     <div className="pt-4 border-t border-slate-100 dark:border-slate-800/60 mt-4 space-y-4">
                       <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
                         <span className="uppercase font-bold text-slate-400 tracking-wider">HelpMate Verified</span>
-                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {srv.duration} mins</span>
+                        <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatDuration(srv.duration)}</span>
                       </div>
 
                       <div

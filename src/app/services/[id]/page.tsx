@@ -26,6 +26,7 @@ import { services } from "@/utils/mockData";
 import { useStore, getItemAddonTotal } from "@/store/useStore";
 import confetti from "canvas-confetti";
 import { formatImageUrl, getNameInitials } from "@/utils/image";
+import { formatDuration } from "@/utils/dateTime";
 import { fetchCustomerCategoriesApi, fetchCustomerSubCategoriesApi, SubCategoryItem, CategoryItem } from "@/services/categoryApi";
 import {
   fetchCustomerServiceActionsApi,
@@ -1185,12 +1186,12 @@ function ServiceDetailPageContent({ params }: PageProps) {
                   setSelectedAct(null);
                   setStepView("action");
                 }}
-                className="hover:text-accent-lux transition-colors font-semibold"
+                className="hover:text-accent-lux transition-colors font-normal"
               >
                 {currentSub?.name}
               </Link>
             ) : (
-              <span className="text-accent-lux font-extrabold">
+              <span className="text-accent-lux font-normal">
                 {currentSub?.name}
               </span>
             )}
@@ -1203,12 +1204,12 @@ function ServiceDetailPageContent({ params }: PageProps) {
             {isDetailsView ? (
               <Link
                 href={`/services/${service?.category}?${currentCategoryQuery ? `${currentCategoryQuery}&` : ""}${selectedSub ? `sub=${selectedSub}&` : ""}act=${selectedAct}`}
-                className="hover:text-accent-lux transition-colors font-semibold"
+                className="hover:text-accent-lux transition-colors font-normal"
               >
                 {currentAct?.name}
               </Link>
             ) : (
-              <span className="text-accent-lux font-extrabold">
+              <span className="text-accent-lux font-normal">
                 {currentAct?.name}
               </span>
             )}
@@ -1244,35 +1245,61 @@ function ServiceDetailPageContent({ params }: PageProps) {
   };
 
   const handleAddToCart = (e: React.MouseEvent) => {
-    triggerSmallConfetti(e);
     const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
+    const isAlreadyInCart = cart.some(
+      (c) =>
+        (packageId && (String(c.id) === String(packageId) || String(c.itemId) === String(packageId))) ||
+        (selectedItem?.id && (String(c.id) === String(selectedItem.id) || String(c.itemId) === String(selectedItem.id))) ||
+        ((selectedItem as any)?._id && (String(c.id) === String((selectedItem as any)._id) || String(c.itemId) === String((selectedItem as any)._id))) ||
+        c.id === `${service.id}-${selectedSub}-${selectedAct}-${selectedItem?.id}`
+    );
+    if (isAlreadyInCart) return;
 
+    triggerSmallConfetti(e);
     addToCart({
       id: packageId,
       name: activeName,
       price: activePrice,
       category: service.category,
-      duration: activeDuration
+      duration: activeDuration,
     });
   };
 
   const handleBookNow = (e: React.MouseEvent) => {
     const packageId = (selectedItem as any)?._id || selectedItem?.id || service.id;
+    const isAlreadyInCart = cart.some(
+      (c) =>
+        (packageId && (String(c.id) === String(packageId) || String(c.itemId) === String(packageId))) ||
+        (selectedItem?.id && (String(c.id) === String(selectedItem.id) || String(c.itemId) === String(selectedItem.id))) ||
+        ((selectedItem as any)?._id && (String(c.id) === String((selectedItem as any)._id) || String(c.itemId) === String((selectedItem as any)._id))) ||
+        c.id === `${service.id}-${selectedSub}-${selectedAct}-${selectedItem?.id}`
+    );
 
-    addToCart({
-      id: packageId,
-      name: activeName,
-      price: activePrice,
-      category: service.category,
-      duration: activeDuration
-    });
+    if (!isAlreadyInCart) {
+      addToCart({
+        id: packageId,
+        name: activeName,
+        price: activePrice,
+        category: service.category,
+        duration: activeDuration,
+      });
+    }
 
     router.push("/booking");
   };
 
   const handleItemAddToCart = (e: React.MouseEvent, item: any) => {
-    triggerSmallConfetti(e);
     const packageId = item._id || item.id;
+    const isAlreadyInCart = cart.some(
+      (c) =>
+        (packageId && (String(c.id) === String(packageId) || String(c.itemId) === String(packageId))) ||
+        (item?.id && (String(c.id) === String(item.id) || String(c.itemId) === String(item.id))) ||
+        (item?._id && (String(c.id) === String(item._id) || String(c.itemId) === String(item._id))) ||
+        c.id === `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`
+    );
+    if (isAlreadyInCart) return;
+
+    triggerSmallConfetti(e);
     const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
 
     addToCart({
@@ -1280,21 +1307,30 @@ function ServiceDetailPageContent({ params }: PageProps) {
       name: pkgName,
       price: item.price,
       category: activeCategory?.categoryName || service?.category || "Service",
-      duration: item.duration || 30
+      duration: item.duration || 30,
     });
   };
 
   const handleItemBookNow = (e: React.MouseEvent, item: any) => {
     const packageId = item._id || item.id;
-    const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
+    const isAlreadyInCart = cart.some(
+      (c) =>
+        (packageId && (String(c.id) === String(packageId) || String(c.itemId) === String(packageId))) ||
+        (item?.id && (String(c.id) === String(item.id) || String(c.itemId) === String(item.id))) ||
+        (item?._id && (String(c.id) === String(item._id) || String(c.itemId) === String(item._id))) ||
+        c.id === `${service?.id}-${selectedSub}-${selectedAct}-${item.id}`
+    );
 
-    addToCart({
-      id: packageId,
-      name: pkgName,
-      price: item.price,
-      category: activeCategory?.categoryName || service?.category || "Service",
-      duration: item.duration || 30
-    });
+    if (!isAlreadyInCart) {
+      const pkgName = item.packageName || item.name || `${currentSub?.name} ${currentAct?.name}`;
+      addToCart({
+        id: packageId,
+        name: pkgName,
+        price: item.price,
+        category: activeCategory?.categoryName || service?.category || "Service",
+        duration: item.duration || 30,
+      });
+    }
 
     router.push("/booking");
   };
@@ -1491,13 +1527,13 @@ function ServiceDetailPageContent({ params }: PageProps) {
                       {activeSubCategoryName && (
                         <>
                           <span>•</span>
-                          <span className="font-medium text-slate-600 dark:text-slate-400">{activeSubCategoryName}</span>
+                          <span className="font-normal text-slate-600 dark:text-slate-400">{activeSubCategoryName}</span>
                         </>
                       )}
                       {activeServiceActionName && (
                         <>
                           <span>•</span>
-                          <span className="font-medium text-slate-500">{activeServiceActionName}</span>
+                          <span className="font-normal text-slate-500">{activeServiceActionName}</span>
                         </>
                       )}
                     </div>
@@ -1926,8 +1962,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
                             {selectedSub !== null && effectiveStepView !== "subcategory" ? "✓" : "1"}
                           </div>
                           <div className="hidden sm:block">
-                            <span className="text-[9px] font-black uppercase tracking-wider block text-slate-400">Step 1</span>
-                            <span className={`text-xs font-bold leading-tight block truncate max-w-[100px] ${effectiveStepView === "subcategory" ? "text-accent-lux" : "text-slate-700 dark:text-slate-200"}`}>
+                            <span className="text-[9px] font-normal uppercase tracking-wider block text-slate-400">Step 1</span>
+                            <span className={`text-xs font-normal leading-tight block ${effectiveStepView === "subcategory" ? "text-accent-lux" : "text-slate-700 dark:text-slate-200"}`}>
                               {currentSub?.name || "Service Type"}
                             </span>
                           </div>
@@ -1956,8 +1992,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
                             {selectedAct !== null && effectiveStepView === "packages" ? "✓" : "2"}
                           </div>
                           <div className="hidden sm:block">
-                            <span className="text-[9px] font-black uppercase tracking-wider block text-slate-400">Step 2</span>
-                            <span className={`text-xs font-bold leading-tight block truncate max-w-[100px] ${effectiveStepView === "action" ? "text-accent-lux" : "text-slate-700 dark:text-slate-200"}`}>
+                            <span className="text-[9px] font-normal uppercase tracking-wider block text-slate-400">Step 2</span>
+                            <span className={`text-xs font-normal leading-tight block ${effectiveStepView === "action" ? "text-accent-lux" : "text-slate-700 dark:text-slate-200"}`}>
                               {currentAct?.name || "Action"}
                             </span>
                           </div>
@@ -2087,7 +2123,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     setApiPackages([]);
                                     setStepView("action");
                                   }}
-                                  className={`p-4 rounded-2xl text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.02] flex flex-col items-center justify-center gap-2 group shadow-sm hover:shadow-md ${
+                                  className={`p-4 rounded-2xl text-xs font-normal tracking-wide text-center transition-all cursor-pointer hover:scale-[1.02] flex flex-col items-center justify-center gap-2 group shadow-sm hover:shadow-md ${
                                     isActive
                                       ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/20 ring-2 ring-accent-lux"
                                       : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-accent-lux/40 border border-slate-200/60 dark:border-slate-800"
@@ -2099,8 +2135,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     fallbackChar="S"
                                     isActive={isActive}
                                   />
-                                  <span className="line-clamp-1 max-w-full">{sub.name}</span>
-                                  <span className={`text-[10px] font-semibold transition-colors ${isActive ? "text-white/80" : "text-slate-400 group-hover:text-accent-lux"}`}>
+                                  <span className="font-normal leading-snug break-words max-w-full text-center">{sub.name}</span>
+                                  <span className={`text-[10px] font-normal transition-colors ${isActive ? "text-white/80" : "text-slate-400 group-hover:text-accent-lux"}`}>
                                     Select →
                                   </span>
                                 </button>
@@ -2132,7 +2168,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                             <button
                               type="button"
                               onClick={() => setStepView("subcategory")}
-                              className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 text-xs font-bold text-accent-lux border border-purple-200/50 dark:border-purple-800/50 transition-all cursor-pointer"
+                              className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 text-xs font-normal text-accent-lux border border-purple-200/50 dark:border-purple-800/50 transition-all cursor-pointer"
                             >
                               <ArrowLeft className="w-3.5 h-3.5" />
                               <span>Back to Types ({currentSub?.name})</span>
@@ -2157,7 +2193,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     setSelectedAct(act._id);
                                     setStepView("packages");
                                   }}
-                                  className={`p-4 rounded-2xl text-[11px] sm:text-xs font-black tracking-wide text-center transition-all cursor-pointer hover:scale-[1.02] flex flex-col items-center justify-center gap-2 group shadow-sm hover:shadow-md ${
+                                  className={`p-4 rounded-2xl text-[11px] sm:text-xs font-normal tracking-wide text-center transition-all cursor-pointer hover:scale-[1.02] flex flex-col items-center justify-center gap-2 group shadow-sm hover:shadow-md ${
                                     isActive
                                       ? "bg-[#48073d] text-white dark:bg-accent-lux shadow-md shadow-accent-lux/20 ring-2 ring-accent-lux"
                                       : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:border-accent-lux/40 border border-slate-200/60 dark:border-slate-800"
@@ -2169,8 +2205,8 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                     fallbackChar="A"
                                     isActive={isActive}
                                   />
-                                  <span className="line-clamp-1 max-w-full">{act.serviceAction}</span>
-                                  <span className={`text-[10px] font-semibold transition-colors ${isActive ? "text-white/80" : "text-slate-400 group-hover:text-accent-lux"}`}>
+                                  <span className="font-normal leading-snug break-words max-w-full text-center">{act.serviceAction}</span>
+                                  <span className={`text-[10px] font-normal transition-colors ${isActive ? "text-white/80" : "text-slate-400 group-hover:text-accent-lux"}`}>
                                     View Packages →
                                   </span>
                                 </button>
@@ -2207,7 +2243,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                               <button
                                 type="button"
                                 onClick={() => setStepView("subcategory")}
-                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] font-normal text-slate-600 dark:text-slate-300 transition-colors cursor-pointer"
                                 title="Change Service Type"
                               >
                                 <span>Type: {currentSub?.name}</span>
@@ -2218,7 +2254,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                             <button
                               type="button"
                               onClick={() => setStepView("action")}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 text-xs font-bold text-accent-lux border border-purple-200/50 dark:border-purple-800/50 transition-all cursor-pointer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 dark:bg-purple-950/60 dark:hover:bg-purple-900/80 text-xs font-normal text-accent-lux border border-purple-200/50 dark:border-purple-800/50 transition-all cursor-pointer"
                             >
                               <ArrowLeft className="w-3.5 h-3.5" />
                               <span>Back to Actions ({currentAct?.name})</span>
@@ -2414,7 +2450,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                                           {/* Duration & Badges */}
                                           <div className="flex flex-wrap gap-2 mt-2">
                                             <span className="text-[8px] font-bold text-slate-400 bg-slate-50 dark:bg-slate-950 px-2 py-0.5 rounded font-sans shrink-0">
-                                              ⏱ {item.duration} mins
+                                              ⏱ {formatDuration(item.duration)}
                                             </span>
                                             <span className="text-[8px] font-bold text-success-lux bg-success-lux/5 px-2 py-0.5 rounded font-sans shrink-0">
                                               ✓ Vetted Pro
@@ -2577,7 +2613,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
                               <div className="flex justify-between items-start gap-3 text-xs">
                                 <div className="text-left w-full pr-1">
                                   <span className="font-bold text-foreground block leading-tight">{item.name}</span>
-                                  <span className="text-[9px] text-slate-400 font-semibold font-sans mt-0.5 block">⏱ {item.duration} mins • Qty: {item.quantity || 1}</span>
+                                  <span className="text-[9px] text-slate-400 font-semibold font-sans mt-0.5 block">⏱ {formatDuration(item.duration)} • Qty: {item.quantity || 1}</span>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                   <div className="flex flex-col items-end mr-1">
@@ -2717,12 +2753,31 @@ function ServiceDetailPageContent({ params }: PageProps) {
           </div>
 
           <div className="flex gap-2.5">
-            <button
-              onClick={handleAddToCart}
-              className="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border border-slate-200/80 dark:border-slate-800 text-slate-850 dark:text-slate-200 font-bold text-xs py-2.5 px-4 rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-sm"
-            >
-              Add to Cart
-            </button>
+            {(() => {
+              const mainId = (selectedItem as any)?._id || selectedItem?.id || service.id;
+              const isMainAdded = cart.some(
+                (c) =>
+                  c.id === mainId ||
+                  c.itemId === mainId ||
+                  c.id === `${service.id}-${selectedSub}-${selectedAct}-${selectedItem?.id}`
+              );
+              return (
+                <button
+                  disabled={isMainAdded}
+                  onClick={(e) => {
+                    if (isMainAdded) return;
+                    handleAddToCart(e);
+                  }}
+                  className={`border font-bold text-xs py-2.5 px-4 rounded-full flex items-center justify-center transition-colors shadow-sm ${
+                    isMainAdded
+                      ? "bg-emerald-500/10 border-emerald-500 text-emerald-600 dark:text-emerald-450 opacity-90 cursor-not-allowed"
+                      : "bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 border-slate-200/80 dark:border-slate-800 text-slate-850 dark:text-slate-200 cursor-pointer"
+                  }`}
+                >
+                  {isMainAdded ? "Added ✓" : "Add to Cart"}
+                </button>
+              );
+            })()}
             <button
               onClick={handleBookNow}
               className="bg-accent-lux hover:bg-accent-lux/95 text-white font-bold text-xs py-2.5 px-5 rounded-full shadow-md flex items-center justify-center gap-1 cursor-pointer transition-colors relative overflow-hidden"
@@ -2745,7 +2800,7 @@ function ServiceDetailPageContent({ params }: PageProps) {
         <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-lg border-t border-slate-200/40 dark:border-slate-800/60 py-3.5 px-6 flex items-center justify-between shadow-[0_-8px_30px_rgb(0,0,0,0.06)] lg:hidden">
           <div className="flex flex-col text-left">
             <span className="text-[9px] uppercase font-bold text-slate-455 tracking-wider">Booking Customizer</span>
-            <span className="text-xs font-extrabold text-foreground truncate max-w-[200px]">
+            <span className="text-xs font-normal text-foreground">
               {hasSubCategories ? (
                 <>
                   {!selectedSub && "Choose System/Type"}

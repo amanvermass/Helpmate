@@ -40,10 +40,11 @@ import Footer from "@/components/common/Footer";
 import confetti from "canvas-confetti";
 
 import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/booking/CustomDateTimePickerModal";
-import { isPastDate, isPastTime } from "@/utils/dateTime";
+import { isPastDate, isPastTime, formatDuration } from "@/utils/dateTime";
 import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
 import MembershipBanner from "@/components/membership/MembershipBanner";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
+import { toast } from "@/components/common/Toast";
 import { fetchScheduleAvailabilityApi } from "@/services/scheduleApi";
 import { fetchCustomerPackagesApi } from "@/services/packageApi";
 
@@ -59,6 +60,7 @@ function BookingContent() {
     cartPricing,
     addresses,
     addAddress,
+    addAddressAsync,
     updateAddressAsync,
     fetchAddresses,
     selectedAddressId,
@@ -298,39 +300,44 @@ function BookingContent() {
     const success = applyCoupon(couponInput);
     if (success) {
       setCouponInput("");
-      addNotification("Coupon Applied", `Promo code ${couponInput} applied successfully.`, "success");
+      toast.success("Coupon Applied", `Promo code ${couponInput} applied successfully.`);
     } else {
       setCouponError("Invalid coupon code. Try LUXURY50");
+      toast.error("Invalid Coupon", "Invalid coupon code. Please try LUXURY50 or another valid code.");
     }
   };
 
-  const handleAddAddressSubmit = () => {
-    if (!newAddressLine.trim()) return;
-    addAddress({
+  const handleAddAddressSubmit = async () => {
+    if (!newAddressLine.trim()) {
+      toast.error("Missing Address", "Please enter a valid address.");
+      return;
+    }
+    const success = await addAddressAsync({
       tag: newTag,
       addressLine: newAddressLine.trim(),
       city: newCity
     });
-    setNewAddressLine("");
-    setShowAddAddress(false);
-    addNotification("Address Saved", "A new delivery location was registered.", "info");
+    if (success) {
+      setNewAddressLine("");
+      setShowAddAddress(false);
+    }
   };
 
   const handleNextStep = () => {
     if (step === 0 && cart.length === 0) {
-      alert("Your cart is empty. Please select a service to continue.");
+      toast.error("Cart is Empty", "Please select a service before proceeding.");
       return;
     }
     if (step === 1 && (!selectedDate || !selectedTimeSlot)) {
-      alert("Please select a date and arrival time window.");
+      toast.error("Schedule Required", "Please select a booking date and arrival time window.");
       return;
     }
     if (step === 2 && (!token || !isLoggedIn)) {
-      alert("Without Sign In or Sign Up, you cannot select an address or book any service.");
+      toast.error("Sign In Required", "Please sign in or create an account to select an address and continue.");
       return;
     }
     if (step === 2 && !selectedAddressId) {
-      alert("Please select or add a service address.");
+      toast.error("Address Required", "Please select or add a service address to proceed.");
       return;
     }
     if (step < 3) {
@@ -338,7 +345,7 @@ function BookingContent() {
       window.scrollTo({ top: 0, behavior: "smooth" });
     } else {
       if (!token || !isLoggedIn) {
-        alert("Authentication required. Please Sign In or Sign Up to book a service.");
+        toast.error("Sign In Required", "Please sign in or create an account to book a service.");
         return;
       }
       // Create final booking via API
@@ -355,8 +362,9 @@ function BookingContent() {
               spread: 80,
               origin: { y: 0.5 }
             });
+            toast.success("Booking Confirmed!", "Your service appointment has been booked successfully.");
           } else {
-            alert(res.message || "Failed to create booking. Please try again.");
+            toast.error("Booking Failed", res.message || "Failed to create booking. Please try again.");
           }
         })
         .finally(() => {
@@ -535,7 +543,7 @@ function BookingContent() {
                                 <div className="flex justify-between items-center">
                                   <div>
                                     <span className="text-xs sm:text-sm font-bold text-foreground">{item.name}</span>
-                                    <p className="text-[10px] text-slate-450 mt-1 capitalize">{item.category} • {item.duration} mins • Qty: {item.quantity}</p>
+                                    <p className="text-[10px] text-slate-450 mt-1 capitalize">{item.category} • {formatDuration(item.duration)} • Qty: {item.quantity}</p>
                                   </div>
                                   <div className="flex items-center gap-4">
                                     <span className="text-sm font-bold text-foreground font-sans">₹{itemTotal}</span>
@@ -994,15 +1002,16 @@ function BookingContent() {
                                 <AddAddressForm
                                   initialData={editingAddress || undefined}
                                   onSave={async (savedAddr) => {
+                                    let success = false;
                                     if (editingAddress) {
-                                      await updateAddressAsync(editingAddress.id, savedAddr);
-                                      addNotification("Address Updated", "Location updated successfully.", "success");
+                                      success = await updateAddressAsync(editingAddress.id, savedAddr);
                                     } else {
-                                      await addAddress(savedAddr);
-                                      addNotification("Address Added", "New address added to your list.", "success");
+                                      success = await addAddressAsync(savedAddr);
                                     }
-                                    setEditingAddress(null);
-                                    setShowAddAddress(false);
+                                    if (success) {
+                                      setEditingAddress(null);
+                                      setShowAddAddress(false);
+                                    }
                                   }}
                                   onCancel={() => {
                                     setEditingAddress(null);

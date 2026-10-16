@@ -49,7 +49,9 @@ import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { useStore, Booking, Address, CartItem } from "@/store/useStore";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
+import { toast } from "@/components/common/Toast";
 import { formatImageUrl } from "@/utils/image";
+import { formatDuration } from "@/utils/dateTime";
 import { InvoiceModal } from "@/components/booking/InvoiceModal";
 
 
@@ -69,6 +71,7 @@ function ProfilePageContent() {
     fetchBookings,
     addresses,
     addAddress,
+    addAddressAsync,
     removeAddress,
     updateAddressAsync,
     fetchAddresses,
@@ -149,7 +152,7 @@ function ProfilePageContent() {
 
     const rating = inlineRatings[itemKey] || 0;
     if (!rating || rating < 1) {
-      alert("Please select a star rating before submitting your review.");
+      toast.error("Rating Required", "Please select a star rating before submitting your review.");
       return;
     }
     const comment = (inlineComments[itemKey] || "").trim();
@@ -296,7 +299,7 @@ function ProfilePageContent() {
   const handleReviewSubmit = async () => {
     if (!reviewingBooking) return;
     if (!reviewRating || reviewRating < 1) {
-      alert("Please select a star rating before submitting your review.");
+      toast.error("Rating Required", "Please select a star rating before submitting your review.");
       return;
     }
     setIsSubmittingReview(true);
@@ -821,7 +824,7 @@ function ProfilePageContent() {
                                                         const file = e.target.files?.[0];
                                                         if (file) {
                                                           if (file.size > 100 * 1024 * 1024) {
-                                                            alert("Video file size must be less than 100MB");
+                                                            toast.error("File Too Large", "Video file size must be less than 100MB");
                                                             return;
                                                           }
                                                           setInlineVideoFiles((prev) => ({ ...prev, [itemKey]: file }));
@@ -1039,15 +1042,16 @@ function ProfilePageContent() {
                       <AddAddressForm
                         initialData={editingAddress || undefined}
                         onSave={async (savedAddr) => {
+                          let success = false;
                           if (editingAddress) {
-                            await updateAddressAsync(editingAddress.id, savedAddr);
-                            addNotification("Address Updated", "Your service location was updated successfully.", "success");
+                            success = await updateAddressAsync(editingAddress.id, savedAddr);
                           } else {
-                            await addAddress(savedAddr);
-                            addNotification("Address Added", "New location saved to profile.", "success");
+                            success = await addAddressAsync(savedAddr);
                           }
-                          setEditingAddress(null);
-                          setShowAddressForm(false);
+                          if (success) {
+                            setEditingAddress(null);
+                            setShowAddressForm(false);
+                          }
                         }}
                         onCancel={() => {
                           setEditingAddress(null);
@@ -1234,7 +1238,7 @@ function ProfilePageContent() {
                             />
 
                             <div className="space-y-1 min-w-0 flex-1">
-                              <span className="text-[9px] font-black uppercase tracking-wider text-accent-lux px-2 py-0.5 rounded-md bg-accent-lux/10 inline-block">
+                              <span className="text-[9px] font-normal uppercase tracking-wider text-accent-lux px-2 py-0.5 rounded-md bg-accent-lux/10 inline-block">
                                 {pkg.serviceAction?.name || "Service Package"}
                               </span>
                               <h4 className="font-extrabold text-sm text-foreground truncate">{pkg.packageName}</h4>
@@ -1245,7 +1249,7 @@ function ProfilePageContent() {
                                   <span className="text-xs text-slate-400 line-through">₹{pkg.originalPrice}</span>
                                 )}
                                 {pkg.duration && (
-                                  <span className="text-[10px] text-slate-400 font-medium ml-auto">• {pkg.duration} mins</span>
+                                  <span className="text-[10px] text-slate-400 font-medium ml-auto">• {formatDuration(pkg.duration)}</span>
                                 )}
                               </div>
                             </div>
@@ -1893,7 +1897,7 @@ function ProfilePageContent() {
                         const file = e.target.files?.[0];
                         if (file) {
                           if (file.size > 100 * 1024 * 1024) {
-                            alert("Video file size must be less than 100MB");
+                            toast.error("File Too Large", "Video file size must be less than 100MB");
                             return;
                           }
                           setReviewVideoFile(file);

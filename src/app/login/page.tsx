@@ -1,18 +1,56 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useStore } from "@/store/useStore";
 import { loginCustomerApi } from "@/services/authApi";
+import { toast } from "@/components/common/Toast";
 import { Loader2, Eye, EyeOff, ShieldCheck, CheckCircle2, AlertCircle, Phone, Lock, ArrowRight, UserPlus } from "lucide-react";
 
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectParam = searchParams.get("redirect") || "/";
+  const queryRedirect = searchParams.get("redirect");
+  const [redirectPath, setRedirectPath] = useState<string>("/");
   const { setAuth } = useStore();
+
+  useEffect(() => {
+    // 1. Direct query parameter in URL (highest priority)
+    if (queryRedirect && queryRedirect !== "/login" && queryRedirect !== "/register") {
+      setRedirectPath(queryRedirect);
+      try {
+        sessionStorage.setItem("helpmate_redirect", queryRedirect);
+      } catch {}
+      return;
+    }
+
+    // 2. Check sessionStorage fallback
+    try {
+      const stored = sessionStorage.getItem("helpmate_redirect");
+      if (stored && stored !== "/login" && stored !== "/register") {
+        setRedirectPath(stored);
+        return;
+      }
+    } catch {}
+
+    // 3. Check document.referrer (browser previous page)
+    if (typeof window !== "undefined" && document.referrer) {
+      try {
+        const refUrl = new URL(document.referrer);
+        if (refUrl.host === window.location.host) {
+          const pathWithSearch = refUrl.pathname + refUrl.search;
+          if (refUrl.pathname !== "/login" && refUrl.pathname !== "/register") {
+            setRedirectPath(pathWithSearch);
+            try {
+              sessionStorage.setItem("helpmate_redirect", pathWithSearch);
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+  }, [queryRedirect]);
 
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -29,12 +67,16 @@ function LoginContent() {
 
     const cleanedPhone = phone.trim().replace(/\D/g, "");
     if (!cleanedPhone || cleanedPhone.length !== 10) {
-      setLoginError("Please enter a valid 10-digit mobile number");
+      const err = "Please enter a valid 10-digit mobile number";
+      setLoginError(err);
+      toast.error("Invalid Mobile Number", err);
       return;
     }
 
     if (!password) {
-      setLoginError("Please enter your password");
+      const err = "Please enter your password";
+      setLoginError(err);
+      toast.error("Password Required", err);
       return;
     }
 
@@ -48,19 +90,28 @@ function LoginContent() {
 
       if (res.success && res.data) {
         setSuccessMsg("Login successful! Welcome back.");
+        toast.success("Welcome Back!", "Signed in successfully.");
         await setAuth({
           token: res.data.token,
           customer: res.data.customer,
         });
 
+        try {
+          sessionStorage.removeItem("helpmate_redirect");
+        } catch {}
+
         setTimeout(() => {
-          router.push(redirectParam);
+          router.push(redirectPath || "/");
         }, 600);
       } else {
-        setLoginError(res.message || "Invalid mobile number or password.");
+        const err = res.message || "Invalid mobile number or password.";
+        setLoginError(err);
+        toast.error("Sign In Failed", err);
       }
     } catch (err: any) {
-      setLoginError("An unexpected error occurred. Please check network connection.");
+      const message = err?.message || "An unexpected error occurred. Please check network connection.";
+      setLoginError(message);
+      toast.error("Connection Error", message);
     } finally {
       setIsLoading(false);
     }
@@ -148,7 +199,7 @@ function LoginContent() {
                 Password
               </label>
               <Link
-                href="/forgot-password"
+                href={redirectPath && redirectPath !== "/" ? `/forgot-password?redirect=${encodeURIComponent(redirectPath)}` : "/forgot-password"}
                 className="text-[11px] font-bold text-accent-lux hover:underline"
               >
                 Forgot password?
@@ -198,7 +249,7 @@ function LoginContent() {
         {/* Register Button Link */}
         <div className="pt-4 border-t border-slate-100 text-center">
           <Link
-            href={redirectParam !== "/" ? `/register?redirect=${encodeURIComponent(redirectParam)}` : "/register"}
+            href={redirectPath && redirectPath !== "/" ? `/register?redirect=${encodeURIComponent(redirectPath)}` : "/register"}
             className="w-full py-3 px-4 rounded-2xl border border-slate-200 hover:border-accent-lux bg-slate-50 hover:bg-white text-slate-700 hover:text-accent-lux font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
             <UserPlus className="w-4 h-4 text-accent-lux" />

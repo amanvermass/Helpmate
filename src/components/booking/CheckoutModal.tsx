@@ -36,11 +36,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useStore, Address, CartItem, getItemAddonTotal } from "@/store/useStore";
 import confetti from "canvas-confetti";
 import { InlineCustomDatePicker, InlineCustomTimePicker } from "@/components/booking/CustomDateTimePickerModal";
-import { isPastDate, isPastTime } from "@/utils/dateTime";
+import { isPastDate, isPastTime, formatDuration } from "@/utils/dateTime";
 import { AvailableCouponsSlider } from "@/components/booking/AvailableCouponsSlider";
-import MembershipBanner from "@/components/membership/MembershipBanner";
 import { AddAddressForm } from "@/components/booking/AddAddressForm";
+import MembershipBanner from "@/components/membership/MembershipBanner";
 import { fetchScheduleAvailabilityApi } from "@/services/scheduleApi";
+import { toast } from "@/components/common/Toast";
 
 interface Props {
   isOpen: boolean;
@@ -70,6 +71,7 @@ export default function CheckoutModal({
     cartPricing,
     addresses,
     addAddress,
+    addAddressAsync,
     updateAddressAsync,
     fetchAddresses,
     selectedAddressId,
@@ -249,45 +251,53 @@ export default function CheckoutModal({
     setCouponError("");
     const success = applyCoupon(couponInput);
     if (success) {
+      toast.success("Coupon Applied", `Promo code "${couponInput}" discount activated!`);
       setCouponInput("");
     } else {
-      setCouponError("Invalid coupon code.");
+      const msg = "Invalid or expired coupon code.";
+      setCouponError(msg);
+      toast.error("Invalid Coupon", msg);
     }
   };
 
-  const handleAddAddressSubmit = () => {
-    if (!newAddressLine.trim()) return;
-    addAddress({
+  const handleAddAddressSubmit = async () => {
+    if (!newAddressLine.trim()) {
+      toast.error("Address Required", "Please enter a valid service address.");
+      return;
+    }
+    const success = await addAddressAsync({
       tag: newTag,
       addressLine: newAddressLine.trim(),
       city: newCity
     });
-    setNewAddressLine("");
-    setShowAddAddress(false);
+    if (success) {
+      setNewAddressLine("");
+      setShowAddAddress(false);
+    }
   };
 
   const handleNextStep = () => {
     if (step === 0 && cart.length === 0) {
-      alert("Your cart is empty. Please select a service to continue.");
+      toast.error("Cart is Empty", "Your cart is empty. Please select a service to continue.");
       return;
     }
     if (step === 1 && (!selectedDate || !selectedTimeSlot)) {
-      alert("Please select a date and arrival time window.");
+      toast.error("Schedule Required", "Please select a date and arrival time window.");
       return;
     }
     if (step === 2 && (!token || !isLoggedIn)) {
-      alert("Without Sign In or Sign Up, you cannot select an address or book any service.");
+      toast.error("Sign In Required", "Without Sign In or Sign Up, you cannot select an address or book any service.");
       return;
     }
     if (step === 2 && !selectedAddressId) {
-      alert("Please select or add a service address.");
+      toast.error("Address Required", "Please select or add a service address.");
       return;
     }
     if (step < 3) {
       setStep(step + 1);
     } else {
       if (!token || !isLoggedIn) {
-        alert("Authentication required. Please Sign In or Sign Up to book a service.");
+        toast.error("Authentication Required", "Please Sign In or Sign Up to book a service.");
         return;
       }
       // Create final booking via API
@@ -304,7 +314,7 @@ export default function CheckoutModal({
               origin: { y: 0.6 }
             });
           } else {
-            alert(res.message || "Failed to create booking. Please try again.");
+            toast.error("Booking Failed", res.message || "Failed to create booking. Please try again.");
           }
         })
         .finally(() => {
@@ -448,7 +458,7 @@ export default function CheckoutModal({
                       <div className="flex justify-between items-center">
                         <div>
                           <span className="text-xs font-bold text-foreground">{item.name}</span>
-                          <p className="text-[10px] text-slate-400 mt-0.5 capitalize">{item.category} • {item.duration} mins • Qty: {item.quantity}</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5 capitalize">{item.category} • {formatDuration(item.duration)} • Qty: {item.quantity}</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-extrabold text-foreground font-sans">₹{itemTotal}</span>
@@ -798,13 +808,13 @@ export default function CheckoutModal({
                         <AddAddressForm
                           initialData={editingAddress || undefined}
                           onSave={async (savedAddr) => {
-                            if (editingAddress) {
-                              await updateAddressAsync(editingAddress.id, savedAddr);
-                            } else {
-                              await addAddress(savedAddr);
+                            const success = editingAddress
+                              ? await updateAddressAsync(editingAddress.id, savedAddr)
+                              : await addAddressAsync(savedAddr);
+                            if (success) {
+                              setEditingAddress(null);
+                              setShowAddAddress(false);
                             }
-                            setEditingAddress(null);
-                            setShowAddAddress(false);
                           }}
                           onCancel={() => {
                             setEditingAddress(null);

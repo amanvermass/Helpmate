@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useStore } from "@/store/useStore";
 import { fetchCustomerTrendingApi, TrendingPackageItem } from "@/services/trendingApi";
 import { formatImageUrl, getNameInitials } from "@/utils/image";
+import { formatDuration } from "@/utils/dateTime";
 
 function TrendingPackageImageDisplay({
   imageUrl,
@@ -255,7 +256,7 @@ export default function Trending() {
                           <span className="capitalize">{service.category}</span>
                           <span>•</span>
                           <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" /> {service.duration} mins
+                            <Clock className="w-3.5 h-3.5" /> {formatDuration(service.duration)}
                           </span>
                         </div>
 

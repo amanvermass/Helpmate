@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { services } from "@/utils/mockData";
 import { fetchCustomerSearchSuggestionsApi } from "@/services/searchApi";
 import { formatImageUrl } from "@/utils/image";
+import { formatDuration } from "@/utils/dateTime";
 import QuickServices from "@/components/home/QuickServices";
 
 export default function Hero() {
@@ -225,7 +226,7 @@ export default function Hero() {
                           <img src={item.image} alt={item.name} className="w-10 h-10 rounded-lg object-cover" />
                           <div>
                             <p className="text-xs font-bold text-foreground">{item.name}</p>
-                            <p className="text-[10px] text-slate-400 capitalize">{item.category} • {item.duration} mins</p>
+                            <p className="text-[10px] text-slate-400 capitalize">{item.category} • {formatDuration(item.duration)}</p>
                           </div>
                         </div>
                         <span className="text-xs font-bold text-accent-lux">₹{item.price}</span>

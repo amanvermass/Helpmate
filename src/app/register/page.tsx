@@ -1,19 +1,57 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useStore } from "@/store/useStore";
 import { registerCustomerApi } from "@/services/authApi";
+import { toast } from "@/components/common/Toast";
 import { Loader2, Eye, EyeOff, CheckCircle2, AlertCircle, ShieldCheck, User, Phone, Lock, ArrowRight } from "lucide-react";
 import confetti from "canvas-confetti";
 
 function RegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectParam = searchParams.get("redirect") || "/";
+  const queryRedirect = searchParams.get("redirect");
+  const [redirectPath, setRedirectPath] = useState<string>("/");
   const { setAuth } = useStore();
+
+  useEffect(() => {
+    // 1. Direct query parameter in URL (highest priority)
+    if (queryRedirect && queryRedirect !== "/login" && queryRedirect !== "/register") {
+      setRedirectPath(queryRedirect);
+      try {
+        sessionStorage.setItem("helpmate_redirect", queryRedirect);
+      } catch {}
+      return;
+    }
+
+    // 2. Check sessionStorage fallback
+    try {
+      const stored = sessionStorage.getItem("helpmate_redirect");
+      if (stored && stored !== "/login" && stored !== "/register") {
+        setRedirectPath(stored);
+        return;
+      }
+    } catch {}
+
+    // 3. Check document.referrer (browser previous page)
+    if (typeof window !== "undefined" && document.referrer) {
+      try {
+        const refUrl = new URL(document.referrer);
+        if (refUrl.host === window.location.host) {
+          const pathWithSearch = refUrl.pathname + refUrl.search;
+          if (refUrl.pathname !== "/login" && refUrl.pathname !== "/register") {
+            setRedirectPath(pathWithSearch);
+            try {
+              sessionStorage.setItem("helpmate_redirect", pathWithSearch);
+            } catch {}
+          }
+        }
+      } catch {}
+    }
+  }, [queryRedirect]);
 
   const [fullName, setFullName] = useState("");
   const [mobile, setMobile] = useState("");
@@ -42,28 +80,38 @@ function RegisterContent() {
 
     const cleanedName = fullName.trim();
     if (!cleanedName || cleanedName.length < 2) {
-      setErrorMsg("Please enter your full name (at least 2 characters)");
+      const err = "Please enter your full name (at least 2 characters)";
+      setErrorMsg(err);
+      toast.error("Name Required", err);
       return;
     }
 
     const cleanedMobile = mobile.trim().replace(/\D/g, "");
     if (!cleanedMobile || cleanedMobile.length !== 10) {
-      setErrorMsg("Please enter a valid 10-digit mobile number");
+      const err = "Please enter a valid 10-digit mobile number";
+      setErrorMsg(err);
+      toast.error("Invalid Mobile Number", err);
       return;
     }
 
     if (!password) {
-      setErrorMsg("Please enter a password");
+      const err = "Please enter a password";
+      setErrorMsg(err);
+      toast.error("Password Required", err);
       return;
     }
 
     if (password.length < 6) {
-      setErrorMsg("Password must be at least 6 characters long");
+      const err = "Password must be at least 6 characters long";
+      setErrorMsg(err);
+      toast.error("Weak Password", err);
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMsg("Passwords do not match. Please check again.");
+      const err = "Passwords do not match. Please check again.";
+      setErrorMsg(err);
+      toast.error("Password Mismatch", err);
       return;
     }
 
@@ -79,19 +127,28 @@ function RegisterContent() {
       if (res.success && res.data) {
         triggerConfetti();
         setSuccessMsg("Registration successful! Logging you in...");
+        toast.success("Account Created!", "Registration successful. Welcome to HelpMate!");
         await setAuth({
           token: res.data.token,
           customer: res.data.customer,
         });
 
+        try {
+          sessionStorage.removeItem("helpmate_redirect");
+        } catch {}
+
         setTimeout(() => {
-          router.push(redirectParam);
+          router.push(redirectPath || "/");
         }, 1200);
       } else {
-        setErrorMsg(res.message || "Registration failed. Mobile number may already be registered.");
+        const err = res.message || "Registration failed. Mobile number may already be registered.";
+        setErrorMsg(err);
+        toast.error("Registration Failed", err);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || "Network connection error. Please try again.");
+      const msg = err.message || "Network connection error. Please try again.";
+      setErrorMsg(msg);
+      toast.error("Connection Error", msg);
     } finally {
       setIsLoading(false);
     }
@@ -277,7 +334,7 @@ function RegisterContent() {
           <p className="text-xs text-slate-500">
             Already registered?{" "}
             <Link
-              href={redirectParam !== "/" ? `/login?redirect=${encodeURIComponent(redirectParam)}` : "/login"}
+              href={redirectPath && redirectPath !== "/" ? `/login?redirect=${encodeURIComponent(redirectPath)}` : "/login"}
               className="text-accent-lux hover:underline font-bold"
             >
               Sign In to Account

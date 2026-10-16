@@ -28,6 +28,7 @@ import { motion, AnimatePresence, Variants } from "framer-motion";
 import Header from "@/components/common/Header";
 import Footer from "@/components/common/Footer";
 import { formatImageUrl, getNameInitials } from "@/utils/image";
+import { formatDuration } from "@/utils/dateTime";
 import { useStore } from "@/store/useStore";
 import {
   fetchCustomerCategoriesApi,
@@ -886,7 +887,7 @@ function SearchPageContent() {
                           {/* Duration Badge */}
                           {pkg.duration && (
                             <span className="absolute bottom-3 right-3 text-[9px] font-bold text-slate-200 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md flex items-center gap-1 font-sans">
-                              <Clock className="w-3 h-3 text-amber-400" /> {pkg.duration} mins
+                              <Clock className="w-3 h-3 text-amber-400" /> {formatDuration(pkg.duration)}
                             </span>
                           )}
                         </div>
@@ -1019,7 +1020,7 @@ function SearchPageContent() {
                                   <PackageThumbnailDisplay imageUrl={pkg.imageUrl} name={pkg.name} />
                                   <div>
                                     <p className="text-[11px] font-bold text-foreground line-clamp-1">{pkg.name}</p>
-                                    <p className="text-[9px] text-slate-400 capitalize">{item.category?.name || "Service"} • {pkg.duration || 60} mins</p>
+                                    <p className="text-[9px] text-slate-400 capitalize">{item.category?.name || "Service"} • {formatDuration(pkg.duration || 60)}</p>
                                   </div>
                                 </div>
                                 <span className="text-[11px] font-bold text-accent-lux shrink-0">₹{pkg.price}</span>
@@ -1158,7 +1159,7 @@ function SearchPageContent() {
                                 }
                                 setCurrentPage(1);
                               }}
-                              className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all cursor-pointer ${isActive
+                              className={`text-[10px] font-normal px-2.5 py-1 rounded-full border transition-all cursor-pointer ${isActive
                                   ? "bg-accent-lux text-white border-accent-lux"
                                   : "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-accent-lux"
                                 }`}
@@ -1316,7 +1317,7 @@ function SearchPageContent() {
                                     </span>
                                   )}
                                   {item.subCategory?.name && (
-                                    <span className="text-[9px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#48073d]/90 text-white backdrop-blur-md shadow-sm">
+                                    <span className="text-[9px] font-normal uppercase tracking-wider px-2.5 py-1 rounded-full bg-[#48073d]/90 text-white backdrop-blur-md shadow-sm">
                                       {item.subCategory.name}
                                     </span>
                                   )}
@@ -1343,7 +1344,7 @@ function SearchPageContent() {
                                 {/* Duration Badge */}
                                 {pkg.duration && (
                                   <span className="absolute bottom-3 right-3 text-[9px] font-bold text-slate-200 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md flex items-center gap-1 font-sans">
-                                    <Clock className="w-3 h-3 text-amber-400" /> {pkg.duration} mins
+                                    <Clock className="w-3 h-3 text-amber-400" /> {formatDuration(pkg.duration)}
                                   </span>
                                 )}
                               </div>
@@ -1370,8 +1371,8 @@ function SearchPageContent() {
                                   {/* Service Action details */}
                                   {item.serviceAction?.name && (
                                     <div className="mt-2.5 flex items-center gap-1">
-                                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Action:</span>
-                                      <span className="text-[9px] font-extrabold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
+                                      <span className="text-[9px] font-normal text-slate-400 uppercase tracking-wider">Action:</span>
+                                      <span className="text-[9px] font-normal text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
                                         {item.serviceAction.name}
                                       </span>
                                     </div>

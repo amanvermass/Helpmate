@@ -69,3 +69,43 @@ export function isPastTime(
   // Slot start time at or before current time is considered past
   return slotTime <= now;
 }
+
+/**
+ * Formats duration in minutes.
+ * If >= 60 minutes, calculates and shows in hours also (e.g. "90 mins (1.5 hrs)", "60 mins (1 hr)").
+ */
+export function formatDuration(duration: number | string | undefined | null): string {
+  if (duration === undefined || duration === null || duration === "") return "45 mins";
+  let num: number;
+  if (typeof duration === "number") {
+    num = duration;
+  } else {
+    const str = String(duration).trim().toLowerCase();
+    const hrMatch = str.match(/(\d+(?:\.\d+)?)\s*(?:hrs?|hours?)/);
+    const minMatch = str.match(/(\d+)\s*(?:mins?|minutes?)/);
+    if (hrMatch && minMatch) {
+      num = Math.round(parseFloat(hrMatch[1]) * 60 + parseInt(minMatch[1], 10));
+    } else if (hrMatch) {
+      num = Math.round(parseFloat(hrMatch[1]) * 60);
+    } else {
+      const parsed = parseInt(str.replace(/\D+/g, ""), 10);
+      num = !isNaN(parsed) && parsed > 0 ? parsed : 45;
+    }
+  }
+
+  if (num < 60) {
+    return `${num} mins`;
+  }
+
+  const hrs = num / 60;
+  if (Number.isInteger(hrs)) {
+    return `${num} mins (${hrs} ${hrs === 1 ? "hr" : "hrs"})`;
+  }
+  const remMins = num % 60;
+  if (remMins === 30) {
+    return `${num} mins (${hrs.toFixed(1)} hrs)`;
+  }
+  const wholeHrs = Math.floor(hrs);
+  const hrPart = wholeHrs === 1 ? "1 hr" : `${wholeHrs} hrs`;
+  return `${num} mins (${hrPart} ${remMins} mins)`;
+}

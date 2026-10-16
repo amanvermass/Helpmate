@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -21,6 +21,7 @@ import {
   Check,
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { toast } from "@/components/common/Toast";
 import {
   forgotPasswordApi,
   verifyForgotPasswordOtpApi,
@@ -29,6 +30,8 @@ import {
 
 function ForgotPasswordContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get("redirect") || "";
 
   // Step state: 1 = Enter Mobile, 2 = Verify OTP, 3 = Reset Password, 4 = Success
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -83,7 +86,9 @@ function ForgotPasswordContent() {
 
     const cleanedMobile = mobile.trim().replace(/\D/g, "");
     if (!cleanedMobile || cleanedMobile.length !== 10) {
-      setErrorMessage("Please enter a valid 10-digit mobile number");
+      const err = "Please enter a valid 10-digit mobile number";
+      setErrorMessage(err);
+      toast.error("Invalid Mobile Number", err);
       return;
     }
 
@@ -93,7 +98,9 @@ function ForgotPasswordContent() {
       const res = await forgotPasswordApi({ mobile: cleanedMobile });
 
       if (res.success) {
-        setSuccessMessage(res.message || "Verification code sent to your mobile.");
+        const msg = res.message || "Verification code sent to your mobile.";
+        setSuccessMessage(msg);
+        toast.success("OTP Sent", msg);
         setStep(2);
         setResendTimer(60);
         setCanResend(false);
@@ -102,10 +109,14 @@ function ForgotPasswordContent() {
           otpInputRefs.current[0]?.focus();
         }, 300);
       } else {
-        setErrorMessage(res.message || "Failed to send verification code. Please check your mobile number.");
+        const err = res.message || "Failed to send verification code. Please check your mobile number.";
+        setErrorMessage(err);
+        toast.error("Request Failed", err);
       }
     } catch (err: any) {
-      setErrorMessage("Network error. Unable to connect to server.");
+      const errorMsg = "Network error. Unable to connect to server.";
+      setErrorMessage(errorMsg);
+      toast.error("Connection Error", errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -152,7 +163,9 @@ function ForgotPasswordContent() {
 
     const fullOtp = otpValues.join("");
     if (fullOtp.length !== 6) {
-      setErrorMessage("Please enter the complete 6-digit OTP code");
+      const err = "Please enter the complete 6-digit OTP code";
+      setErrorMessage(err);
+      toast.error("Incomplete OTP", err);
       return;
     }
 
@@ -169,18 +182,26 @@ function ForgotPasswordContent() {
         // Retrieve resetToken from response
         const token = res.data?.resetToken || res.resetToken;
         if (!token) {
-          setErrorMessage("Reset token missing from response. Please try again.");
+          const err = "Reset token missing from response. Please try again.";
+          setErrorMessage(err);
+          toast.error("Verification Error", err);
           return;
         }
 
         setResetToken(token);
-        setSuccessMessage("OTP verified! Please create your new password.");
+        const msg = "OTP verified! Please create your new password.";
+        setSuccessMessage(msg);
+        toast.success("OTP Verified", msg);
         setStep(3);
       } else {
-        setErrorMessage(res.message || "Invalid or expired OTP code. Please try again.");
+        const err = res.message || "Invalid or expired OTP code. Please try again.";
+        setErrorMessage(err);
+        toast.error("Verification Failed", err);
       }
     } catch (err: any) {
-      setErrorMessage("Network error. Failed to verify OTP code.");
+      const errorMsg = "Network error. Failed to verify OTP code.";
+      setErrorMessage(errorMsg);
+      toast.error("Connection Error", errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -198,16 +219,22 @@ function ForgotPasswordContent() {
     try {
       const res = await forgotPasswordApi({ mobile: cleanedMobile });
       if (res.success) {
-        setSuccessMessage("New OTP code has been sent to your mobile.");
+        const msg = "New OTP code has been sent to your mobile.";
+        setSuccessMessage(msg);
+        toast.success("Code Resent", msg);
         setResendTimer(60);
         setCanResend(false);
         setOtpValues(Array(6).fill(""));
         otpInputRefs.current[0]?.focus();
       } else {
-        setErrorMessage(res.message || "Failed to resend OTP code.");
+        const err = res.message || "Failed to resend OTP code.";
+        setErrorMessage(err);
+        toast.error("Resend Failed", err);
       }
     } catch (err: any) {
-      setErrorMessage("Network error. Unable to resend OTP.");
+      const errorMsg = "Network error. Unable to resend OTP.";
+      setErrorMessage(errorMsg);
+      toast.error("Connection Error", errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -220,12 +247,16 @@ function ForgotPasswordContent() {
     setSuccessMessage("");
 
     if (!newPassword || newPassword.length < 6) {
-      setErrorMessage("Password must be at least 6 characters long.");
+      const err = "Password must be at least 6 characters long.";
+      setErrorMessage(err);
+      toast.error("Weak Password", err);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMessage("Passwords do not match. Please verify both fields.");
+      const err = "Passwords do not match. Please verify both fields.";
+      setErrorMessage(err);
+      toast.error("Password Mismatch", err);
       return;
     }
 
@@ -239,6 +270,7 @@ function ForgotPasswordContent() {
 
       if (res.success) {
         setStep(4);
+        toast.success("Password Reset Successfully!", "Your password has been changed. You can now log in.");
         try {
           confetti({
             particleCount: 100,
@@ -249,10 +281,14 @@ function ForgotPasswordContent() {
           // ignore confetti error if canvas unavailable
         }
       } else {
-        setErrorMessage(res.message || "Failed to reset password. Token may have expired.");
+        const err = res.message || "Failed to reset password. Token may have expired.";
+        setErrorMessage(err);
+        toast.error("Reset Failed", err);
       }
     } catch (err: any) {
-      setErrorMessage("Network error. Unable to reset password.");
+      const errorMsg = "Network error. Unable to reset password.";
+      setErrorMessage(errorMsg);
+      toast.error("Connection Error", errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -406,7 +442,7 @@ function ForgotPasswordContent() {
 
               <div className="pt-2 text-center">
                 <Link
-                  href="/login"
+                  href={redirectParam ? `/login?redirect=${encodeURIComponent(redirectParam)}` : "/login"}
                   className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors"
                 >
                   <ArrowLeft className="w-3.5 h-3.5" /> Back to Sign In
@@ -686,7 +722,7 @@ function ForgotPasswordContent() {
               </div>
 
               <button
-                onClick={() => router.push("/login")}
+                onClick={() => router.push(redirectParam ? `/login?redirect=${encodeURIComponent(redirectParam)}` : "/login")}
                 className="w-full bg-accent-lux hover:bg-accent-lux/95 text-white font-extrabold text-xs py-4 rounded-2xl shadow-lg shadow-accent-lux/20 transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Proceed to Sign In</span>

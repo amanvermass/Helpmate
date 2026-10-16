@@ -38,6 +38,8 @@ export const metadata: Metadata = {
 import { Suspense } from "react";
 import GlobalTopLoader from "@/components/common/GlobalTopLoader";
 
+import ToastContainer from "@/components/common/ToastContainer";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -68,6 +70,7 @@ export default function RootLayout({
           <CursorGlow />
           {children}
           <FloatingHelp />
+          <ToastContainer />
         </Providers>
       </body>
     </html>

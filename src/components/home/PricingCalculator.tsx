@@ -23,7 +23,10 @@ import {
   Search,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useStore, varanasiLocalities } from "@/store/useStore";
+import { useStore } from "@/store/useStore";
+import { getLocalitiesApi } from "@/services/addressApi";
+import { toast } from "@/components/common/Toast";
+import { formatDuration } from "@/utils/dateTime";
 
 interface CalculatorProps {
   onBook: (data: {
@@ -142,7 +145,7 @@ function CustomDropdown({
         aria-expanded={isOpen}
       >
         <span className="truncate pr-2 font-medium text-slate-100">
-          {selectedOption ? selectedOption.label : "Select..."}
+          {selectedOption ? selectedOption.label : options.length === 0 ? "No data available" : "Select..."}
         </span>
         <ChevronDown
           className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${
@@ -230,7 +233,7 @@ function CustomDropdown({
                 })
               ) : (
                 <div className="py-3 text-center text-xs text-slate-400">
-                  No matching options found
+                  {options.length === 0 ? "No data available" : "No matching options found"}
                 </div>
               )}
             </div>
@@ -256,21 +259,49 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
   // Custom commercial needs
   const [selectedCustomNeed, setSelectedCustomNeed] = useState<string>("office");
 
-  // Dropdown options
-  const localityOptions: DropdownOption[] = [
-    ...varanasiLocalities.map((loc) => ({
-      value: loc.name,
-      label: loc.name,
-      sublabel: `PIN: ${loc.pincode}`,
-      badge: "Varanasi",
-    })),
-    {
-      value: "Other Varanasi Area",
-      label: "Other Varanasi Area",
-      sublabel: "Greater Varanasi Region",
-      badge: "Expanded",
-    },
-  ];
+  // Dynamic API localities State
+  const [apiLocalities, setApiLocalities] = useState<{ id: string; name: string; pincode: string }[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchLocalities() {
+      try {
+        const res = await getLocalitiesApi();
+        if (!isMounted) return;
+        if (res && res.success) {
+          const rawList: any[] = res.data?.localities || (Array.isArray(res.data) ? res.data : []) || (res as any).localities || [];
+          const mapped = rawList
+            .filter((loc) => loc.status !== false)
+            .map((loc) => ({
+              id: String(loc._id || loc.id),
+              name: loc.localityName || loc.name,
+              pincode: loc.pincode || "",
+            }))
+            .filter((loc) => Boolean(loc.name));
+          setApiLocalities(mapped);
+          if (mapped.length > 0) {
+            setEnquiryForm((prev) => ({
+              ...prev,
+              locality: prev.locality || mapped[0].name,
+            }));
+          }
+        }
+      } catch (e) {
+        console.error("Error loading localities in PricingCalculator:", e);
+      }
+    }
+    fetchLocalities();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const localityOptions: DropdownOption[] = apiLocalities.map((loc) => ({
+    value: loc.name,
+    label: loc.name,
+    sublabel: loc.pincode ? `PIN: ${loc.pincode}` : undefined,
+    badge: "Varanasi",
+  }));
 
   const slotOptions: DropdownOption[] = [
     {
@@ -315,7 +346,7 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
   const [enquiryForm, setEnquiryForm] = useState<EnquiryFormData>({
     fullName: userName || "",
     phone: userPhone || "",
-    locality: "Sigra",
+    locality: "",
     preferredSlot: "Tomorrow Morning (8 AM - 12 PM)",
     notes: "",
   });
@@ -546,7 +577,7 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
         .map((c) => c.label);
 
       if (selectedChoreLabels.length === 0) {
-        alert("Please select at least one chore task.");
+        toast.error("Selection Required", "Please select at least one chore task.");
         return;
       }
 
@@ -942,7 +973,7 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
                 </p>
                 <span className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                   <Clock className="w-3 h-3 text-accent-lux" /> ~
-                  {Math.round(currentDuration / 60)} hrs ({currentDuration} mins)
+                  {formatDuration(currentDuration)}
                 </span>
               </div>
               <div className="text-right shrink-0">
@@ -1030,7 +1061,7 @@ export default function PricingCalculator({ onBook }: CalculatorProps) {
                           setEnquiryForm({
                             fullName: userName || "",
                             phone: userPhone || "",
-                            locality: "Sigra",
+                            locality: apiLocalities[0]?.name || "",
                             preferredSlot: "Tomorrow Morning (8 AM - 12 PM)",
                             notes: "",
                           });
